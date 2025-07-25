@@ -5,7 +5,7 @@ namespace lsm {
 
 using Fd = int; // FileDescriptor
 
-using Txn_id = uint64_t // Transaction Id
+using TxnId = uint64_t // Transaction Id
 
 using TimeStamp = uint64_t // Transaction timestamp
 

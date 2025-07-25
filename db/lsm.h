@@ -3,7 +3,11 @@
 
 #include "common/macros.h"
 
+#include <functional>
 #include <memory>
+#include <mutex>
+#include <optional>
+#include <string_view>
 #include <vector>
 
 namespace kvs {
@@ -11,6 +15,8 @@ namespace kvs {
 class Memtable;
 class SSTable;
 class TransactionManager;
+
+using BackgroundFlushJob = std::function<void()>;
 
 class LSM {
   public:
@@ -27,17 +33,17 @@ class LSM {
     LSM(LSM&&) = default;
     LSM& operator=(LSM&&) = default;
 
+    std::optional<std::string> Get(std::string_view);
+
   private:
     // TODO(namnh) : unique_ptr or shared_ptr
-    std::unique_ptr<TransactionManager> txns_manager_;
-
-    // TODO(namnh) : unique_ptr or shared_ptr
-    std::vector<std::unique_ptr<Memtable>> memtables_;
+    std::unique_ptr<Memtable> memtable_;
 
     std::vector<std::unique_ptr<Memtable>> immutable_memtables_;
 
-    std::unique_ptr<Memtable> memtable_;
+    std::shared_mutex memtable_mutex_;
 
+    std::thread flush_job_;
 };
 
 } // namespace kvs

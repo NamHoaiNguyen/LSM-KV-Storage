@@ -1,16 +1,16 @@
 #ifndef DB_MEMTABLE_H
 #define DB_MEMTABLE_H
 
-#include "db/read_only_memtable.h"
+#include "db/base_memtable.h"
 #include "common/macros.h"
 
 namespace kvs {
 
-class ReadOnlyMemtable : public Memtable {
+class ImmutableMemtable : public BaseMemtable {
   public:
-    ReadOnlyMemtable();
+    ImmutableMemtable();
 
-    ~ReadOnlyMemtable() override;
+    ~ImmutableMemtable() override;
 
     void BatchGet() override;
 
@@ -18,12 +18,11 @@ class ReadOnlyMemtable : public Memtable {
 
     void BatchPut() override;
 
-    void Put() = override;
-
+    void Put() override;
 
   private:
 };
 
 } // namespace kvs
 
-#endif // DB_MEMTABLE_H
+#endif // DB_IMMUTABLE_MEMTABLE_H

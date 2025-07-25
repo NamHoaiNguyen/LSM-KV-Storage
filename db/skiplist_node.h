@@ -7,19 +7,14 @@
 
 namespace kvs {
 
-class SkipListNode;
 
-class SkipList {
+class SkipListNode {
   public:
     SkipList();
 
     ~SkipList();
 
   private:
-    // TODO(change when support config)
-    uint8_t levels{8};
-
-    std::vector<std::shared_ptr>> SkipListNode;
 };
 
 } // namespace kvs

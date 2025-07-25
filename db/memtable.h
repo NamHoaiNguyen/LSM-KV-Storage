@@ -1,24 +1,35 @@
 #ifndef DB_MEMTABLE_H
 #define DB_MEMTABLE_H
 
+#include "db/base_memtable.h"
 #include "common/macros.h"
+
+#include <memory>
 
 namespace kvs {
 
-class Memtable {
+class SkipList;
+
+class Memtable : public BaseMemtable {
   public:
-    virtual ~MemTable() = default;
+    Memtable();
 
-    void BatchGet() = 0;
+    ~Memtable() override;
 
-    void Get() = 0;
+    void BatchGet() override;
 
-    void BatchPut() = 0;
+    void Get() override;
 
-    void Put() = 0;
+    void BatchPut() override;
 
+    void Put() override;
 
   private:
+    enum class {
+
+    }
+
+    std::unique_ptr<SkipList> skip_list_;
 };
 
 } // namespace kvs

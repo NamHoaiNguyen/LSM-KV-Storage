@@ -18,17 +18,19 @@ class TransactionManager {
 
     ~TransactionManager() = default;
 
-    void Abort(Txn_id txn_id);
+    Transaction* CreateNewTransaction();
 
-    void Begin();
+    TxnId GetNextTransactionId();
 
-    void Commit(Txn_id txn_id);
+    IsolationLevel GetIsolationLevel();
 
   private:
-    // TODO(namnh) : unique_ptr or shared_ptr
-    std::unordered_map<Txn_id, std::unique_ptr<Transaction>> transactions_;
+    IsolationLevel isolation_level_;
 
-    std::atomic<uint64_t> next_txn_id_;
+    // TODO(namnh) : unique_ptr or shared_ptr
+    std::unordered_map<TxnId, std::unique_ptr<Transaction>> txns_;
+
+    std::atomic<TxnId> next_txn_id_;
 
     // Only 1 transaction can commit at a point
     std::mutex mutex_;
