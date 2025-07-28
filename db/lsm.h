@@ -33,7 +33,7 @@ class LSM {
     LSM(LSM&&) = default;
     LSM& operator=(LSM&&) = default;
 
-    std::optional<std::string> Get(std::string_view);
+    std::optional<std::string> Get(std::string_view key);
 
   private:
     // TODO(namnh) : unique_ptr or shared_ptr

@@ -4,17 +4,31 @@
 #include "common/macros.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace kvs {
 
-
+// TODO(namnh) : Currently, we only support string type.
+// template<typename Type, typename Comparator>
 class SkipListNode {
   public:
-    SkipList();
+    SkipListNode();
 
-    ~SkipList();
+    ~SkipListNode();
+
+    bool operator==(const SkipListNode& other);
 
   private:
+    std::string key_;
+
+    std::string value_;
+
+    // Travel from high level to low level
+    std::vector<std::shared_ptr<SkipListNode<std::string>> forward_;
+
+    // Travel from low level to high level
+    std::vector<std::shared_ptr<SkipListNode<std::string>> backward_;
 };
 
 } // namespace kvs

@@ -5,6 +5,7 @@
 #include "common/macros.h"
 
 #include <memory>
+#include <string_view>
 
 namespace kvs {
 
@@ -18,18 +19,21 @@ class Memtable : public BaseMemtable {
 
     void BatchGet() override;
 
-    void Get() override;
+    void Get(std::string_view key) override;
 
     void BatchPut() override;
 
-    void Put() override;
+    void Put(std::string_view key, std::string_view value, TxnId txn_id) override;
+
+    void Delete() override;
 
   private:
     enum class {
 
     }
 
-    std::unique_ptr<SkipList> skip_list_;
+    // TODO(namnh) : unique_ptr or shared_ptr
+    std::unique_ptr<SkipList> table_;
 };
 
 } // namespace kvs
