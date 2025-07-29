@@ -2,11 +2,13 @@
 
 namespace kvs {
 
-SkipListNode::SkipListNode() = default;
+SkipListNode::SkipListNode(std::string_view key, std::string_view value,
+                           int num_level)
+    : key_(key), value_(value), num_level_(num_level) {}
 
 SkipListNode::~SkipListNode() = default;
 
-bool SkipListNode::operator==(const SkipListNode& other) {
+bool SkipListNode::operator==(const SkipListNode &other) {
   // TODO(namnh) : implement
   return false;
 }

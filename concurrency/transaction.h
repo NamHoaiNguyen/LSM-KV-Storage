@@ -2,6 +2,7 @@
 #define CONCURRENCY_TRANSACTION__H
 
 #include "common/macros.h"
+#include "concurrency/transaction_manager.h"
 
 #include <mutex>
 #include <optional>
@@ -11,8 +12,7 @@
 
 namespace kvs {
 
-class Engine;
-class TransactionManager;
+class DB;
 
 enum class TransactionState {
   ABORTED,
@@ -23,33 +23,36 @@ enum class TransactionState {
 };
 
 class Transaction {
-  public:
-    Transaction(TransactionManager* txn_manager, Engine* engine, TxnId txn_id)
+public:
+  Transaction(TransactionManager *txn_manager, DB *db, TxnId txn_id,
+              IsolationLevel isolation_level);
 
-    ~Transaction() = default;
+  ~Transaction() = default;
 
-    void Abort();
+  void Abort();
 
-    void Begin();
+  void Begin();
 
-    void Commit();
+  void Commit();
 
-    std::optional<std::string> Get(std::string_view key);
+  std::optional<std::string> Get(std::string_view key);
 
-    void Put(std::string_view key);
+  void Put(std::string_view key);
 
-  private:
-    Txn_id txn_id_;
+private:
+  IsolationLevel isolation_level_;
 
-    // Timestamp when transaction "BEGIN"
-    TimeStamp read_timestamp_;
+  Txn_id txn_id_;
 
-    // Timestamp when transaction "COMMIT"
-    TimeStamp commit_timestamp_;
+  // Timestamp when transaction "BEGIN"
+  TimeStamp read_timestamp_;
 
-    TranscationManager* txn_manager_;
+  // Timestamp when transaction "COMMIT"
+  TimeStamp commit_timestamp_;
 
-    Engine* engine_;
+  TranscationManager *txn_manager_;
+
+  DB *db_;
 };
 
 } // namespace kvs

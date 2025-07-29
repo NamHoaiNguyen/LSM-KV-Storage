@@ -3,8 +3,10 @@
 
 #include "common/macros.h"
 
+#include <iostream>
 #include <memory>
 #include <optional>
+#include <random>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -20,41 +22,50 @@ class SkipListNode;
 
 // template<typename Type>
 class SkipList {
-  public:
-    SkipList();
+public:
+  SkipList();
 
-    ~SkipList();
+  ~SkipList();
 
-    // Copy constructor/assignment
-    SkipList(const SkipList&) = delete;
-    SkipList& operator=(const SkipList&) = delete;
+  // Copy constructor/assignment
+  SkipList(const SkipList &) = delete;
+  SkipList &operator=(const SkipList &) = delete;
 
-    // Move constructor/assignment
-    SkipList(SkipList&&) = default;
-    SkipList& operator=(SkipList&&) = default;
+  // Move constructor/assignment
+  SkipList(SkipList &&) = default;
+  SkipList &operator=(SkipList &&) = default;
 
-    std::optional<std::string> Get(std::string_view key);
+  std::optional<std::string> Get(std::string_view key);
 
-    void Delete(std::string_view key);
+  void Delete(std::string_view key);
 
-    bool Put(std::string_view key, std::string_view value);
+  bool Put(std::string_view key, std::string_view value);
 
-    void Update(std::string_view key, std::string_view value);
+  void Update(std::string_view key, std::string_view value);
 
-    // TODO(namnh) : check type
-    size_t GetCurrentSize();
+  // TODO(namnh) : check type
+  size_t GetCurrentSize();
 
-  private:
-    void FindGreaterOrEqual(std::string_view key);
+  // For debugging
+  void PrintSkipList();
 
-    // TODO(change when support config)
-    uint8_t current_level_;
+private:
+  void FindGreaterOrEqual(std::string_view key);
 
-    uint8_t max_level_;
+  // TODO(change when support config)
+  uint8_t current_level_;
 
-    std::shared_ptr<SkipListNode<std::string>> SkipListNode;
+  uint8_t max_level_;
 
-    size_t size_;
+  std::mt19937 gen_;
+
+  std::uniform_int_distribution<> dist_level_;
+
+  std::shared_ptr<SkipListNode> head_;
+
+  // std::shared_ptr<SkipListNode> tail_;
+
+  size_t size_;
 };
 
 } // namespace kvs

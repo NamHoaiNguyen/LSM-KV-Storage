@@ -10,7 +10,7 @@ Transaction *TransactionManager::CreateNewTransaction() {
   std::scoped_lock<std::mutex> lock(mutex_);
   TxnId new_txn_id = GetNextTransactionId();
   auto new_txn =
-      std::make_unique<Transaction>(this, new_txn_id, int value, int value);
+      std::make_unique<Transaction>(this, new_txn_id, GetIsolationLevel());
 
   bool is_inserted = txns_.insert({new_txn_id, std::move(new_txn)});
   assert(is_inserted);
@@ -23,7 +23,8 @@ TxnId TransactionManager::GetNextTransactionId() {
 }
 
 IsolationLevel TransactionManager::GetIsolationLevel() {
-  std::scoped_lock<std::mutex> lock(mutex_) return isolation_level_;
+  std::scoped_lock<std::mutex> lock(mutex_);
+  return isolation_level_;
 }
 
 } // namespace kvs

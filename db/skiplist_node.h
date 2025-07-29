@@ -9,29 +9,33 @@
 
 namespace kvs {
 
+claas SkipList;
+
 // TODO(namnh) : Currently, we only support string type.
 // template<typename Type, typename Comparator>
 class SkipListNode {
-  public:
-    SkipListNode();
+public:
+  SkipListNode(std::string_view key, std::string_view value, int num_level);
 
-    ~SkipListNode();
+  ~SkipListNode();
 
-    bool operator==(const SkipListNode& other);
+  bool operator==(const SkipListNode &other);
 
-    void GetKey(std::string_view key);
-    void PutKey(std::string_view key, std::string_view value);
+  friend class SkipList;
 
-  private:
-    std::string key_;
+private:
+  std::string key_;
 
-    std::string value_;
+  std::string value_;
 
-    // Travel from high level to low level
-    std::vector<std::shared_ptr<SkipListNode<std::string>> forward_;
+  // Number of level that this node appears
+  int num_level_;
 
-    // Travel from low level to high level
-    std::vector<std::shared_ptr<SkipListNode<std::string>> backward_;
+  // Travel from high level to low level
+  std::vector < std::shared_ptr<SkipListNode> forward_;
+
+  // Travel from low level to high level
+  std::vector < std::shared_ptr<SkipListNode> backward_;
 };
 
 } // namespace kvs
