@@ -19,6 +19,9 @@ class SkipListNode {
 
     bool operator==(const SkipListNode& other);
 
+    void GetKey(std::string_view key);
+    void PutKey(std::string_view key, std::string_view value);
+
   private:
     std::string key_;
 

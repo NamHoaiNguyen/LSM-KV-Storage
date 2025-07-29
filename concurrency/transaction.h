@@ -14,16 +14,6 @@ namespace kvs {
 class Engine;
 class TransactionManager;
 
-enum class IsolationLevel {
-  READ_UNCOMMITED,
-
-  READ_COMMITED,
-
-  REPEATABLE_READ,
-
-  SERIALIZABLE,
-};
-
 enum class TransactionState {
   ABORTED,
 

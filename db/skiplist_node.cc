@@ -2,16 +2,15 @@
 
 namespace kvs {
 
-template<typenamne Type>
 SkipListNode::SkipListNode() = default;
 
-template<typenamne Type>
 SkipListNode::~SkipListNode() = default;
 
-template<typenamne Type>
-bool SkipListNode::operator==(const SkipListNode<Type>& other) {
+bool SkipListNode::operator==(const SkipListNode& other) {
   // TODO(namnh) : implement
   return false;
 }
+
+void GetKey(std::string_view key)
 
 } // namespace kvs

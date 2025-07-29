@@ -12,6 +12,16 @@ namespace kvs {
 
 class Transaction;
 
+enum class IsolationLevel {
+  READ_UNCOMMITED,
+
+  READ_COMMITED,
+
+  REPEATABLE_READ,
+
+  SERIALIZABLE,
+};
+
 class TransactionManager {
   public:
     TransactionManager() = default;
