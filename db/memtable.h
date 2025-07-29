@@ -33,7 +33,13 @@ class Memtable : public BaseMemtable {
     }
 
     // TODO(namnh) : unique_ptr or shared_ptr
-    std::unique_ptr<SkipList> table_;
+    std::shared_ptr<SkipList> table_;
+
+    std::vector<std::shared_ptr<SkipList>> immutable_tables_;
+
+    std::shared_mutex table_mutex_;
+
+    std::shared_mutex immutable_tables_mutex_;
 };
 
 } // namespace kvs
