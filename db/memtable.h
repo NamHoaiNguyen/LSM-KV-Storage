@@ -28,10 +28,12 @@ public:
   void Delete() override;
 
 private:
-  // TODO(namnh) : unique_ptr or shared_ptr
-  std::shared_ptr<SkipList> table_;
+  void CreateNewMemtable();
 
-  std::vector<std::shared_ptr<SkipList>> immutable_tables_;
+  // TODO(namnh) : unique_ptr or shared_ptr
+  std::unique_ptr<SkipList> table_;
+
+  std::vector<std::unique_ptr<SkipList>> immutable_tables_;
 
   std::shared_mutex table_mutex_;
 

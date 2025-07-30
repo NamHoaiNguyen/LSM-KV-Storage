@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace kvs {
@@ -28,14 +29,17 @@ private:
 
   std::string value_;
 
+  // TODO(namnh) : recheck
+  // TxnId txn_id_;
+
   // Number of level that this node appears
   int num_level_;
 
   // Travel from high level to low level
   std::vector < std::shared_ptr<SkipListNode> forward_;
 
-  // Travel from low level to high level
-  std::vector < std::shared_ptr<SkipListNode> backward_;
+  // Use weak_ptr to avoid circular
+  std::vector < std::weak_ptr<SkipListNode> backward_;
 };
 
 } // namespace kvs

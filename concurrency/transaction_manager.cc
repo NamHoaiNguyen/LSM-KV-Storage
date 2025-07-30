@@ -7,13 +7,14 @@
 namespace kvs {
 
 Transaction *TransactionManager::CreateNewTransaction() {
-  std::scoped_lock<std::mutex> lock(mutex_);
+  // TODO(namnh) : Do we need to lock when creating new transaction.
+  // std::scoped_lock<std::mutex> lock(mutex_);
   TxnId new_txn_id = GetNextTransactionId();
   auto new_txn =
       std::make_unique<Transaction>(this, new_txn_id, GetIsolationLevel());
-
+  
+  std::scoped_lock<std::mutex> lock(mutex_);
   bool is_inserted = txns_.insert({new_txn_id, std::move(new_txn)});
-  assert(is_inserted);
 
   return txns_[new_txn_id].get();
 }

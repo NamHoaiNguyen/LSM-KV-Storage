@@ -39,33 +39,40 @@ public:
 
   void Delete(std::string_view key);
 
+  // Insert new key and value.
+  // If key existed, update new value.
   bool Put(std::string_view key, std::string_view value);
-
-  void Update(std::string_view key, std::string_view value);
 
   // TODO(namnh) : check type
   size_t GetCurrentSize();
+
+  // SkipListIterator begin();
+
+  // SkipListIterator end();
 
   // For debugging
   void PrintSkipList();
 
 private:
-  void FindGreaterOrEqual(std::string_view key);
+  std::shared_ptr<SkipListNode> FindNodeLessThan(std::string_view key);
 
-  // TODO(change when support config)
+  // adaptive number of current levels
   uint8_t current_level_;
 
+  // TODO(namnh) Change when support config
   uint8_t max_level_;
 
   std::mt19937 gen_;
 
   std::uniform_int_distribution<> dist_level_;
 
+  // TODO(namnh) : Can we use unique_ptr ?
   std::shared_ptr<SkipListNode> head_;
 
+  // TODO(namnh) : Do we need this for easier track
   // std::shared_ptr<SkipListNode> tail_;
 
-  size_t size_;
+  size_t current_size_; // bytes unit
 };
 
 } // namespace kvs
