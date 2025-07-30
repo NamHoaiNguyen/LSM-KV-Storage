@@ -3,21 +3,26 @@
 
 #include "common/macros.h"
 
+#include <string_view>
+
 namespace kvs {
 
 class BaseMemtable {
-  public:
-    virtual ~BaseMemtable() = default;
+public:
+  virtual ~BaseMemtable() = default;
 
-    void BatchGet() = 0;
+  virtual void BatchGet() = 0;
 
-    void Get() = 0;
+  virtual void Get(std::string_view key) = 0;
 
-    void BatchPut() = 0;
+  virtual void BatchPut() = 0;
 
-    void Put() = 0;
+  virtual void Put(std::string_view key, std::string_view value,
+                   TxnId txn_id) = 0;
 
-  private:
+  virtual void Delete() = 0;
+
+private:
 };
 
 } // namespace kvs

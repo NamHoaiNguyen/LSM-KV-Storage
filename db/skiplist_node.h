@@ -1,5 +1,5 @@
-#ifndef DB_SKIPLIST_H
-#define DB_SKIPLIST_H
+#ifndef DB_SKIPLIST_NODE_H
+#define DB_SKIPLIST_NODE_H
 
 #include "common/macros.h"
 
@@ -10,7 +10,7 @@
 
 namespace kvs {
 
-claas SkipList;
+class SkipList;
 
 // TODO(namnh) : Currently, we only support string type.
 // template<typename Type, typename Comparator>
@@ -36,12 +36,12 @@ private:
   int num_level_;
 
   // Travel from high level to low level
-  std::vector < std::shared_ptr<SkipListNode> forward_;
+  std::vector<std::shared_ptr<SkipListNode>> forward_;
 
   // Use weak_ptr to avoid circular
-  std::vector < std::weak_ptr<SkipListNode> backward_;
+  std::vector<std::weak_ptr<SkipListNode>> backward_;
 };
 
 } // namespace kvs
 
-#endif // DB_MEMTABLE_H
+#endif // DB_SKIPLIST_NODE_H

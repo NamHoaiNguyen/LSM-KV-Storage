@@ -1,11 +1,11 @@
-#include "db/transaction.h"
+#include "concurrency/transaction.h"
 
-#include "db/engine.h"
-#include "db/transaction_manager.h"
+#include "concurrency/transaction_manager.h"
+#include "db/db.h"
 
 namespace kvs {
-Transaction::Transaction(TransactionManager *txn_manager, Engine *engine,
-                         TxnId txn_id, IsolationLevel isolation_level)
+Transaction::Transaction(TransactionManager *txn_manager, DB *db, TxnId txn_id,
+                         IsolationLevel isolation_level)
     : txn_manager_(txn_manager), db_(db), txn_id_(txn_id),
       isolation_level_(isolation_level) {}
 
@@ -22,7 +22,7 @@ std::optional<std::string> Transaction::Get(std::string_view key) {
     std::exit(EXIT_FAILURE);
   }
 
-  if (txn_manager_.find(txn_id_) == txn_manager_.end()) {
+  if (txn_manager_->DoesTransactionExist(txn_id_)) {
     throw std::runtime_error("Transaction not be found");
   }
 

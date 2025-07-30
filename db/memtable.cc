@@ -1,16 +1,15 @@
-#include "db/memtable.h"
+#include "memtable.h"
 
-#include "db/skiplist.h"
+#include "skiplist.h"
 
 namespace kvs {
 
 // TODO(namnh) : config instead of hard set
 constexpr int max_memtable_size = 64 * 1024 * 1024; // MB
 
-MemTable::Memtable() : 
-  table_(std::make_unique<SkipList>()) {}
+MemTable::MemTable() : table_(std::make_unique<SkipList>()) {}
 
-MemTable::~Memtable() = default;
+MemTable::~MemTable() = default;
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   {
@@ -31,7 +30,7 @@ void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 }
 
 // NOT THREAD-SAFE. Lock must be acquired before this method is called.
-void Memtable::CreateNewMemtable() {
+void MemTable::CreateNewMemtable() {
   immutable_tables_.push_back(std::move(table_));
   table_ = std::make_unique<SkipList>();
 }
@@ -47,4 +46,4 @@ void MemTable::Get(std::string_view key) {
   }
 }
 
-// namespace kvs
+} // namespace kvs

@@ -5,17 +5,20 @@
 #include "db/base_memtable.h"
 
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string_view>
+#include <vector>
 
 namespace kvs {
 
 class SkipList;
 
-class Memtable : public BaseMemtable {
+class MemTable : public BaseMemtable {
 public:
-  Memtable();
+  MemTable();
 
-  ~Memtable() override;
+  ~MemTable() override;
 
   void BatchGet() override;
 

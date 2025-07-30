@@ -41,10 +41,14 @@ public:
 
   // Insert new key and value.
   // If key existed, update new value.
-  bool Put(std::string_view key, std::string_view value);
+  bool Put(std::string_view key, std::string_view value, TxnId txn_id);
 
   // TODO(namnh) : check type
   size_t GetCurrentSize();
+
+  int GetRandomLevel();
+
+  // Return random number of levels that a node is inserted
 
   // SkipListIterator begin();
 
@@ -54,7 +58,8 @@ public:
   void PrintSkipList();
 
 private:
-  std::shared_ptr<SkipListNode> FindNodeLessThan(std::string_view key);
+  std::vector<std::shared_ptr<SkipListNode>>
+  FindNodeLessThan(std::string_view key);
 
   // adaptive number of current levels
   uint8_t current_level_;
@@ -77,4 +82,4 @@ private:
 
 } // namespace kvs
 
-#endif // DB_MEMTABLE_H
+#endif // DB_SKIPLIST_H

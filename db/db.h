@@ -4,6 +4,7 @@
 #include "common/macros.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -11,39 +12,40 @@ namespace kvs {
 
 class LSM;
 class TransactionManager;
+class Transaction;
 
 // TODO(namnh) : Do we actually need this class?
 // Currently, it is used with a view to support
 // multiple storage engine in the future.
 class DB {
-  public:
-    DB();
+public:
+  DB();
 
-    ~DB();
+  ~DB();
 
-    // Copy constructor and assignment
-    DB(const DB&) = delete;
-    DB& operator=(const DB&) = delete;
+  // Copy constructor and assignment
+  DB(const DB &) = delete;
+  DB &operator=(const DB &) = delete;
 
-    // Move constructor and assigment
-    // TODO(namnh) : Recheck this one.
-    DB(DB&&) = default;
-    LSM& operator=(DB&&) = default;
+  // Move constructor and assigment
+  // TODO(namnh) : Recheck this one.
+  DB(DB &&) = default;
+  DB &operator=(DB &&) = default;
 
-    Transaction* Begin();
+  Transaction *Begin();
 
-    void BatchGet();
+  void BatchGet();
 
-    void Get(std::string_view key, TxnId txn_id);
+  std::optional<std::string> Get(std::string_view key, TxnId txn_id);
 
-    void BatchPut();
+  void BatchPut();
 
-    void Put();
+  void Put();
 
-  private:
-    std::unique_ptr<TransactionManager> txn_manager_;
+private:
+  std::unique_ptr<TransactionManager> txn_manager_;
 
-    std::unique_ptr<LSM> lsm_;
+  std::unique_ptr<LSM> lsm_;
 };
 
 } // namespace kvs

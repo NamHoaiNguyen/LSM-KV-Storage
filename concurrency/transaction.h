@@ -42,7 +42,7 @@ public:
 private:
   IsolationLevel isolation_level_;
 
-  Txn_id txn_id_;
+  TxnId txn_id_;
 
   // Timestamp when transaction "BEGIN"
   TimeStamp read_timestamp_;
@@ -50,7 +50,7 @@ private:
   // Timestamp when transaction "COMMIT"
   TimeStamp commit_timestamp_;
 
-  TranscationManager *txn_manager_;
+  TransactionManager *txn_manager_;
 
   DB *db_;
 };

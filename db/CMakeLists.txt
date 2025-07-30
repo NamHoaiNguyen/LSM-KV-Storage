@@ -13,4 +13,5 @@ add_library(db
 )
 
 target_include_directories(db PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(db PUBLIC common)
+# target_include_directories(db PUBLIC ${PROJECT_SOURCE_DIR})
+target_link_libraries(db PUBLIC concurrency)
