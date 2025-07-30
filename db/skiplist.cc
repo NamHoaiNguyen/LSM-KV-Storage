@@ -31,7 +31,7 @@ int SkipList::GetRandomLevel() {
 }
 
 // TODO(namnh) : update when transaction is implemented.
-std::optional<std::string> SkipList::Get(std::string_view key) {
+std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
   std::shared_ptr<SkipListNode> current = head_;
   for (int level = max_level_ - 1; level >= 0; --level) {
     while (current->forward_[level] && current->forward_[level]->key_ < key) {

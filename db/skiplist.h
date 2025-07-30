@@ -35,7 +35,7 @@ public:
   SkipList(SkipList &&) = default;
   SkipList &operator=(SkipList &&) = default;
 
-  std::optional<std::string> Get(std::string_view key);
+  std::optional<std::string> Get(std::string_view key, TxnId txn_id);
 
   void Delete(std::string_view key);
 

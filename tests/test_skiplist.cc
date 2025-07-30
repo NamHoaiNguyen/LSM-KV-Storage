@@ -1,7 +1,10 @@
 #include <gtest/gtest.h>
 
+#include "db/skiplist.h"
+
+#include <memory>
+
 TEST(CommonTest, LoggerBasic) {
-  // Logger logger;
-  // logger.log("hello");
-  // EXPECT_TRUE(true); // Replace with real checks
+  auto skip_list = std::make_unique<kvs::SkipList>();
+  skip_list->PrintSkipList();
 }
