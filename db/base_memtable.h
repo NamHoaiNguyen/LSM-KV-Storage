@@ -13,7 +13,7 @@ public:
 
   virtual void BatchGet() = 0;
 
-  virtual void Get(std::string_view key) = 0;
+  virtual void Get(std::string_view key, TxnId txn_id) = 0;
 
   virtual void BatchPut() = 0;
 

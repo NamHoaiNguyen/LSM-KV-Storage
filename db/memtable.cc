@@ -35,14 +35,14 @@ void MemTable::CreateNewMemtable() {
   table_ = std::make_unique<SkipList>();
 }
 
-void MemTable::Get(std::string_view key) {
+void MemTable::Get(std::string_view key, TxnId txn_id) {
   {
     std::shared_lock<std::shared_mutex> rlock(table_mutex_);
     if (!table_) {
       std::exit(EXIT_FAILURE);
     }
 
-    table_->Get(key);
+    table_->Get(key, txn_id);
   }
 }
 
