@@ -18,6 +18,7 @@ std::optional<std::string> LSM::Get(std::string_view key, TxnId txn_id) {
   // }
 
   // Load data from SSTable
+  return std::nullopt;
 }
 
 } // namespace kvs
