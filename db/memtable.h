@@ -22,7 +22,7 @@ public:
 
   void BatchGet() override;
 
-  void Get(std::string_view key) override;
+  void Get(std::string_view key, TxnId txn_id) override;
 
   void BatchPut() override;
 

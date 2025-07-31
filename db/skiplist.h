@@ -41,7 +41,7 @@ public:
 
   // Insert new key and value.
   // If key existed, update new value.
-  bool Put(std::string_view key, std::string_view value, TxnId txn_id);
+  void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
   // TODO(namnh) : check type
   size_t GetCurrentSize();
