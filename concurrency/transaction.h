@@ -2,21 +2,17 @@
 #define CONCURRENCY_TRANSACTION__H
 
 #include "common/macros.h"
+#include "concurrency/transaction_manager.h"
 
 #include <mutex>
+#include <optional>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 
 namespace kvs {
 
-enum class IsolationLevel {
-  READ_UNCOMMITED,
-
-  READ_COMMITED,
-
-  REPEATABLE_READ,
-
-  SERIALIZABLE,
-};
+class DB;
 
 enum class TransactionState {
   ABORTED,
@@ -27,19 +23,36 @@ enum class TransactionState {
 };
 
 class Transaction {
-  public:
-    Transaction() = default;
+public:
+  Transaction(TransactionManager *txn_manager, DB *db, TxnId txn_id,
+              IsolationLevel isolation_level);
 
-    ~Transaction() = default;
+  ~Transaction() = default;
 
-  private:
-    Txn_id txn_id_;
+  void Abort();
 
-    // Timestamp when transaction "BEGIN"
-    TimeStamp read_timestamp_;
+  void Begin();
 
-    // Timestamp when transaction "COMMIT"
-    TimeStamp commit_timestamp_;
+  void Commit();
+
+  std::optional<std::string> Get(std::string_view key);
+
+  void Put(std::string_view key);
+
+private:
+  IsolationLevel isolation_level_;
+
+  TxnId txn_id_;
+
+  // Timestamp when transaction "BEGIN"
+  TimeStamp read_timestamp_;
+
+  // Timestamp when transaction "COMMIT"
+  TimeStamp commit_timestamp_;
+
+  TransactionManager *txn_manager_;
+
+  DB *db_;
 };
 
 } // namespace kvs

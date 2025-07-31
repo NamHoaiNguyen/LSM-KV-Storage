@@ -1,14 +1,16 @@
 #ifndef COMMON_MACROS
 #define COMMON_MACROS
 
-namespace lsm {
+#include <cstdint>
+
+namespace kvs {
 
 using Fd = int; // FileDescriptor
 
-using Txn_id = uint64_t // Transaction Id
+using TxnId = uint64_t; // Transaction Id
 
-using TimeStamp = uint64_t // Transaction timestamp
+using TimeStamp = uint64_t; // Transaction timestamp
 
-} // namespace lsm
+} // namespace kvs
 
 #endif // COMMON_MACROS

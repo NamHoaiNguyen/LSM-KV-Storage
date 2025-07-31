@@ -10,28 +10,45 @@
 
 namespace kvs {
 
+class DB;
 class Transaction;
 
+enum class IsolationLevel {
+  READ_UNCOMMITED,
+
+  READ_COMMITED,
+
+  REPEATABLE_READ,
+
+  SERIALIZABLE,
+};
+
 class TransactionManager {
-  public:
-    TransactionManager() = default;
+public:
+  TransactionManager(DB *db);
 
-    ~TransactionManager() = default;
+  ~TransactionManager() = default;
 
-    void Abort(Txn_id txn_id);
+  Transaction *CreateNewTransaction();
 
-    void Begin();
+  TxnId GetNextTransactionId();
 
-    void Commit(Txn_id txn_id);
+  IsolationLevel GetIsolationLevel();
 
-  private:
-    // TODO(namnh) : unique_ptr or shared_ptr
-    std::unordered_map<Txn_id, std::unique_ptr<Transaction>> transactions_;
+  bool DoesTransactionExist(TxnId txn_id);
 
-    std::atomic<uint64_t> next_txn_id_;
+private:
+  IsolationLevel isolation_level_;
 
-    // Only 1 transaction can commit at a point
-    std::mutex mutex_;
+  // TODO(namnh) : unique_ptr or shared_ptr
+  std::unordered_map<TxnId, std::unique_ptr<Transaction>> txns_;
+
+  DB *db_;
+
+  std::atomic<TxnId> next_txn_id_;
+
+  // Only 1 transaction can commit at a point
+  std::mutex mutex_;
 };
 
 } // namespace kvs
