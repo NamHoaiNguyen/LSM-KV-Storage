@@ -37,7 +37,7 @@ public:
 
   std::optional<std::string> Get(std::string_view key, TxnId txn_id);
 
-  void Delete(std::string_view key);
+  bool Delete(std::string_view key, TxnId txn_id);
 
   // Insert new key and value.
   // If key existed, update new value.
@@ -62,7 +62,7 @@ private:
   FindNodeLessThan(std::string_view key);
 
   // adaptive number of current levels
-  uint8_t current_level_;
+  int current_level_;
 
   // TODO(namnh) Change when support config
   uint8_t max_level_;

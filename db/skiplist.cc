@@ -52,13 +52,8 @@ std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
 
 // TODO(namnh) : update when transaction is implemented.
 void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  // if (Get(key, txn_id).has_value()) {
-  //   // If node found, return.
-  //   return false;
-  // }
-
-  // int new_level = GetRandomLevel();
-  int new_level = 2;
+  int new_level = GetRandomLevel();
+  // int new_level = 5;
   // Each element in updates is a pointer pointing node whose key is
   // largest but less than key.
   std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
@@ -86,11 +81,12 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   current_size_ += key.size() + value.size();
 
   if (new_level > current_level_) {
+    // We need to rechange size.
     for (int level = current_level_; level < new_level; ++level) {
       updates[level] = head_;
       // We need to rechange size.
-      updates[level]->forward_.resize(new_level - current_level_ + 1);
-      updates[level]->backward_.resize(new_level - current_level_ + 1);
+      updates[level]->forward_.resize(new_level, nullptr);
+      updates[level]->backward_.resize(new_level);
     }
   }
 
@@ -109,7 +105,13 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   current_level_ = new_level;
 }
 
-void SkipList::Delete(std::string_view key) {}
+bool SkipList::Delete(std::string_view key, TxnId txn_id) {
+  if (!Get(key, txn_id).has_value()) {
+    // If node found, return.
+    return false;
+  }
+  return true;
+}
 
 std::vector<std::shared_ptr<SkipListNode>>
 SkipList::FindNodeLessThan(std::string_view key) {
