@@ -55,7 +55,6 @@ std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
 // TODO(namnh) : update when transaction is implemented.
 void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   int new_level = GetRandomLevel();
-  // int new_level = 3;
 
   // Each element in updates is a pointer pointing node whose key is
   // largest but less than key.
