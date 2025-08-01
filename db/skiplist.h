@@ -20,7 +20,6 @@ class SkipListNode;
 // before calling those below methods.
 // Design concurrent-skiplist in future.
 
-// template<typename Type>
 class SkipList {
 public:
   SkipList();
@@ -57,6 +56,8 @@ public:
   // For debugging
   void PrintSkipList();
 
+  int CheckNodeRefCount();
+
 private:
   std::vector<std::shared_ptr<SkipListNode>>
   FindNodeLessThan(std::string_view key);
@@ -74,10 +75,10 @@ private:
   // TODO(namnh) : Can we use unique_ptr ?
   std::shared_ptr<SkipListNode> head_;
 
-  // TODO(namnh) : Do we need this for easier track
-  // std::shared_ptr<SkipListNode> tail_;
-
   size_t current_size_; // bytes unit
+
+  // For testing mem leak
+  std::shared_ptr<SkipListNode> deleted_node_;
 };
 
 } // namespace kvs

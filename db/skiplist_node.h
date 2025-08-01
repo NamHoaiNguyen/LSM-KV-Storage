@@ -11,10 +11,7 @@
 namespace kvs {
 
 class SkipList;
-
-// TODO(namnh) : Currently, we only support string type.
-// template<typename Type, typename Comparator>
-class SkipListNode {
+class SkipListNode : public std::enable_shared_from_this<SkipListNode> {
 public:
   SkipListNode(std::string_view key, std::string_view value, int num_level);
 
