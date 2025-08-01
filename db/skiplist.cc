@@ -2,6 +2,8 @@
 
 #include "db/skiplist_node.h"
 
+#include <cassert>
+
 namespace {
 
 // TODO(config instead of hard-fix)
@@ -52,13 +54,9 @@ std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
 
 // TODO(namnh) : update when transaction is implemented.
 void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  // if (Get(key, txn_id).has_value()) {
-  //   // If node found, return.
-  //   return false;
-  // }
+  int new_level = GetRandomLevel();
+  // int new_level = 3;
 
-  // int new_level = GetRandomLevel();
-  int new_level = 2;
   // Each element in updates is a pointer pointing node whose key is
   // largest but less than key.
   std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
@@ -72,7 +70,7 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
     updates[level] = current;
   }
 
-  // ALL keys exists at level 0.
+  // current->forward_[0] is the elem that we want to lookup
   current = current->forward_[0];
   if (current && current->key_ == key) {
     // If key which is being found exists, just update value
@@ -86,11 +84,12 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   current_size_ += key.size() + value.size();
 
   if (new_level > current_level_) {
+    // We need to rechange size.
     for (int level = current_level_; level < new_level; ++level) {
       updates[level] = head_;
       // We need to rechange size.
-      updates[level]->forward_.resize(new_level - current_level_ + 1);
-      updates[level]->backward_.resize(new_level - current_level_ + 1);
+      updates[level]->forward_.resize(new_level, nullptr);
+      updates[level]->backward_.resize(new_level);
     }
   }
 
@@ -109,24 +108,66 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   current_level_ = new_level;
 }
 
-void SkipList::Delete(std::string_view key) {}
-
-std::vector<std::shared_ptr<SkipListNode>>
-SkipList::FindNodeLessThan(std::string_view key) {
-  std::vector<std::shared_ptr<SkipListNode>> prev_nodes(max_level_, nullptr);
-
+bool SkipList::Delete(std::string_view key, TxnId txn_id) {
+  // Each element in updates is a pointer pointing node whose key is
+  // largest but less than key.
+  std::vector<std::shared_ptr<SkipListNode>> updates(current_level_, nullptr);
   std::shared_ptr<SkipListNode> current = head_;
-  for (int level = max_level_ - 1; level >= 0; --level) {
+  for (int level = current_level_ - 1; level >= 0; --level) {
     while (current->forward_[level] && current->forward_[level]->key_ < key) {
       current = current->forward_[level];
     }
-    prev_nodes[level] = current;
+    updates[level] = current;
   }
 
-  return prev_nodes;
+  // current->forward_[0] is the node that we want to lookup
+  current = current->forward_[0];
+  if (!current) {
+    return false;
+  }
+
+  if (current->key_ != key) {
+    // Key doesn't exist
+    return false;
+  }
+
+  for (int level = 0; level < current_level_; ++level) {
+    if (updates[level]->forward_[level]->key_ != key) {
+      // No need to go to higher level
+      break;
+    }
+    updates[level]->forward_[level] = current->forward_[level];
+    if (current->forward_[level]) {
+      current->forward_[level]->backward_[level] = updates[level];
+    }
+  }
+
+  // Update size of skiplist
+  current_size_ -= key.size() + current->value_.size();
+
+  // Update current_level_
+  while (current_level_ > 1 && head_->forward_[current_level_ - 1] == nullptr) {
+    current_level_--;
+  }
+
+  // For testing memleak.
+  // Up until this point, there is no other nodes referencing to current node
+  // (node should be deleted).
+  deleted_node_ = std::move(current);
+
+  return true;
 }
 
 size_t SkipList::GetCurrentSize() { return current_size_; }
+
+int SkipList::CheckNodeRefCount() {
+  int ref_count = deleted_node_.use_count();
+  // Reset mem of deleted node
+  deleted_node_.reset();
+
+  // ref_count SHOULD be = 1.
+  return ref_count;
+}
 
 void SkipList::PrintSkipList() {
   for (int level = 0; level < current_level_; level++) {
