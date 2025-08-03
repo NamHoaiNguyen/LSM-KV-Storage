@@ -22,9 +22,11 @@ TEST(SkipListTest, BasicOperations) {
 
   EXPECT_TRUE(skip_list->Delete("k2", 0));
   EXPECT_TRUE(!skip_list->Get("k2", 0).has_value());
+  skip_list->PrintSkipList();
 
   EXPECT_TRUE(skip_list->Delete("k1", 0));
   EXPECT_TRUE(!skip_list->Get("k1", 0).has_value());
+  skip_list->PrintSkipList();
 
   EXPECT_TRUE(skip_list->Delete("k3", 0));
   EXPECT_TRUE(!skip_list->Get("k3", 0).has_value());
@@ -76,7 +78,7 @@ TEST(SkipListTest, GetAllPrefixes) {
 TEST(SkipListTest, LargeScalePutAndGet) {
   auto skip_list = std::make_unique<kvs::SkipList>();
 
-  const int num_keys = 10000;
+  const int num_keys = 100000;
   std::string key{}, value{};
   for (int i = 0; i < num_keys; i++) {
     key = "key" + std::to_string(i);

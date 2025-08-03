@@ -2,17 +2,10 @@
 
 #include "db/skiplist_node.h"
 
-namespace {
-
-// TODO(config instead of hard-fix)
-constexpr int MAX_LEVEL = 8;
-
-} // anonymous namespace
-
 namespace kvs {
 
-SkipList::SkipList()
-    : current_level_(1), max_level_(MAX_LEVEL),
+SkipList::SkipList(int max_level)
+    : current_level_(1), max_level_(max_level),
       gen_(std::mt19937(std::random_device()())), current_size_(0),
       dist_level_(std::uniform_int_distribution<>(0, 1)),
       head_(std::make_shared<SkipListNode>("" /*key*/, "" /*value*/,
@@ -46,7 +39,7 @@ bool SkipList::Delete(std::string_view key, TxnId txn_id) {
   }
 
   for (int level = 0; level < current_level_; ++level) {
-    if (updates[level]->forward_[level]->key_ != key) {
+    if (updates[level]->forward_[level] != current) {
       // No need to go to higher level
       break;
     }
@@ -116,6 +109,7 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
       updates[level]->forward_.resize(new_level, nullptr);
       updates[level]->backward_.resize(new_level);
     }
+    current_level_ = new_level;
   }
 
   // Insert!!!
@@ -128,9 +122,6 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
     updates[level]->forward_[level] = new_node;
     new_node->backward_[level] = updates[level];
   }
-
-  // Update skip list's current level
-  current_level_ = new_level;
 }
 
 std::shared_ptr<SkipListNode> SkipList::FindLowerBoundNode(
@@ -148,7 +139,6 @@ std::shared_ptr<SkipListNode> SkipList::FindLowerBoundNode(
 
   // Move to next node in level 0
   current = current->forward_[0];
-
   return current;
 }
 
