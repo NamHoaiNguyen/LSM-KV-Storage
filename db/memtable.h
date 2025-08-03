@@ -16,7 +16,7 @@ class SkipList;
 
 class MemTable : public BaseMemtable {
 public:
-  MemTable();
+  MemTable(size_t memtable_size = 8 * 1024 * 1024 /*MB*/);
 
   ~MemTable() override;
 
@@ -33,7 +33,8 @@ public:
 private:
   void CreateNewMemtable();
 
-  // TODO(namnh) : unique_ptr or shared_ptr
+  size_t memtable_size_;
+
   std::unique_ptr<SkipList> table_;
 
   std::vector<std::unique_ptr<SkipList>> immutable_tables_;

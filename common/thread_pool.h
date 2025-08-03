@@ -9,7 +9,7 @@ namespace kvs {
 
 class ThreadPool {
 public:
-  ThreadPool() = default
+  ThreadPool() = default;
 
   ~ThreadPool() = default;
 
@@ -25,7 +25,7 @@ public:
   void operator()() {}
 
   template <typename Functor, typename... Args>
-  void Enqueue(Functor &&functor, Args &&...args);
+  decltype(auto) Enqueue(Functor &&functor, Args &&...args);
 
 private:
   std::condition_variable cv_;
@@ -40,7 +40,7 @@ private:
 };
 
 template <typename Functor, typename... Args>
-void ThreadPool::Enqueue(Functor &&functor, Args &&...args) {
+decltype(auto) ThreadPool::Enqueue(Functor &&functor, Args &&...args) {
   using ReturnType = std::invoke_result_t<Functor, Args...>;
   auto task = std::make_shared<std::packaged_task<ReturnType>>(
       std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
@@ -55,6 +55,8 @@ void ThreadPool::Enqueue(Functor &&functor, Args &&...args) {
     std::scoped_lock<std::mute> lock(mutex_);
     jobs_.emplace(std::move(job));
   }
-}
+
+  cv_.notify_one();
+  return result;
 
 } // namespace kvs
