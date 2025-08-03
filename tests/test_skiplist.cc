@@ -72,3 +72,25 @@ TEST(SkipListTest, GetAllPrefixes) {
   EXPECT_EQ(values.size(), 1);
   EXPECT_EQ(values[0], "v4");
 }
+
+TEST(SkipListTest, LargeScalePutAndGet) {
+  auto skip_list = std::make_unique<kvs::SkipList>();
+
+  const int num_keys = 10000;
+  std::string key{}, value{};
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+    skip_list->Put(key, value, 0);
+  }
+
+  std::optional<std::string> val;
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+
+    val = skip_list->Get(key, 0);
+    EXPECT_TRUE(val.has_value());
+    EXPECT_EQ(val.value(), value);
+  }
+}
