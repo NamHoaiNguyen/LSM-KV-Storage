@@ -2,8 +2,6 @@
 
 #include "db/skiplist_node.h"
 
-#include <cassert>
-
 namespace {
 
 // TODO(config instead of hard-fix)
@@ -33,94 +31,11 @@ int SkipList::GetRandomLevel() {
   return level;
 }
 
-// TODO(namnh) : update when transaction is implemented.
-std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
-  std::shared_ptr<SkipListNode> current = head_;
-  for (int level = current_level_ - 1; level >= 0; --level) {
-    while (current->forward_[level] && current->forward_[level]->key_ < key) {
-      current = current->forward_[level];
-    }
-  }
-
-  // Move to next node in level 0
-  current = current->forward_[0];
-
-  if (current && current->key_ == key) {
-    return std::make_optional<std::string>(std::string(current->value_));
-  }
-
-  return std::nullopt;
-}
-
-// TODO(namnh) : update when transaction is implemented.
-void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  int new_level = GetRandomLevel();
-
-  // Each element in updates is a pointer pointing node whose key is
-  // largest but less than key.
-  std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
-  auto new_node = std::make_shared<SkipListNode>(key, value, new_level);
-
-  std::shared_ptr<SkipListNode> current = head_;
-  for (int level = current_level_ - 1; level >= 0; --level) {
-    while (current->forward_[level] && current->forward_[level]->key_ < key) {
-      current = current->forward_[level];
-    }
-    updates[level] = current;
-  }
-
-  // current->forward_[0] is the elem that we want to lookup
-  current = current->forward_[0];
-  if (current && current->key_ == key) {
-    // If key which is being found exists, just update value
-    current_size_ += value.size() - current->value_.size();
-    current->value_ = value;
-
-    return;
-  }
-
-  // Update new size of skiplist
-  current_size_ += key.size() + value.size();
-
-  if (new_level > current_level_) {
-    // We need to rechange size.
-    for (int level = current_level_; level < new_level; ++level) {
-      updates[level] = head_;
-      // We need to rechange size.
-      updates[level]->forward_.resize(new_level, nullptr);
-      updates[level]->backward_.resize(new_level);
-    }
-  }
-
-  // Insert!!!
-  for (int level = 0; level < new_level; ++level) {
-    new_node->forward_[level] = updates[level]->forward_[level];
-    if (new_node->forward_[level]) {
-      new_node->forward_[level]->backward_[level] = new_node;
-    }
-
-    updates[level]->forward_[level] = new_node;
-    new_node->backward_[level] = updates[level];
-  }
-
-  // Update skip list's current level
-  current_level_ = new_level;
-}
-
 bool SkipList::Delete(std::string_view key, TxnId txn_id) {
   // Each element in updates is a pointer pointing node whose key is
   // largest but less than key.
   std::vector<std::shared_ptr<SkipListNode>> updates(current_level_, nullptr);
-  std::shared_ptr<SkipListNode> current = head_;
-  for (int level = current_level_ - 1; level >= 0; --level) {
-    while (current->forward_[level] && current->forward_[level]->key_ < key) {
-      current = current->forward_[level];
-    }
-    updates[level] = current;
-  }
-
-  // current->forward_[0] is the node that we want to lookup
-  current = current->forward_[0];
+  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
   if (!current) {
     return false;
   }
@@ -149,24 +64,108 @@ bool SkipList::Delete(std::string_view key, TxnId txn_id) {
     current_level_--;
   }
 
-  // For testing memleak.
-  // Up until this point, there is no other nodes referencing to current node
-  // (node should be deleted).
-  deleted_node_ = std::move(current);
-
   return true;
+}
+
+// TODO(namnh) : update when transaction is implemented.
+std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
+  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key);
+  if (current && current->key_ == key) {
+    return std::make_optional<std::string>(std::string(current->value_));
+  }
+
+  return std::nullopt;
+}
+
+std::vector<std::string> SkipList::GetAllPrefixes(std::string_view key,
+                                                  TxnId txn_id) {
+  std::vector<std::string> values;
+  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key);
+
+  // Traverse while key starts with prefix
+  while (current && current->key_.starts_with(key)) {
+    values.push_back(current->value_);
+    current = current->forward_[0];
+  }
+
+  return values;
+}
+
+// TODO(namnh) : update when transaction is implemented.
+void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
+  std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
+  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
+  if (current && current->key_ == key) {
+    // If key which is being found exists, just update value
+    current_size_ += value.size() - current->value_.size();
+    current->value_ = value;
+
+    return;
+  }
+
+  // Update new size of skiplist
+  current_size_ += key.size() + value.size();
+
+  int new_level = GetRandomLevel();
+  auto new_node = std::make_shared<SkipListNode>(key, value, new_level);
+  if (new_level > current_level_) {
+    // We need to rechange size.
+    for (int level = current_level_; level < new_level; ++level) {
+      updates[level] = head_;
+      // We need to rechange size.
+      updates[level]->forward_.resize(new_level, nullptr);
+      updates[level]->backward_.resize(new_level);
+    }
+  }
+
+  // Insert!!!
+  for (int level = 0; level < new_level; ++level) {
+    new_node->forward_[level] = updates[level]->forward_[level];
+    if (new_node->forward_[level]) {
+      new_node->forward_[level]->backward_[level] = new_node;
+    }
+
+    updates[level]->forward_[level] = new_node;
+    new_node->backward_[level] = updates[level];
+  }
+
+  // Update skip list's current level
+  current_level_ = new_level;
+}
+
+std::shared_ptr<SkipListNode> SkipList::FindLowerBoundNode(
+    std::string_view key, std::vector<std::shared_ptr<SkipListNode>> *updates) {
+  std::shared_ptr<SkipListNode> current = head_;
+
+  for (int level = current_level_ - 1; level >= 0; --level) {
+    while (current->forward_[level] && current->forward_[level]->key_ < key) {
+      current = current->forward_[level];
+    }
+    if (updates) {
+      (*updates)[level] = current;
+    }
+  }
+
+  // Move to next node in level 0
+  current = current->forward_[0];
+
+  return current;
 }
 
 size_t SkipList::GetCurrentSize() { return current_size_; }
 
-int SkipList::CheckNodeRefCount() {
-  int ref_count = deleted_node_.use_count();
-  // Reset mem of deleted node
-  deleted_node_.reset();
+// =======================Iterator========================
+// SkipListIterator SkipList::Begin() {
+//   if (!head_) {
+//     return SkipListIterator{};
+//   }
 
-  // ref_count SHOULD be = 1.
-  return ref_count;
-}
+//   return head_->forward_[0];
+// }
+
+// SkipListIterator SkipList::End() { return SkipListIterator{}; }
+
+// ====================End of Iterator====================
 
 void SkipList::PrintSkipList() {
   for (int level = 0; level < current_level_; level++) {
