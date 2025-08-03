@@ -35,14 +35,29 @@ void MemTable::CreateNewMemtable() {
   table_ = std::make_unique<SkipList>();
 }
 
-void MemTable::Get(std::string_view key, TxnId txn_id) {
+void MemTable::Delete(std::string_view key) {}
+
+std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
   {
     std::shared_lock<std::shared_mutex> rlock(table_mutex_);
     if (!table_) {
       std::exit(EXIT_FAILURE);
     }
 
-    table_->Get(key, txn_id);
+    // First, get value from writing table
+    std::optional<std::string> value;
+    value = table_->Get(key, txn_id);
+    if (value.has_value()) {
+      return value;
+    }
+  }
+
+  // If key not found in writing table, continue looking up from immutable
+  // tables
+  {
+    std::shared_lock<std::shared_mutex> rlock(immutable_tables_mutex_);
+    for (const auto &frozen_table : immutable_tables_) {
+    }
   }
 }
 

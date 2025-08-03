@@ -2,6 +2,7 @@
 #define DB_SKIPLIST_H
 
 #include "common/macros.h"
+// #include "db/skiplist_iterator.h"
 
 #include <iostream>
 #include <memory>
@@ -18,7 +19,7 @@ class SkipListNode;
 // ALL methods in this class ARE NOT THREAD-SAFE.
 // It means that lock MUST be acquired in memtable
 // before calling those below methods.
-// Design concurrent-skiplist in future.
+// TODO(namnh) : Design concurrent-skiplist.
 
 class SkipList {
 public:
@@ -34,13 +35,19 @@ public:
   SkipList(SkipList &&) = default;
   SkipList &operator=(SkipList &&) = default;
 
+  bool Delete(std::string_view key, TxnId txn_id);
+
   std::optional<std::string> Get(std::string_view key, TxnId txn_id);
 
-  bool Delete(std::string_view key, TxnId txn_id);
+  std::vector<std::string> GetAllPrefixes(std::string_view key, TxnId txn_id);
 
   // Insert new key and value.
   // If key existed, update new value.
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
+
+  // Range Query
+  std::vector<std::string> RangeQuery(std::string_view key_start,
+                                      std::string_view key_end);
 
   // TODO(namnh) : check type
   size_t GetCurrentSize();
@@ -56,11 +63,13 @@ public:
   // For debugging
   void PrintSkipList();
 
-  int CheckNodeRefCount();
-
 private:
-  std::vector<std::shared_ptr<SkipListNode>>
-  FindNodeLessThan(std::string_view key);
+  // Get node at current 0 whose value is less than key.
+  // Also, if the operation is PUT or DELETE, each node whose key < key needed
+  // to find at each level needed to be found and be added into "updates" list
+  std::shared_ptr<SkipListNode> FindLowerBoundNode(
+      std::string_view key,
+      std::vector<std::shared_ptr<SkipListNode>> *updates = nullptr);
 
   // adaptive number of current levels
   int current_level_;
