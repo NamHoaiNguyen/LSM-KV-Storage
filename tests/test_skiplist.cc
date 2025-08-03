@@ -96,3 +96,29 @@ TEST(SkipListTest, LargeScalePutAndGet) {
     EXPECT_EQ(val.value(), value);
   }
 }
+
+TEST(SkipListTest, LargeScaleDelete) {
+  auto skip_list = std::make_unique<kvs::SkipList>();
+
+  const int num_keys = 100000;
+  std::string key{}, value{};
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+    skip_list->Put(key, value, 0);
+  }
+
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+
+    EXPECT_TRUE(skip_list->Delete(key, 0));
+  }
+
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+
+    EXPECT_FALSE(skip_list->Get(key, 0).has_value());
+  }
+}

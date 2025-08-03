@@ -102,7 +102,6 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   int new_level = GetRandomLevel();
   auto new_node = std::make_shared<SkipListNode>(key, value, new_level);
   if (new_level > current_level_) {
-    // We need to rechange size.
     for (int level = current_level_; level < new_level; ++level) {
       updates[level] = head_;
       // We need to rechange size.
