@@ -24,6 +24,16 @@ int SkipList::GetRandomLevel() {
   return level;
 }
 
+std::vector<std::pair<std::string, bool>>
+SkipList::BatchDelete(const std::vector<std::string_view> &keys, TxnId txn_id) {
+  std::vector<std::pair<std::string, bool>> res;
+  for (std::string_view key : keys) {
+    res.push_back({std::string(key), Delete(key, txn_id)});
+  }
+
+  return res;
+}
+
 bool SkipList::Delete(std::string_view key, TxnId txn_id) {
   // Each element in updates is a pointer pointing node whose key is
   // largest but less than key.
@@ -58,6 +68,20 @@ bool SkipList::Delete(std::string_view key, TxnId txn_id) {
   }
 
   return true;
+}
+
+std::vector<std::pair<std::string, std::optional<std::string>>>
+SkipList::BatchGet(const std::vector<std::string_view> &keys, TxnId txn_id) {
+  std::vector<std::pair<std::string, std::optional<std::string>>> values;
+  std::shared_ptr<SkipListNode> current{nullptr};
+
+  std::optional<std::string> value;
+  for (std::string_view key : keys) {
+    value = Get(key, txn_id);
+    values.push_back({std::string{key}, value});
+  }
+
+  return values;
 }
 
 // TODO(namnh) : update when transaction is implemented.
@@ -120,6 +144,14 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 
     updates[level]->forward_[level] = new_node;
     new_node->backward_[level] = updates[level];
+  }
+}
+
+void SkipList::BatchPut(
+    const std::vector<std::pair<std::string_view, std::string_view>> &pairs,
+    TxnId txn_id) {
+  for (const auto &pair : pairs) {
+    Put(pair.first /*key*/, pair.second /*value*/, txn_id);
   }
 }
 

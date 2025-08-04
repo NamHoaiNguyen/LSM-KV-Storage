@@ -13,12 +13,12 @@ class BaseMemtable {
 public:
   virtual ~BaseMemtable() = default;
 
-  virtual void BatchGet(std::vector<std::string_view> keys) = 0;
+  virtual void BatchGet(const std::vector<std::string_view> &keys) = 0;
 
   virtual std::optional<std::string> Get(std::string_view key,
                                          TxnId txn_id) = 0;
 
-  virtual void BatchPut(std::vector<std::string_view> keys) = 0;
+  virtual void BatchPut(const std::vector<std::string_view> &keys) = 0;
 
   virtual void Put(std::string_view key, std::string_view value,
                    TxnId txn_id) = 0;

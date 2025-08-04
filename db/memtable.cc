@@ -18,6 +18,8 @@ bool MemTable::Delete(std::string_view key, TxnId txn_id) {
   return table_->Delete(key, txn_id);
 }
 
+void MemTable::BatchGet(const std::vector<std::string_view> &keys) {}
+
 std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
   {
     std::shared_lock<std::shared_mutex> rlock(table_mutex_);
@@ -48,6 +50,8 @@ std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
 
   return std::nullopt;
 }
+
+void MemTable::BatchPut(const std::vector<std::string_view> &keys) {}
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);

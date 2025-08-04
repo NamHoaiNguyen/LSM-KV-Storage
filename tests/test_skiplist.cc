@@ -46,6 +46,54 @@ TEST(SkipListTest, DuplicatePut) {
   EXPECT_EQ(skip_list->Get("k1", 0).value(), "v3");
 }
 
+TEST(SkipListTest, BatchOperations) {
+  auto skip_list = std::make_unique<kvs::SkipList>();
+  const int num_keys = 100000;
+
+  std::vector<std::pair<std::string, std::string>> pairs;
+  std::vector<std::string_view> keys_view;
+  std::string key{}, value{};
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+
+    pairs.push_back({key, value});
+  }
+
+  std::vector<std::pair<std::string_view, std::string_view>> pairs_view;
+  for (int i = 0; i < num_keys; i++) {
+    pairs_view.push_back(pairs[i]);
+  }
+  skip_list->BatchPut(pairs_view, 0 /*txn_id*/);
+
+  for (const auto &pair : pairs) {
+    keys_view.push_back(pair.first);
+  }
+
+  std::vector<std::pair<std::string, std::optional<std::string>>> get_res;
+  get_res = skip_list->BatchGet(keys_view, 0 /*txn_id*/);
+
+  for (int i = 0; i < num_keys; i++) {
+    EXPECT_EQ(pairs[i].first, get_res[i].first);
+    EXPECT_EQ(pairs[i].second, get_res[i].second);
+  }
+
+  std::vector<std::pair<std::string, bool>> del_res;
+  del_res = skip_list->BatchDelete(keys_view, 0 /*txn_id*/);
+  for (const auto &elem : del_res) {
+    EXPECT_TRUE(elem.second);
+  }
+
+  // Skiplist should be empty now
+  get_res.clear();
+  get_res = skip_list->BatchGet(keys_view, 0 /*txn_id*/);
+
+  for (int i = 0; i < num_keys; i++) {
+    EXPECT_EQ(pairs[i].first, get_res[i].first);
+    EXPECT_FALSE(get_res[i].second.has_value());
+  }
+}
+
 TEST(SkipListTest, GetAllPrefixes) {
   auto skip_list = std::make_unique<kvs::SkipList>();
 

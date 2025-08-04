@@ -20,11 +20,11 @@ public:
 
   ~MemTable() override;
 
-  void BatchGet(std::vector<std::string_view> keys) override;
+  void BatchGet(const std::vector<std::string_view> &keys) override;
 
   std::optional<std::string> Get(std::string_view key, TxnId txn_id) override;
 
-  void BatchPut(std::vector<std::string_view> keys) override;
+  void BatchPut(const std::vector<std::string_view> &keys) override;
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id) override;
 
