@@ -95,6 +95,22 @@ TEST(SkipListTest, LargeScalePutAndGet) {
     EXPECT_TRUE(val.has_value());
     EXPECT_EQ(val.value(), value);
   }
+
+  // Update
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i + num_keys);
+    skip_list->Put(key, value, 0);
+  }
+
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i + num_keys);
+
+    val = skip_list->Get(key, 0);
+    EXPECT_TRUE(val.has_value());
+    EXPECT_EQ(val.value(), value);
+  }
 }
 
 TEST(SkipListTest, LargeScaleDelete) {
