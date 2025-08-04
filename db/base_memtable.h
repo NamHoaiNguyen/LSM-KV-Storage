@@ -23,7 +23,7 @@ public:
   virtual void Put(std::string_view key, std::string_view value,
                    TxnId txn_id) = 0;
 
-  virtual void Delete(std::string_view key) = 0;
+  virtual bool Delete(std::string_view key, TxnId txn_id) = 0;
 
 private:
 };

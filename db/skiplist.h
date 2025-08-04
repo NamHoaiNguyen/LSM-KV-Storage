@@ -23,7 +23,7 @@ class SkipListNode;
 
 class SkipList {
 public:
-  SkipList(int max_level = 16);
+  SkipList(int max_level = 32);
 
   ~SkipList();
 

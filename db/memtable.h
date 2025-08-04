@@ -28,7 +28,7 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id) override;
 
-  void Delete(std::string_view key) override;
+  bool Delete(std::string_view key, TxnId txn_id) override;
 
 private:
   void CreateNewMemtable();

@@ -9,7 +9,14 @@ MemTable::MemTable(size_t memtable_size)
 
 MemTable::~MemTable() = default;
 
-void MemTable::Delete(std::string_view key) {}
+bool MemTable::Delete(std::string_view key, TxnId txn_id) {
+  std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+  if (!table_) {
+    std::exit(EXIT_FAILURE);
+  }
+
+  return table_->Delete(key, txn_id);
+}
 
 std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
   {
@@ -39,25 +46,21 @@ std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
     }
   }
 
-  // If key still can't be found from immutable tables, load from SSTs
-  // TODO(namnh2) : Implement SST.
   return std::nullopt;
 }
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  {
-    std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
-    if (!table_) {
-      std::exit(EXIT_FAILURE);
-    }
+  std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+  if (!table_) {
+    std::exit(EXIT_FAILURE);
+  }
 
-    table_->Put(key, value, txn_id);
-    {
-      std::scoped_lock<std::shared_mutex> rwlock(immutable_tables_mutex_);
-      if (table_->GetCurrentSize() >= memtable_size_) {
-        // Convert table_ to immutable memtable and add to immutable list.
-        CreateNewMemtable();
-      }
+  table_->Put(key, value, txn_id);
+  {
+    std::scoped_lock<std::shared_mutex> rwlock(immutable_tables_mutex_);
+    if (table_->GetCurrentSize() >= memtable_size_) {
+      // Convert table_ to immutable memtable and add to immutable list.
+      CreateNewMemtable();
     }
   }
 }
