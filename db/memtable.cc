@@ -9,6 +9,24 @@ MemTable::MemTable(size_t memtable_size)
 
 MemTable::~MemTable() = default;
 
+std::vector<std::pair<std::string, bool>>
+MemTable::BatchDelete(const std::vector<std::string_view> &keys, TxnId txn_id) {
+  std::vector<std::pair<std::string, bool>> result;
+
+  {
+    std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+    if (!table_) {
+      std::exit(EXIT_FAILURE);
+    }
+
+    for (std::string_view key : keys) {
+      result.push_back({std::string(key), table_->Delete(key, txn_id)});
+    }
+  }
+
+  return result;
+}
+
 bool MemTable::Delete(std::string_view key, TxnId txn_id) {
   std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
   if (!table_) {
@@ -18,30 +36,73 @@ bool MemTable::Delete(std::string_view key, TxnId txn_id) {
   return table_->Delete(key, txn_id);
 }
 
-void MemTable::BatchGet(const std::vector<std::string_view> &keys) {}
+std::vector<std::pair<std::string, std::optional<std::string>>>
+MemTable::BatchGet(const std::vector<std::string_view> &keys, TxnId txn_id) {
+  std::vector<std::pair<std::string, std::optional<std::string>>> result;
+  // List of {key, index in result} keys that not be found in writable memtable
+  std::vector<std::pair<std::string_view, uint32_t>> keys_not_found;
+  std::optional<std::string> value;
 
-std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
   {
     std::shared_lock<std::shared_mutex> rlock(table_mutex_);
     if (!table_) {
       std::exit(EXIT_FAILURE);
     }
 
-    // First, get value from writing table
-    std::optional<std::string> value;
+    // First, get value from writable table
+    for (std::string_view key : keys) {
+      value = table_->Get(key, txn_id);
+      result.push_back({std::string(key), value});
+      if (!value.has_value()) {
+        keys_not_found.push_back({key, result.size() - 1});
+      }
+    }
+  }
+
+  {
+    // If key not found in writable table, continue looking up from immutable
+    // tables
+    std::shared_lock<std::shared_mutex> rlock(immutable_tables_mutex_);
+    if (!keys_not_found.empty()) {
+      return result;
+    }
+
+    for (auto [key, index] : keys_not_found) {
+      for (const auto &immutable_table : immutable_tables_) {
+        value = immutable_table->Get(key, txn_id);
+        if (value.has_value()) {
+          // If found in immutable memtables, reupdate value of key
+          result[index] = std::make_pair(key, value);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
+  std::optional<std::string> value;
+
+  {
+    std::shared_lock<std::shared_mutex> rlock(table_mutex_);
+    if (!table_) {
+      std::exit(EXIT_FAILURE);
+    }
+
+    // First, get value from writable table
     value = table_->Get(key, txn_id);
     if (value.has_value()) {
       return value;
     }
   }
 
-  // If key not found in writing table, continue looking up from immutable
-  // tables
   {
+    // If key not found in writable table, continue looking up from immutable
+    // tables
     std::shared_lock<std::shared_mutex> rlock(immutable_tables_mutex_);
-    std::optional<std::string> value;
-    for (const auto &frozen_table : immutable_tables_) {
-      value = table_->Get(key, txn_id);
+    for (const auto &immutable_table : immutable_tables_) {
+      value = immutable_table->Get(key, txn_id);
       if (value.has_value()) {
         return value;
       }
@@ -51,15 +112,37 @@ std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
   return std::nullopt;
 }
 
-void MemTable::BatchPut(const std::vector<std::string_view> &keys) {}
+void MemTable::BatchPut(
+    const std::vector<std::pair<std::string_view, std::string_view>> &keys,
+    TxnId txn_id) {
+  {
+    std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+    if (!table_) {
+      std::exit(EXIT_FAILURE);
+    }
+
+    for (auto [key, value] : keys) {
+      table_->Put(key, value, txn_id);
+    }
+  }
+  {
+    std::scoped_lock<std::shared_mutex> rwlock(immutable_tables_mutex_);
+    if (table_->GetCurrentSize() >= memtable_size_) {
+      // Convert table_ to immutable memtable and add to immutable list.
+      CreateNewMemtable();
+    }
+  }
+}
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
-  if (!table_) {
-    std::exit(EXIT_FAILURE);
-  }
+  {
+    std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+    if (!table_) {
+      std::exit(EXIT_FAILURE);
+    }
 
-  table_->Put(key, value, txn_id);
+    table_->Put(key, value, txn_id);
+  }
   {
     std::scoped_lock<std::shared_mutex> rwlock(immutable_tables_mutex_);
     if (table_->GetCurrentSize() >= memtable_size_) {
