@@ -19,12 +19,8 @@ MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
       std::exit(EXIT_FAILURE);
     }
 
-    for (std::string_view key : keys) {
-      result.push_back({std::string(key), table_->Delete(key, txn_id)});
-    }
+    return table_->BatchDelete(keys, txn_id);
   }
-
-  return result;
 }
 
 bool MemTable::Delete(std::string_view key, TxnId txn_id) {
@@ -122,9 +118,7 @@ void MemTable::BatchPut(
       std::exit(EXIT_FAILURE);
     }
 
-    for (auto [key, value] : keys) {
-      table_->Put(key, value, txn_id);
-    }
+    table_->BatchPut(keys, txn_id);
   }
   {
     std::scoped_lock<std::shared_mutex> rwlock(immutable_tables_mutex_);
