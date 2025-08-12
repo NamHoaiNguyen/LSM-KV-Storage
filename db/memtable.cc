@@ -10,7 +10,7 @@ MemTable::MemTable(size_t memtable_size)
 MemTable::~MemTable() = default;
 
 std::vector<std::pair<std::string, bool>>
-MemTable::BatchDelete(const std::vector<std::string_view> &keys, TxnId txn_id) {
+MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
   std::vector<std::pair<std::string, bool>> result;
 
   {
@@ -37,7 +37,7 @@ bool MemTable::Delete(std::string_view key, TxnId txn_id) {
 }
 
 std::vector<std::pair<std::string, std::optional<std::string>>>
-MemTable::BatchGet(const std::vector<std::string_view> &keys, TxnId txn_id) {
+MemTable::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
   std::vector<std::pair<std::string, std::optional<std::string>>> result;
   // List of {key, index in result} keys that not be found in writable memtable
   std::vector<std::pair<std::string_view, uint32_t>> keys_not_found;
@@ -50,6 +50,7 @@ MemTable::BatchGet(const std::vector<std::string_view> &keys, TxnId txn_id) {
     }
 
     // First, get value from writable table
+    // TODO(namnh) : should use batchGet skiplist API?
     for (std::string_view key : keys) {
       value = table_->Get(key, txn_id);
       result.push_back({std::string(key), value});
@@ -113,7 +114,7 @@ std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
 }
 
 void MemTable::BatchPut(
-    const std::vector<std::pair<std::string_view, std::string_view>> &keys,
+    std::span<std::pair<std::string_view, std::string_view>> keys,
     TxnId txn_id) {
   {
     std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);

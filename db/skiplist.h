@@ -8,9 +8,9 @@
 #include <memory>
 #include <optional>
 #include <random>
+#include <span>
 #include <string>
 #include <string_view>
-#include <vector>
 
 namespace kvs {
 
@@ -36,21 +36,20 @@ public:
   SkipList &operator=(SkipList &&) = default;
 
   std::vector<std::pair<std::string, bool>>
-  BatchDelete(const std::vector<std::string_view> &keys, TxnId txn_id);
+  BatchDelete(std::span<std::string_view> keys, TxnId txn_id);
 
   bool Delete(std::string_view key, TxnId txn_id);
 
   // TODO(namnh) : shoud we use std::string?
   std::vector<std::pair<std::string, std::optional<std::string>>>
-  BatchGet(const std::vector<std::string_view> &keys, TxnId txn_id);
+  BatchGet(std::span<std::string_view> keys, TxnId txn_id);
 
   std::optional<std::string> Get(std::string_view key, TxnId txn_id);
 
   std::vector<std::string> GetAllPrefixes(std::string_view key, TxnId txn_id);
 
-  void BatchPut(
-      const std::vector<std::pair<std::string_view, std::string_view>> &pairs,
-      TxnId txn_id);
+  void BatchPut(std::span<std::pair<std::string_view, std::string_view>> pairs,
+                TxnId txn_id);
 
   // Insert new key and value.
   // If key existed, update new value.
