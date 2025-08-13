@@ -9,12 +9,38 @@ MemTable::MemTable(size_t memtable_size)
 
 MemTable::~MemTable() = default;
 
+MemTable::MemTable(MemTable &&other) {
+  std::scoped_lock rwlock_memtable(table_mutex_, other.table_mutex_);
+  std::scoped_lock rwlock_immutable_memtable(immutable_tables_mutex_,
+                                             other.immutable_tables_mutex_);
+
+  memtable_size_ = other.memtable_size_;
+  table_ = std::move(other.table_);
+  immutable_tables_ = std::move(other.immutable_tables_);
+}
+
+MemTable &MemTable::operator=(MemTable &&other) {
+  if (this == &other) {
+    return *this;
+  }
+
+  std::scoped_lock rwlock_memtable(table_mutex_, other.table_mutex_);
+  std::scoped_lock rwlock_immutable_memtable(immutable_tables_mutex_,
+                                             other.immutable_tables_mutex_);
+
+  memtable_size_ = other.memtable_size_;
+  table_ = std::move(other.table_);
+  immutable_tables_ = std::move(other.immutable_tables_);
+
+  return *this;
+}
+
 std::vector<std::pair<std::string, bool>>
 MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
   std::vector<std::pair<std::string, bool>> result;
 
   {
-    std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+    std::scoped_lock rwlock(table_mutex_);
     if (!table_) {
       std::exit(EXIT_FAILURE);
     }
@@ -24,7 +50,7 @@ MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
 }
 
 bool MemTable::Delete(std::string_view key, TxnId txn_id) {
-  std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+  std::scoped_lock rwlock(table_mutex_);
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }
@@ -113,7 +139,7 @@ void MemTable::BatchPut(
     std::span<std::pair<std::string_view, std::string_view>> keys,
     TxnId txn_id) {
   {
-    std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+    std::scoped_lock rwlock(table_mutex_);
     if (!table_) {
       std::exit(EXIT_FAILURE);
     }
@@ -121,7 +147,7 @@ void MemTable::BatchPut(
     table_->BatchPut(keys, txn_id);
   }
   {
-    std::scoped_lock<std::shared_mutex> rwlock(immutable_tables_mutex_);
+    std::scoped_lock rwlock(immutable_tables_mutex_);
     if (table_->GetCurrentSize() >= memtable_size_) {
       // Convert table_ to immutable memtable and add to immutable list.
       CreateNewMemtable();
@@ -131,7 +157,7 @@ void MemTable::BatchPut(
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   {
-    std::scoped_lock<std::shared_mutex> rwlock(table_mutex_);
+    std::scoped_lock rwlock(table_mutex_);
     if (!table_) {
       std::exit(EXIT_FAILURE);
     }
@@ -139,7 +165,7 @@ void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
     table_->Put(key, value, txn_id);
   }
   {
-    std::scoped_lock<std::shared_mutex> rwlock(immutable_tables_mutex_);
+    std::scoped_lock rwlock(immutable_tables_mutex_);
     if (table_->GetCurrentSize() >= memtable_size_) {
       // Convert table_ to immutable memtable and add to immutable list.
       CreateNewMemtable();

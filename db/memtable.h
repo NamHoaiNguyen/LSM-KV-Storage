@@ -20,6 +20,14 @@ public:
 
   ~MemTable() override;
 
+  // Copy constructor/assignment
+  MemTable(const MemTable &) = delete;
+  MemTable &operator=(MemTable &) = delete;
+
+  // Move constructor/assignment
+  MemTable(MemTable &&);
+  MemTable &operator=(MemTable &&);
+
   std::vector<std::pair<std::string, std::optional<std::string>>>
   BatchGet(std::span<std::string_view> keys, TxnId txn_id) override;
 
