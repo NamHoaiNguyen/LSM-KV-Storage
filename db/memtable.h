@@ -12,6 +12,7 @@
 
 namespace kvs {
 
+class BaseIterator;
 class SkipList;
 
 class MemTable : public BaseMemtable {
@@ -27,6 +28,8 @@ public:
   // Move constructor/assignment
   MemTable(MemTable &&);
   MemTable &operator=(MemTable &&);
+
+  std::unique_ptr<BaseIterator> CreateNewIterator();
 
   std::vector<std::pair<std::string, std::optional<std::string>>>
   BatchGet(std::span<std::string_view> keys, TxnId txn_id) override;

@@ -14,6 +14,7 @@
 
 namespace kvs {
 
+class SkipListIterator;
 class SkipListNode;
 
 // ALL methods in this class ARE NOT THREAD-SAFE.
@@ -34,6 +35,9 @@ public:
   // Move constructor/assignment
   SkipList(SkipList &&) = default;
   SkipList &operator=(SkipList &&) = default;
+
+  // Create SkipList iterator
+  void CreateSkipListIterator();
 
   std::vector<std::pair<std::string, bool>>
   BatchDelete(std::span<std::string_view> keys, TxnId txn_id);
@@ -62,9 +66,8 @@ public:
   // TODO(namnh) : check type
   size_t GetCurrentSize();
 
-  int GetRandomLevel();
-
   // Return random number of levels that a node is inserted
+  int GetRandomLevel();
 
   // SkipListIterator begin();
 
@@ -73,13 +76,15 @@ public:
   // For debugging
   void PrintSkipList();
 
+  friend class SkipListIterator;
+
 private:
   // Get node at current 0 whose value is less than key.
   // Also, if the operation is PUT or DELETE, each node whose key < key needed
   // to find at each level needed to be found and be added into "updates" list
   std::shared_ptr<SkipListNode> FindLowerBoundNode(
       std::string_view key,
-      std::vector<std::shared_ptr<SkipListNode>> *updates = nullptr);
+      std::vector<std::shared_ptr<SkipListNode>> *updates = nullptr) const ;
 
   // adaptive number of current levels
   int current_level_;
@@ -91,7 +96,6 @@ private:
 
   std::uniform_int_distribution<> dist_level_;
 
-  // TODO(namnh) : Can we use unique_ptr ?
   std::shared_ptr<SkipListNode> head_;
 
   size_t current_size_; // bytes unit

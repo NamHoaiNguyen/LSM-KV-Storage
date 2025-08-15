@@ -1,26 +1,49 @@
 #ifndef DB_SKIPLIST_ITERATOR_H
 #define DB_SKIPLIST_ITERATOR_H
 
-#include "db/base_iterator.h"
-
-namespace kvs {
+#include "common/base_iterator.h"
 
 #include <memory>
 #include <shared_mutex>
+#include <string_view>
 
-// class SkipListIterator {
-// public:
-//   ~SkipListIterator() override;
+namespace kvs {
 
-//   bool operator==(const BaseIterator &other) override;
+class SkipList;
+class SkipListNode;
 
-//   bool operator!=(const BaseIterator &other) override;
+class SkipListIterator : public BaseIterator {
+public:
+  SkipListIterator(const SkipList* skiplist);
 
-//   BaseIterator &operator++() override;
+  ~SkipListIterator() override;
 
-// private:
-//   std::shared_mutex mutex_;
-// };
+  std::string GetKey() override;
+
+  std::string GetValue() override;
+
+  bool IsValid() override;
+
+  void Next() override;
+
+  void Prev() override;
+
+  // Return the node which have smallest key that is
+  // greater than or equal to key
+  virtual void Seek(std::string_view key) override;
+
+  void SeekToFirst() override;
+
+  void SeekToLast() override;
+
+private:
+  // NOTE: DONT free this pointer.
+  // This pointer is taken by unique_ptr GET API .It will be auto-released.
+  // Releasing memory can cause undefined behaviour.
+  const SkipList* skiplist_;
+
+  std::shared_ptr<const SkipListNode> node_;
+};
 
 } // namespace kvs
 
