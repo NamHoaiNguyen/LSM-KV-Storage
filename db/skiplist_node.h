@@ -10,6 +10,7 @@
 
 namespace kvs {
 
+class SkipListIter;
 class SkipList;
 class SkipListNode : public std::enable_shared_from_this<SkipListNode> {
 public:
@@ -20,6 +21,7 @@ public:
   bool operator==(const SkipListNode &other);
 
   friend class SkipList;
+  friend class SkipListIterator;
 
 private:
   std::string key_;

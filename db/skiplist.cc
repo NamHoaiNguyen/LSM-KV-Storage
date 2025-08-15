@@ -108,6 +108,14 @@ std::vector<std::string> SkipList::GetAllPrefixes(std::string_view key,
   return values;
 }
 
+void SkipList::BatchPut(
+    std::span<std::pair<std::string_view, std::string_view>> pairs,
+    TxnId txn_id) {
+  for (const auto &pair : pairs) {
+    Put(pair.first /*key*/, pair.second /*value*/, txn_id);
+  }
+}
+
 // TODO(namnh) : update when transaction is implemented.
 void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
@@ -147,16 +155,8 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   }
 }
 
-void SkipList::BatchPut(
-    std::span<std::pair<std::string_view, std::string_view>> pairs,
-    TxnId txn_id) {
-  for (const auto &pair : pairs) {
-    Put(pair.first /*key*/, pair.second /*value*/, txn_id);
-  }
-}
-
 std::shared_ptr<SkipListNode> SkipList::FindLowerBoundNode(
-    std::string_view key, std::vector<std::shared_ptr<SkipListNode>> *updates) {
+    std::string_view key, std::vector<std::shared_ptr<SkipListNode>> *updates) const {
   std::shared_ptr<SkipListNode> current = head_;
 
   for (int level = current_level_ - 1; level >= 0; --level) {

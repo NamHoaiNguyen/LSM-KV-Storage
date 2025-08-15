@@ -13,9 +13,11 @@
 
 namespace kvs {
 
+class BaseIterator;
 class MemTable;
 class SSTable;
 class TransactionManager;
+class Transaction;
 
 using BackgroundFlushJob = std::function<void()>;
 
@@ -36,7 +38,11 @@ public:
 
   std::optional<std::string> Get(std::string_view key, TxnId txn_id);
 
+  std::unique_ptr<BaseIterator> CreateNewIterator();
+
 private:
+  std::unique_ptr<TransactionManager> txn_manager_;
+
   // TODO(namnh) : unique_ptr or shared_ptr
   std::unique_ptr<MemTable> memtable_;
 

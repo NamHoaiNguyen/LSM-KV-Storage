@@ -4,8 +4,12 @@ add_library(db
   db.h
   lsm.cc
   lsm.h
+  memtable_iterator.cc
+  memtable_iterator.h
   memtable.cc
   memtable.h
+  skiplist_iterator.cc
+  skiplist_iterator.h
   skiplist_node.cc
   skiplist_node.h
   skiplist.cc

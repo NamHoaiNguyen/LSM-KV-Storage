@@ -1,6 +1,7 @@
-#include "memtable.h"
+#include "db/memtable.h"
 
-#include "skiplist.h"
+#include "db/skiplist.h"
+#include "db/memtable_iterator.h"
 
 namespace kvs {
 
@@ -34,6 +35,10 @@ MemTable &MemTable::operator=(MemTable &&other) {
 
   return *this;
 }
+
+// std::unique_ptr<BaseIterator> MemTable::CreateNewIterator() {
+//   return std::make_unique<MemTableIterator>(this);
+// }
 
 std::vector<std::pair<std::string, bool>>
 MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
