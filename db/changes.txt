@@ -1,0 +1,30 @@
+ // {
+  //   // If key not found in writable table, continue looking up from immutable
+  //   // tables
+  //   std::shared_lock<std::shared_mutex> rlock(immutable_tables_mutex_);
+  //   if (!keys_not_found.empty()) {
+  //     return result;
+  //   }
+
+  //   for (auto [key, index] : keys_not_found) {
+  //     for (const auto &immutable_table : immutable_tables_) {
+  //       value = immutable_table->Get(key, txn_id);
+  //       if (value.has_value()) {
+  //         // If found in immutable memtables, reupdate value of key
+  //         result[index] = std::make_pair(key, value);
+  //       }
+  //     }
+  //   }
+  // }
+
+  // {
+  //   // If key not found in writable table, continue looking up from immutable
+  //   // tables
+  //   std::shared_lock<std::shared_mutex> rlock(immutable_tables_mutex_);
+  //   for (const auto &immutable_table : immutable_tables_) {
+  //     value = immutable_table->Get(key, txn_id);
+  //     if (value.has_value()) {
+  //       return value;
+  //     }
+  //   }
+  // }

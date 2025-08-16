@@ -31,6 +31,11 @@ public:
 
   std::unique_ptr<BaseIterator> CreateNewIterator();
 
+  std::vector<std::pair<std::string, bool>>
+  BatchDelete(std::span<std::string_view> keys, TxnId txn_id) override;
+
+  bool Delete(std::string_view key, TxnId txn_id) override;
+
   std::vector<std::pair<std::string, std::optional<std::string>>>
   BatchGet(std::span<std::string_view> keys, TxnId txn_id) override;
 
@@ -41,23 +46,18 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id) override;
 
-  std::vector<std::pair<std::string, bool>>
-  BatchDelete(std::span<std::string_view> keys, TxnId txn_id) override;
-
-  bool Delete(std::string_view key, TxnId txn_id) override;
+  virtual bool IsImmutable() override;
 
 private:
   void CreateNewMemtable();
 
   size_t memtable_size_;
 
+  bool is_immutable_;
+
   std::unique_ptr<SkipList> table_;
 
-  std::vector<std::unique_ptr<SkipList>> immutable_tables_;
-
-  std::shared_mutex table_mutex_;
-
-  std::shared_mutex immutable_tables_mutex_;
+  std::shared_mutex mutex_;
 };
 
 } // namespace kvs
