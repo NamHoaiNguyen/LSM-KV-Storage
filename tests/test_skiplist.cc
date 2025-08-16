@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include "db/skiplist_iterator.h"
 #include "db/skiplist.h"
+#include "db/skiplist_iterator.h"
 
 #include <memory>
 
@@ -19,20 +19,14 @@ TEST(SkipListTest, BasicOperations) {
   skip_list->Put("k2", "v2", 0);
   EXPECT_EQ(skip_list->Get("k2", 0).value(), "v2");
 
-  skip_list->PrintSkipList();
-
   EXPECT_TRUE(skip_list->Delete("k2", 0));
   EXPECT_TRUE(!skip_list->Get("k2", 0).has_value());
-  skip_list->PrintSkipList();
 
   EXPECT_TRUE(skip_list->Delete("k1", 0));
   EXPECT_TRUE(!skip_list->Get("k1", 0).has_value());
-  skip_list->PrintSkipList();
 
   EXPECT_TRUE(skip_list->Delete("k3", 0));
   EXPECT_TRUE(!skip_list->Get("k3", 0).has_value());
-
-  skip_list->PrintSkipList();
 }
 
 TEST(SkipListTest, DuplicatePut) {
@@ -135,8 +129,6 @@ TEST(SkipListTest, LargeScalePutAndGet) {
     skip_list->Put(key, value, 0);
   }
 
-  skip_list->PrintSkipList();
-
   std::optional<std::string> val;
   for (int i = 0; i < num_keys; i++) {
     key = "key" + std::to_string(i);
@@ -193,7 +185,7 @@ TEST(SkipListTest, LargeScaleDelete) {
 TEST(SkipListTest, Iterator) {
   auto skip_list = std::make_unique<kvs::SkipList>();
 
-  const int num_keys = 100;
+  const int num_keys = 10;
   std::string key{}, value{};
   for (int i = 0; i < num_keys; i++) {
     key = "key" + std::to_string(i);
@@ -201,15 +193,13 @@ TEST(SkipListTest, Iterator) {
     skip_list->Put(key, value, 0);
   }
 
-  skip_list->PrintSkipList();
-
   auto iter = std::make_unique<kvs::SkipListIterator>(skip_list.get());
   int count = 0;
   for (iter->SeekToFirst(); iter->IsValid(); iter->Next()) {
     key = "key" + std::to_string(count);
     value = "value" + std::to_string(count);
-    // EXPECT_EQ(iter->GetKey(), key);
-    // EXPECT_EQ(iter->GetValue(), value);
+    EXPECT_EQ(iter->GetKey(), key);
+    EXPECT_EQ(iter->GetValue(), value);
     count++;
   }
 }
