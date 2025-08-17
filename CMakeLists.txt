@@ -15,7 +15,7 @@ set(CMAKE_C_FLAGS_DEBUG "-g -O0")
 # add_subdirectory(common)
 add_subdirectory(concurrency)
 add_subdirectory(db)
-# add_subdirectory(io)
+add_subdirectory(io)
 # add_subdirectory(sstable)
 # add_subdirectory(storage)
 
