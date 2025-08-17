@@ -23,7 +23,7 @@ class SkipList {
 public:
   explicit SkipList(int max_level = 16);
 
-  ~SkipList();
+  ~SkipList() = default;
 
   // Copy constructor/assignment
   SkipList(const SkipList &) = delete;

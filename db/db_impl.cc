@@ -67,7 +67,7 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
     if (immutable_memtables_size >= kDebugMaxNumberImmutableTablesInMemory) {
       // Flush thread to flush memtable to disk
       for (int i = 0; i < immutable_memtables_.size(); i++) {
-        thread_pool_->Enqueue(&DBImpl::ScheduleFlushJob, this, i);
+        thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this, i);
       }
     }
 

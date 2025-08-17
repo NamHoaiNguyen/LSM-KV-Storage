@@ -1,31 +1,50 @@
 #ifndef IO_LINUX_FILE_OBJECT_H
 #define IO_LINUX_FILE_OBJECT_H
 
-#include "common/macros.h"
 #include "io/base_file.h"
+#include "io/buffer.h"
 
+#include <memory>
 #include <string>
 
+// C headers
+#include <sys/types.h>
+
 namespace kvs {
-  class LinuxAccessFile : public AccessFile {
-    public:
-    LinuxAccessFile(std::string&& file_Name);
 
-    ~LinuxAccessFile();
-  
-    void Append() override;
+class Buffer;
 
-    void Close() override;
+class LinuxAccessFile : public AccessFile {
+public:
+  LinuxAccessFile(std::string &&file_Name);
 
-    void Flush() override;
+  ~LinuxAccessFile();
 
-    void Open() override;
+  // No copy allowed
+  LinuxAccessFile(const LinuxAccessFile &) = delete;
+  LinuxAccessFile &operator=(LinuxAccessFile &) = delete;
 
-    private:
-      std::string file_name_;
+  // Move constructor/assignment
+  LinuxAccessFile(LinuxAccessFile &&) = default;
+  LinuxAccessFile &operator=(LinuxAccessFile &&) = default;
 
-      Fd fd_; // file descriptor
-  };
+  bool Close() override;
+
+  void Flush() override;
+
+  void Open() override;
+
+  ssize_t Read() override;
+
+  ssize_t Write() override;
+
+private:
+  std::string file_name_;
+
+  Fd fd_; // file descriptor
+
+  std::unique_ptr<Buffer> buffer_;
+};
 } // namespace kvs
 
 #endif // IO_LINUX_FILE_OBJECT_H

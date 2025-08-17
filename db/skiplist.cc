@@ -11,8 +11,6 @@ SkipList::SkipList(int max_level)
       head_(std::make_shared<SkipListNode>("" /*key*/, "" /*value*/,
                                            current_level_)) {}
 
-SkipList::~SkipList() = default;
-
 // Return random number of levels that a node is inserted
 int SkipList::GetRandomLevel() {
   int level = 1;
@@ -156,7 +154,8 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 }
 
 std::shared_ptr<SkipListNode> SkipList::FindLowerBoundNode(
-    std::string_view key, std::vector<std::shared_ptr<SkipListNode>> *updates) const {
+    std::string_view key,
+    std::vector<std::shared_ptr<SkipListNode>> *updates) const {
   std::shared_ptr<SkipListNode> current = head_;
 
   for (int level = current_level_ - 1; level >= 0; --level) {
