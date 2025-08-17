@@ -5,15 +5,13 @@
 
 namespace kvs {
 
-MemTable::MemTable(size_t memtable_size)
-    : memtable_size_(memtable_size), is_immutable_(false),
-      table_(std::make_unique<SkipList>()) {}
+MemTable::MemTable()
+    : is_immutable_(false), table_(std::make_unique<SkipList>()) {}
 
 MemTable::~MemTable() = default;
 
 MemTable::MemTable(MemTable &&other) {
   std::scoped_lock rwlock_memtable(mutex_, other.mutex_);
-  memtable_size_ = other.memtable_size_;
   is_immutable_ = other.is_immutable_;
   table_ = std::move(other.table_);
 }
@@ -24,7 +22,6 @@ MemTable &MemTable::operator=(MemTable &&other) {
   }
 
   std::scoped_lock rwlock_memtable(mutex_, other.mutex_);
-  memtable_size_ = other.memtable_size_;
   is_immutable_ = other.is_immutable_;
   table_ = std::move(other.table_);
 
@@ -89,7 +86,7 @@ MemTable::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
 }
 
 std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
-  std::shared_lock<std::shared_mutex> rlock(table_mutex_);
+  std::shared_lock<std::shared_mutex> rlock(mutex_);
   std::optional<std::string> value;
 
   if (!table_) {
@@ -117,10 +114,6 @@ void MemTable::BatchPut(
   }
 
   table_->BatchPut(keys, txn_id);
-
-  if (table_->GetCurrentSize() >= memtable_size_) {
-    is_immutable_ = true;
-  }
 }
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
@@ -133,21 +126,25 @@ void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   }
 
   table_->Put(key, value, txn_id);
-
-  if (table_->GetCurrentSize() >= memtable_size_) {
-    is_immutable_ = true;
-  }
 }
 
-// NOT THREAD-SAFE. Lock must be acquired before this method is called.
-void MemTable::CreateNewMemtable() {
-  immutable_tables_.push_back(std::move(table_));
-  table_ = std::make_unique<SkipList>();
+size_t MemTable::GetMemTableSize() {
+  std::shared_lock<std::shared_mutex> rlock(mutex_);
+  if (!table_) {
+    std::exit(EXIT_FAILURE);
+  }
+
+  return table_->GetCurrentSize();
 }
 
 bool MemTable::IsImmutable() {
   std::shared_lock<std::shared_mutex> rlock(mutex_);
   return is_immutable_;
+}
+
+void MemTable::SetImmutable() {
+  std::scoped_lock rwlock(mutex_);
+  is_immutable_ = true;
 }
 
 } // namespace kvs

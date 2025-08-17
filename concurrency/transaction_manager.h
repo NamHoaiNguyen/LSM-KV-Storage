@@ -10,7 +10,7 @@
 
 namespace kvs {
 
-class DB;
+class DBImpl;
 class Transaction;
 
 enum class IsolationLevel {
@@ -25,9 +25,17 @@ enum class IsolationLevel {
 
 class TransactionManager {
 public:
-  TransactionManager(DB *db);
+  TransactionManager(DBImpl *db);
 
   ~TransactionManager() = default;
+
+  // No copy allowed
+  TransactionManager(const TransactionManager &) = delete;
+  TransactionManager &operator=(TransactionManager &) = delete;
+
+  // Move constructor/assignment
+  TransactionManager(TransactionManager &&) = default;
+  TransactionManager &operator=(TransactionManager &&) = default;
 
   Transaction *CreateNewTransaction();
 
@@ -43,7 +51,7 @@ private:
   // TODO(namnh) : unique_ptr or shared_ptr
   std::unordered_map<TxnId, std::unique_ptr<Transaction>> txns_;
 
-  DB *db_;
+  DBImpl *db_;
 
   std::atomic<TxnId> next_txn_id_;
 

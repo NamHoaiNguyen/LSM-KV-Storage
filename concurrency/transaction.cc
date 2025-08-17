@@ -1,11 +1,11 @@
 #include "concurrency/transaction.h"
 
 #include "concurrency/transaction_manager.h"
-#include "db/db.h"
+#include "db/db_impl.h"
 
 namespace kvs {
-Transaction::Transaction(TransactionManager *txn_manager, DB *db, TxnId txn_id,
-                         IsolationLevel isolation_level)
+Transaction::Transaction(TransactionManager *txn_manager, DBImpl *db,
+                         TxnId txn_id, IsolationLevel isolation_level)
     : txn_manager_(txn_manager), db_(db), txn_id_(txn_id),
       isolation_level_(isolation_level) {}
 

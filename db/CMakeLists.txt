@@ -1,9 +1,8 @@
 add_library(db
   base_memtable.h
-  db.cc
-  db.h
-  lsm.cc
-  lsm.h
+  db_flush_memtable_job.cc
+  db_impl.cc
+  db_impl.h
   memtable_iterator.cc
   memtable_iterator.h
   memtable.cc
