@@ -51,8 +51,6 @@ private:
 
   std::shared_mutex immutable_memtables_mutex_;
 
-  std::condition_variable_any cv_;
-
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
   ThreadPool *thread_pool_;

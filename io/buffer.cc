@@ -12,4 +12,6 @@ std::span<const Byte> Buffer::GetImmutableBuffer() const {
   return std::span<const Byte>(buffer_);
 }
 
+void Buffer::WriteData(DynamicBuffer &&buffer) { buffer_ = std::move(buffer); }
+
 } // namespace kvs

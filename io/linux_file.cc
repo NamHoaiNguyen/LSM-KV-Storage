@@ -40,12 +40,13 @@ void LinuxAccessFile::Flush() {
   }
 }
 
-void LinuxAccessFile::Open() {
+bool LinuxAccessFile::Open() {
   fd_ = ::open(file_name_.c_str(), O_CREAT | O_TRUNC | O_WRONLY);
   if (fd_ == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
-    return;
+    return false;
   }
+  return true;
 }
 
 ssize_t LinuxAccessFile::Read() {
@@ -55,8 +56,11 @@ ssize_t LinuxAccessFile::Read() {
   return ::read(fd_, buff, buff_len);
 }
 
-ssize_t LinuxAccessFile::Write() {
-  char *buff = reinterpret_cast<char *>(buffer_->GetBuffer().data());
+ssize_t LinuxAccessFile::Write(DynamicBuffer &&buffer) {
+  buffer_->WriteData(std::move(buffer));
+
+  const char *buff =
+      reinterpret_cast<const char *>(buffer_->GetBuffer().data());
   size_t buff_len = buffer_->GetBufferLength();
 
   return ::write(fd_, buff, buff_len);

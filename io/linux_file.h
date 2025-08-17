@@ -32,11 +32,11 @@ public:
 
   void Flush() override;
 
-  void Open() override;
+  bool Open() override;
 
   ssize_t Read() override;
 
-  ssize_t Write() override;
+  ssize_t Write(DynamicBuffer &&buffer) override;
 
 private:
   std::string file_name_;

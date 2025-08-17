@@ -29,6 +29,8 @@ public:
 
   size_t GetBufferLength() const;
 
+  void WriteData(DynamicBuffer &&buffer);
+
 private:
   DynamicBuffer buffer_;
 };

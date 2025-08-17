@@ -1,9 +1,14 @@
 #ifndef IO_BASE_FILE_H
 #define IO_BASE_FILE_H
 
+#include "common/macros.h"
+
 #include <sys/types.h>
 
 namespace kvs {
+
+class Buffer;
+
 class AccessFile {
 public:
   virtual ~AccessFile() {}
@@ -13,11 +18,11 @@ public:
   // Persist data from memory to disk
   virtual void Flush() = 0;
 
-  virtual void Open() = 0;
+  virtual bool Open() = 0;
 
   virtual ssize_t Read() = 0;
 
-  virtual ssize_t Write() = 0;
+  virtual ssize_t Write(DynamicBuffer &&buffer) = 0;
 };
 } // namespace kvs
 
