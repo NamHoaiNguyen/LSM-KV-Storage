@@ -1,13 +1,13 @@
 #include "concurrency/transaction_manager.h"
 
 #include "concurrency/transaction.h"
-#include "db/db.h"
+#include "db/db_impl.h"
 
 #include <cassert>
 
 namespace kvs {
 
-TransactionManager::TransactionManager(DB *db) : db_(db) {}
+TransactionManager::TransactionManager(DBImpl *db) : db_(db) {}
 
 Transaction *TransactionManager::CreateNewTransaction() {
   // TODO(namnh) : Do we need to lock when creating new transaction.

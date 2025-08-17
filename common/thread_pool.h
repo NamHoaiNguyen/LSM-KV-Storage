@@ -1,62 +1,104 @@
-namespace kvs {
+#ifndef COMMON_THREAD_POOL_H
+#define COMMON_THREAD_POOL_H
 
 #include <condition_variable>
 #include <functional>
+#include <future>
 #include <mutex>
-#include <packaged_task>
 #include <queue>
 #include <vector>
 
+namespace kvs {
+
 class ThreadPool {
 public:
-  ThreadPool() = default;
+  inline ThreadPool(int num_threads = 8);
 
-  ~ThreadPool() = default;
+  inline ~ThreadPool();
 
-  // Copy assignment/constructor
+  // No copy allowed
   ThreadPool(const ThreadPool &) = delete;
   ThreadPool &operator=(const ThreadPool &) = delete;
 
-  // Move assignment/constructor
+  // No move allowed
   ThreadPool(ThreadPool &&) = delete;
   ThreadPool &operator=(ThreadPool &&) = delete;
 
-  // Overload operator()
-  void operator()() {}
-
   template <typename Functor, typename... Args>
-  decltype(auto) Enqueue(Functor &&functor, Args &&...args);
+  inline decltype(auto) Enqueue(Functor &&functor, Args &&...args);
 
 private:
   std::condition_variable cv_;
 
   std::mutex mutex_;
 
+  int num_threads_;
+
   std::atomic<bool> shutdown_;
 
-  std::queue<std::function<void>()> jobs_;
+  std::queue<std::function<void()>> jobs_;
 
-  std::vector<std::thread> pools_;
+  std::vector<std::thread> workers_;
 };
+
+ThreadPool::ThreadPool(int num_thread)
+    : num_threads_(num_thread), shutdown_(false) {
+  for (int i = 0; i < num_threads_; i++) {
+    workers_.emplace_back([this]() {
+      while (!shutdown_) {
+        std::function<void()> job;
+        {
+          std::unique_lock lock(mutex_);
+          cv_.wait(lock, [this]() {
+            return this->shutdown_ || !this->jobs_.empty();
+          });
+
+          if (this->shutdown_ && this->jobs_.empty()) {
+            return;
+          }
+
+          job = std::move(jobs_.front());
+          jobs_.pop();
+        }
+        job();
+      }
+    });
+  }
+}
+
+ThreadPool::~ThreadPool() {
+  shutdown_ = true;
+
+  // Finish remaining jobs
+  cv_.notify_all();
+
+  for (int i = 0; i < num_threads_; i++) {
+    workers_[i].join();
+  }
+}
 
 template <typename Functor, typename... Args>
 decltype(auto) ThreadPool::Enqueue(Functor &&functor, Args &&...args) {
   using ReturnType = std::invoke_result_t<Functor, Args...>;
-  auto task = std::make_shared<std::packaged_task<ReturnType>>(
+  auto task = std::make_shared<std::packaged_task<ReturnType()>>(
       std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
   std::future<ReturnType> result = task->get_future();
-  std::function<void()> job = [task]() { return (*task)(); }
+  std::function<void()> job = [task]() { return (*task)(); };
 
   if (shutdown_.load()) {
-    std::throw_error("Couldn't ask new task because threadpool was shut down");
+    throw std::runtime_error(
+        "Couldn't ask new task because threadpool was shut down");
   }
 
   {
-    std::scoped_lock<std::mute> lock(mutex_);
+    std::scoped_lock lock(mutex_);
     jobs_.emplace(std::move(job));
   }
 
   cv_.notify_one();
   return result;
+}
 
 } // namespace kvs
+
+#endif // COMMON_THREAD_POOL_H

@@ -17,7 +17,7 @@ class SkipList;
 
 class MemTable : public BaseMemtable {
 public:
-  MemTable(size_t memtable_size = 8 * 1024 * 1024 /*MB*/);
+  MemTable();
 
   ~MemTable() override;
 
@@ -46,13 +46,13 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id) override;
 
-  virtual bool IsImmutable() override;
+  bool IsImmutable() override;
+
+  void SetImmutable() override;
+
+  size_t GetMemTableSize() override;
 
 private:
-  void CreateNewMemtable();
-
-  size_t memtable_size_;
-
   bool is_immutable_;
 
   std::unique_ptr<SkipList> table_;

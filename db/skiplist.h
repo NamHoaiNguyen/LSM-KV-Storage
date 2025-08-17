@@ -2,7 +2,6 @@
 #define DB_SKIPLIST_H
 
 #include "common/macros.h"
-// #include "db/skiplist_iterator.h"
 
 #include <iostream>
 #include <memory>
@@ -20,11 +19,9 @@ class SkipListNode;
 // ALL methods in this class ARE NOT THREAD-SAFE.
 // It means that lock MUST be acquired in memtable
 // before calling those below methods.
-// TODO(namnh) : Design concurrent-skiplist.
-
 class SkipList {
 public:
-  SkipList(int max_level = 16);
+  explicit SkipList(int max_level = 16);
 
   ~SkipList();
 
@@ -69,10 +66,6 @@ public:
   // Return random number of levels that a node is inserted
   int GetRandomLevel();
 
-  // SkipListIterator begin();
-
-  // SkipListIterator end();
-
   // For debugging
   void PrintSkipList();
 
@@ -84,7 +77,7 @@ private:
   // to find at each level needed to be found and be added into "updates" list
   std::shared_ptr<SkipListNode> FindLowerBoundNode(
       std::string_view key,
-      std::vector<std::shared_ptr<SkipListNode>> *updates = nullptr) const ;
+      std::vector<std::shared_ptr<SkipListNode>> *updates = nullptr) const;
 
   // adaptive number of current levels
   int current_level_;
