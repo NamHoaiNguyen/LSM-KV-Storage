@@ -1,6 +1,7 @@
 #include "io/linux_file.h"
 
-#include "buffer.h"
+#include "common/macros.h"
+#include "io/buffer.h"
 
 // C++ libs
 #include <cerrno>
@@ -10,12 +11,6 @@
 // C libs
 #include <fcntl.h>
 #include <unistd.h>
-
-namespace {
-
-constexpr int kBufferSize = 4 * 1024; // 4 KB
-
-} // namespace
 
 namespace kvs {
 
@@ -56,14 +51,71 @@ ssize_t LinuxAccessFile::Read() {
   return ::read(fd_, buff, buff_len);
 }
 
+// ssize_t LinuxAccessFile::Write(DynamicBuffer &&buffer) {
+//   std::vector<Byte> tmp_buffer = std::move(buffer);
+//   DynamicBuffer &file_buffer = buffer_->GetBuffer();
+
+//   ssize_t total_bytes = 0;
+//   size_t tmp_buffer_len = tmp_buffer.size();
+
+//   for (size_t i = 0; i < tmp_buffer_len / kDefaultBufferSize; i++) {
+//     file_buffer.insert(
+//         file_buffer.end(),
+//         std::make_move_iterator(tmp_buffer.begin() + i * kDefaultBufferSize),
+//         std::make_move_iterator(tmp_buffer.begin() +
+//                                 (i + 1) * kDefaultBufferSize));
+//     const char *buff = reinterpret_cast<const char *>(file_buffer.data());
+//     size_t buff_len = file_buffer.size();
+
+//     while (buff_len > 0) {
+//       ssize_t bytes_written = ::write(fd_, buff, buff_len);
+//       if (bytes_written < 0) {
+//         if (errno == EINTR) {
+//           continue; // Retry
+//         }
+//         return -1;
+//       }
+//       buff += bytes_written;
+//       buff_len -= bytes_written;
+//       total_bytes += bytes_written
+//     }
+//   }
+
+//   return total_bytes;
+// }
+
 ssize_t LinuxAccessFile::Write(DynamicBuffer &&buffer) {
-  buffer_->WriteData(std::move(buffer));
+  std::vector<Byte> tmp_buffer = std::move(buffer);
+  const char *buff = reinterpret_cast<const char *>(tmp_buffer.data());
+  size_t size = tmp_buffer.size();
 
-  const char *buff =
-      reinterpret_cast<const char *>(buffer_->GetBuffer().data());
-  size_t buff_len = buffer_->GetBufferLength();
+  return Write_(buff, size);
+}
 
-  return ::write(fd_, buff, buff_len);
+ssize_t LinuxAccessFile::Write(std::span<const Byte> buffer) {
+  const char *buff = reinterpret_cast<const char *>(buffer.data());
+  size_t size = buffer.size();
+
+  return Write_(buff, size);
+}
+
+ssize_t LinuxAccessFile::Write_(const char *buffer, size_t size) {
+  ssize_t total_bytes = 0;
+
+  while (size > 0) {
+    ssize_t bytes_written = ::write(fd_, buffer, size);
+    if (bytes_written < 0) {
+      if (errno == EINTR) {
+        continue; // Retry
+      }
+      return -1;
+    }
+    buffer += bytes_written;
+    size -= bytes_written;
+    total_bytes += bytes_written;
+  }
+
+  return total_bytes;
 }
 
 } // namespace kvs

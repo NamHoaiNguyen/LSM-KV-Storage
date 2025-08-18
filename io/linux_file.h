@@ -38,7 +38,11 @@ public:
 
   ssize_t Write(DynamicBuffer &&buffer) override;
 
+  ssize_t Write(std::span<const Byte> buffer) override;
+
 private:
+  ssize_t Write_(const char *buffer, size_t size);
+
   std::string file_name_;
 
   Fd fd_; // file descriptor

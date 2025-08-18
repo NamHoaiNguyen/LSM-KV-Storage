@@ -16,6 +16,8 @@ using DynamicBuffer = std::vector<uint8_t>;
 
 using Byte = uint8_t;
 
+constexpr size_t kDefaultBufferSize = 8 * 1024; // 8 KB
+
 } // namespace kvs
 
 #endif // COMMON_MACROS

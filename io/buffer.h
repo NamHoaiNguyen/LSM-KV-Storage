@@ -9,9 +9,7 @@ namespace kvs {
 
 class Buffer {
 public:
-  static constexpr size_t kDefaultCapacity = 4 * 1024; // 4KB
-
-  explicit Buffer(size_t capacity = kDefaultCapacity);
+  explicit Buffer(size_t capacity = kDefaultBufferSize);
 
   ~Buffer() = default;
 
@@ -23,9 +21,11 @@ public:
   Buffer(Buffer &&) = default;
   Buffer &operator=(Buffer &&) = default;
 
-  std::span<Byte> GetBuffer();
+  std::span<Byte> GetBufferView();
 
-  std::span<const Byte> GetImmutableBuffer() const;
+  std::span<const Byte> GetImmutableBufferView() const;
+
+  DynamicBuffer &GetBuffer();
 
   size_t GetBufferLength() const;
 
