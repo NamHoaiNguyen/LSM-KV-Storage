@@ -63,11 +63,12 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
       std::scoped_lock rwlock_immutable_memtables(immutable_memtables_mutex_);
       immutable_memtables_.push_back(std::move(memtable_));
       immutable_memtables_size = immutable_memtables_.size();
-    }
-    if (immutable_memtables_size >= kDebugMaxNumberImmutableTablesInMemory) {
-      // Flush thread to flush memtable to disk
-      for (int i = 0; i < immutable_memtables_.size(); i++) {
-        thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this, i);
+
+      if (immutable_memtables_size >= kDebugMaxNumberImmutableTablesInMemory) {
+        // Flush thread to flush memtable to disk
+        for (int i = 0; i < immutable_memtables_.size(); i++) {
+          thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this, i);
+        }
       }
     }
 

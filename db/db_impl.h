@@ -43,6 +43,8 @@ public:
 private:
   void FlushMemTableJob(int immutable_memtable_index);
 
+  std::atomic<uint64_t> next_sstable_id_;
+
   std::unique_ptr<TransactionManager> txn_manager_;
 
   std::unique_ptr<BaseMemtable> memtable_;
