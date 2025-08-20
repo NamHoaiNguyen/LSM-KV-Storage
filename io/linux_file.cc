@@ -14,8 +14,8 @@
 
 namespace kvs {
 
-LinuxAccessFile::LinuxAccessFile(std::string &&file_name)
-    : file_name_(std::move(file_name)), buffer_(std::make_unique<Buffer>()) {}
+LinuxAccessFile::LinuxAccessFile(std::string &&filename)
+    : filename_(std::move(filename)), buffer_(std::make_unique<Buffer>()) {}
 
 LinuxAccessFile::~LinuxAccessFile() { Close(); }
 
@@ -84,6 +84,7 @@ ssize_t LinuxAccessFile::Read() {
 //   return total_bytes;
 // }
 
+// append
 ssize_t LinuxAccessFile::Write(DynamicBuffer &&buffer) {
   std::vector<Byte> tmp_buffer = std::move(buffer);
   const char *buff = reinterpret_cast<const char *>(tmp_buffer.data());
@@ -92,6 +93,7 @@ ssize_t LinuxAccessFile::Write(DynamicBuffer &&buffer) {
   return Write_(buff, size);
 }
 
+// append
 ssize_t LinuxAccessFile::Write(std::span<const Byte> buffer) {
   const char *buff = reinterpret_cast<const char *>(buffer.data());
   size_t size = buffer.size();

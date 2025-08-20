@@ -9,10 +9,11 @@ namespace kvs {
 
 class AccessFile;
 class BlockBuilder;
+class Iterator;
 
 class TableBuilder {
 public:
-  TableBuilder();
+  TableBuilder(std::string&& filename);
 
   ~TableBuilder() = default;
 
@@ -30,7 +31,7 @@ public:
   void Finish();
 
   // Flush block data to disk
-  void Flush();
+  void FlushBlock();
 
   void WriteBlock();
 
@@ -42,6 +43,9 @@ private:
 
   // TODO(namnh) : unique_ptr?
   std::shared_ptr<BlockBuilder> index_block_;
+
+  // TODO(namnh) : unique_ptr or shared_ptr?
+  std::unique_pt<BaseIterator> iterator_;
 };
 
 } // namespace kvs

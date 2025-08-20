@@ -16,7 +16,7 @@ class Buffer;
 
 class LinuxAccessFile : public AccessFile {
 public:
-  LinuxAccessFile(std::string &&file_Name);
+  LinuxAccessFile(std::string &&filename);
 
   ~LinuxAccessFile();
 
@@ -43,7 +43,7 @@ public:
 private:
   ssize_t Write_(const char *buffer, size_t size);
 
-  std::string file_name_;
+  std::string filename_;
 
   Fd fd_; // file descriptor
 

@@ -16,7 +16,11 @@ using DynamicBuffer = std::vector<uint8_t>;
 
 using Byte = uint8_t;
 
-constexpr size_t kDefaultBufferSize = 8 * 1024; // 8 KB
+using DoubleByte = uint16_t;
+
+constexpr size_t kDefaultBufferSize = 4 * 1024; // 4 KB
+
+constexpr size_t kMaxKeySize = 2 * 1024; // 2 KB
 
 } // namespace kvs
 

@@ -6,11 +6,13 @@
 namespace kvs {
 /*
 Block data format
------------------------------------------------------------------------------
-|        Data Section       |         Offset Section      |      Extra      |
------------------------------------------------------------------------------
-| Entry #1 | ... | Entry #N | Offset #1 | ... | Offset #N | num_of_elements |
------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------------
+|        Data Section       |         Offset Section      |                             Extra                             |
+---------------------------------------------------------------------------------------------------------------------------
+| Entry #1 | ... | Entry #N | Offset #1 | ... | Offset #N | num_of_elements, offset data section, offset of offset section|
+---------------------------------------------------------------------------------------------------------------------------
+
+Extra size(24 bytes, starting from end of block)
 
 Data section format
 --------------------------------------------------------------------------
@@ -20,6 +22,19 @@ Data section format
 --------------------------------------------------------------------------
 */
 
+struct DataEntry {
+  std::string_view key;
+
+  uint16_t key_len;
+
+  std::string_view value;
+
+  uint16_t value_len;
+
+  TxnId txn_id;
+};
+
+// Mostly used for read path
 class Block {
 public:
   Block();
