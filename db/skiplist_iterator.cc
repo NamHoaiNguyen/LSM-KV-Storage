@@ -10,11 +10,11 @@ SkipListIterator::SkipListIterator(const SkipList* skiplist) :
 
 SkipListIterator::~SkipListIterator() = default;
 
-std::string SkipListIterator::GetKey() {
+std::string_view SkipListIterator::GetKey() {
   return node_->key_;
 }
 
-std::string SkipListIterator::GetValue() {
+std::string_view SkipListIterator::GetValue() {
   return node_->value_;
 }
 

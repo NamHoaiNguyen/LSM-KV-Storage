@@ -17,9 +17,9 @@ class BaseIterator {
 
     virtual bool IsValid() = 0;
 
-    virtual std::string GetKey() = 0;
+    virtual std::string_view GetKey() = 0;
 
-    virtual std::string GetValue() = 0;
+    virtual std::string_view GetValue() = 0;
 
     virtual void Next() = 0;
 

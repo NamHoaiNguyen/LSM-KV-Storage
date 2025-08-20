@@ -18,9 +18,9 @@ public:
 
   ~SkipListIterator() override;
 
-  std::string GetKey() override;
+  std::string_view GetKey() override;
 
-  std::string GetValue() override;
+  std::string_view GetValue() override;
 
   bool IsValid() override;
 

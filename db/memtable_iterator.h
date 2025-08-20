@@ -14,13 +14,13 @@ class MemTable;
 
 class MemTableIterator : public BaseIterator {
 public:
-  MemTableIterator(MemTable* memtable);
+  MemTableIterator(const MemTable* memtable);
 
   ~MemTableIterator() override;
 
-  std::string GetKey() override;
+  std::string_view GetKey() override;
 
-  std::string GetValue() override;
+  std::string_view GetValue() override;
 
   bool IsValid() override;
 
