@@ -14,7 +14,7 @@ class MemTable;
 
 class MemTableIterator : public BaseIterator {
 public:
-  MemTableIterator(const MemTable* memtable);
+  MemTableIterator(const MemTable *memtable);
 
   ~MemTableIterator() override;
 
@@ -35,7 +35,7 @@ public:
   void SeekToLast() override;
 
 private:
-  const MemTable* memtable_;
+  const MemTable *memtable_;
 };
 
 } // namespace kvs

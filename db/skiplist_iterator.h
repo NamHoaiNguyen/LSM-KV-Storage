@@ -14,7 +14,7 @@ class SkipListNode;
 
 class SkipListIterator : public BaseIterator {
 public:
-  SkipListIterator(const SkipList* skiplist);
+  SkipListIterator(const SkipList *skiplist);
 
   ~SkipListIterator() override;
 
@@ -40,7 +40,7 @@ private:
   // NOTE: DONT free this pointer.
   // This pointer is taken by unique_ptr GET API .It will be auto-released.
   // Releasing memory can cause undefined behaviour.
-  const SkipList* skiplist_;
+  const SkipList *skiplist_;
 
   std::shared_ptr<const SkipListNode> node_;
 };

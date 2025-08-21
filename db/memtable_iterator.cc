@@ -5,22 +5,16 @@
 
 namespace kvs {
 
-MemTableIterator::MemTableIterator(const MemTable* memtable)
+MemTableIterator::MemTableIterator(const MemTable *memtable)
     : memtable_(memtable) {}
 
 MemTableIterator::~MemTableIterator() = default;
 
-std::string_view MemTableIterator::GetKey() {
-  return "";
-}
+std::string_view MemTableIterator::GetKey() { return ""; }
 
-std::string_view MemTableIterator::GetValue() {
-  return "";
-}
+std::string_view MemTableIterator::GetValue() { return ""; }
 
-bool MemTableIterator::IsValid() {
-  return false;
-}
+bool MemTableIterator::IsValid() { return false; }
 
 void MemTableIterator::Next() {}
 
