@@ -13,11 +13,14 @@ namespace kvs {
 void DBImpl::FlushMemTableJob(int immutable_memtable_index) {
   std::string path = "~/lsm-kv-storage/data/000001.sst";
 
-  auto builder = std::make_unique<TableBuilder>();
+  auto builder = std::make_unique<TableBuilder>(std::move(path));
   // TODO(namnh) : unique_ptr or shared_ptr?
-  auto iterator = std::make_unique<MemTableIterator>();
-  for (iterator->SeekToFirst(); iterator != IsValid(); iterator->Next()) {
-    builder->Add(iterator->GetKey(), iterator->GetValue());
+  const BaseMemTable *immutable_memtable =
+      immutable_memtables_.at(immutable_memtable_index).get();
+  auto iterator = std::make_unique<MemTableIterator>(immutable_memtable);
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    builder->Add(iterator->GetKey(), iterator->GetValue(),
+                 iterator->GetTransactionId());
   }
 
   {

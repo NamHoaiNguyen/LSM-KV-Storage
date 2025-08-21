@@ -1,12 +1,18 @@
-#ifndef SSTABLE_TABLE__H
-#define SSTABLE_TABLE__H
+#ifndef SSTABLE_TABLE_H
+#define SSTABLE_TABLE_H
 
 #include "common/macros.h"
 
 // libC++
 #include <memory>
+#include <string_view>
 
 namespace kvs {
+
+class AccessFile;
+class Block;
+class BaseIterator;
+class LinuxAccessFile;
 
 /*
 SST data format
@@ -28,31 +34,47 @@ Meta MetaEntry format
 
 */
 
-class AccessFile;
-class Memtable;
-
-// SSTable are immutable and persistent
 class Table {
 public:
-  Table() = default;
+  Table(std::string &&filename);
 
   ~Table() = default;
 
-  // No copy allowed
-  Table(const Table &) = delete;
-  Table &operator=(Table &) = delete;
+  // Copy constructor/assignment
+  Table(const Table &) = default;
+  Table &operator=(Table &) = default;
 
   // Move constructor/assignment
   Table(Table &&) = default;
   Table &operator=(Table &&) = default;
 
-  void Decode();
+  // Add new key/value pairs to SST
+  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id);
 
-  void Encode();
+  void Finish();
+
+  // Flush block data to disk
+  void FlushBlock();
+
+  void WriteBlock();
+
+  friend class BlockBuilderTest_Encode_Test;
 
 private:
+  std::unique_ptr<AccessFile> file_object_;
+
+  // TODO(namnh) : unique_ptr or shared_ptr?
+  std::shared_ptr<Block> data_block_;
+
+  // TODO(namnh) : unique_ptr?
+  std::shared_ptr<Block> index_block_;
+
+  // TODO(namnh) : unique_ptr or shared_ptr?
+  // std::unique_ptr<BaseIterator> iterator_;
+
+  uint64_t current_offset_;
 };
 
 } // namespace kvs
 
-#endif // SSTABLE_TABLE__H
+#endif // SSTABLE_TABLE_H

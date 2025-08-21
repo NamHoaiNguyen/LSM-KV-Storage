@@ -8,8 +8,8 @@ foreach(test_file ${TEST_SOURCES})
     # Include headers from all modules
     target_include_directories(${test_name} PRIVATE
         ${PROJECT_SOURCE_DIR}/common
-        # ${PROJECT_SOURCE_DIR}/io
-        # ${PROJECT_SOURCE_DIR}/sstable
+        ${PROJECT_SOURCE_DIR}/io
+        ${PROJECT_SOURCE_DIR}/sstable
         # ${PROJECT_SOURCE_DIR}/storage
         ${PROJECT_SOURCE_DIR}/db
     )
@@ -17,8 +17,8 @@ foreach(test_file ${TEST_SOURCES})
     target_link_libraries(${test_name}
         GTest::gtest_main
         # common
-        # io
-        # sstable
+        io
+        sstable
         # storage
         db
     )

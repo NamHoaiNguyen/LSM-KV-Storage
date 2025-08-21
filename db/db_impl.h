@@ -15,7 +15,7 @@
 namespace kvs {
 
 class BaseIterator;
-class BaseMemtable;
+class BaseMemTable;
 class SSTable;
 class ThreadPool;
 class TransactionManager;
@@ -47,9 +47,9 @@ private:
 
   std::unique_ptr<TransactionManager> txn_manager_;
 
-  std::unique_ptr<BaseMemtable> memtable_;
+  std::unique_ptr<BaseMemTable> memtable_;
 
-  std::vector<std::unique_ptr<BaseMemtable>> immutable_memtables_;
+  std::vector<std::unique_ptr<BaseMemTable>> immutable_memtables_;
 
   std::shared_mutex immutable_memtables_mutex_;
 

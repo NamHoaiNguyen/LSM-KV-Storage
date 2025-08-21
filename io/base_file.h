@@ -26,9 +26,9 @@ public:
 
   virtual ssize_t Read() = 0;
 
-  virtual ssize_t Write(DynamicBuffer &&buffer) = 0;
+  virtual ssize_t Append(DynamicBuffer &&buffer, uint64_t offset) = 0;
 
-  virtual ssize_t Write(std::span<const Byte> buffer) = 0;
+  virtual ssize_t Append(std::span<const Byte> buffer, uint64_t offset) = 0;
 };
 } // namespace kvs
 

@@ -2,6 +2,7 @@
 #define DB_SKIPLIST_ITERATOR_H
 
 #include "common/base_iterator.h"
+#include "common/macros.h"
 
 #include <memory>
 #include <shared_mutex>
@@ -21,6 +22,8 @@ public:
   std::string_view GetKey() override;
 
   std::string_view GetValue() override;
+
+  TxnId GetTransactionId() override;
 
   bool IsValid() override;
 

@@ -15,7 +15,7 @@ namespace kvs {
 class BaseIterator;
 class SkipList;
 
-class MemTable : public BaseMemtable {
+class MemTable : public BaseMemTable {
 public:
   MemTable();
 

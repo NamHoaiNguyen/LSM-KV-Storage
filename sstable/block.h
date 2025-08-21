@@ -3,57 +3,100 @@
 
 #include "common/macros.h"
 
+// libC++
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+
 namespace kvs {
+
+// class BlockBuilderTest;
+
 /*
 Block data format
----------------------------------------------------------------------------------------------------------------------------
-|        Data Section       |         Offset Section      |                             Extra                             |
----------------------------------------------------------------------------------------------------------------------------
-| Entry #1 | ... | Entry #N | Offset #1 | ... | Offset #N | num_of_elements, offset data section, offset of offset section|
----------------------------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+|            Data Section         |           Offset Section         |  Extra  |
+--------------------------------------------------------------------------------
+||Data Entry#1| ... | DataEntry#N|||Offset Entry#1|...|Offset Entry#N|   Info  |
+--------------------------------------------------------------------------------
 
-Extra size(24 bytes, starting from end of block)
 
-Data section format
---------------------------------------------------------------------------
-|                           Entry #1                               | ... |
---------------------------------------------------------------------------
-| key_len (2B) | key | value_len (2B) | value | transaction_id(8B) | ... |
---------------------------------------------------------------------------
+Data entry format
+--------------------------------------------------------------------
+|                           Data Entry                             |
+--------------------------------------------------------------------
+| key_len (4B) | key | value_len (4B) | value | transaction_id(8B) |
+--------------------------------------------------------------------
+
+Offset entry format
+-----------------------------------------------------------------------------
+|                              Offset Entry                                 |
+-----------------------------------------------------------------------------
+| Starting offset of coresponding data entry(8B) |  Size of data entry(8B)  |
+-----------------------------------------------------------------------------
+
+Extra format
+------------------------------------
+|               Extra              |
+------------------------------------
+| total number of data entries(8B) |
+------------------------------------
 */
 
-struct DataEntry {
-  std::string_view key;
-
-  uint16_t key_len;
-
-  std::string_view value;
-
-  uint16_t value_len;
-
-  TxnId txn_id;
-};
-
-// Mostly used for read path
 class Block {
 public:
   Block();
-  explicit Block(std::span<const uint8_t> data);
 
-  ~Block();
+  ~Block() = default;
 
   // No copy allowed
-  Block(const Block &) = delete;
-  Block &operator=(Block &) = delete;
+  Block(const Block &) = default;
+  Block &operator=(Block &) = default;
 
-  void Decode();
+  // Move constructor/assignment
+  Block(Block &&) = default;
+  Block &operator=(Block &&) = default;
 
-  void Encode();
+  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id);
+
+  // Finish building the block
+  void Finish();
+
+  // Clear data of block to reuse
+  void Reset();
+
+  size_t GetBlockSize() const;
+
+  uint64_t GetNumEntries() const;
+
+  // ONLY call this method after finish writing all data to block.
+  // Otherwise, it can cause dangling pointer.
+  std::span<const Byte> GetDataView();
+
+  // ONLY call this method after finish writing all data to block.
+  // Otherwise, it can cause dangling pointer.
+  std::span<const Byte> GetOffsetView();
+
+  friend class BlockBuilderTest_Encode_Test;
 
 private:
-  std::span<const uint8_t> data_;
+  void AddDataEntry(std::string_view key, std::string_view value, TxnId txn_id);
 
-  std::span<const uint16_t> offset_;
+  void AddOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
+
+  bool is_finished_;
+
+  size_t block_size_;
+
+  uint64_t num_entries_;
+
+  // TODO(namnh) : Is there any way to avoid copying?
+  std::vector<Byte> data_buffer_;
+
+  std::vector<Byte> offset_buffer_;
+
+  uint64_t current_offset_;
 };
 
 } // namespace kvs

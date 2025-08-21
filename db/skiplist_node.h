@@ -29,7 +29,7 @@ private:
   std::string value_;
 
   // TODO(namnh) : recheck
-  // TxnId txn_id_;
+  TxnId txn_id_;
 
   // Number of level that this node appears
   int num_level_;
