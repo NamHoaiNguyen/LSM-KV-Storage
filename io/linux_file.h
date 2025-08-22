@@ -16,7 +16,7 @@ class Buffer;
 
 class LinuxAccessFile : public AccessFile {
 public:
-  LinuxAccessFile(std::string &&file_Name);
+  LinuxAccessFile(std::string &&filename);
 
   ~LinuxAccessFile();
 
@@ -36,14 +36,15 @@ public:
 
   ssize_t Read() override;
 
-  ssize_t Write(DynamicBuffer &&buffer) override;
+  ssize_t Append(DynamicBuffer &&buffer, uint64_t offset) override;
 
-  ssize_t Write(std::span<const Byte> buffer) override;
+  // append data from buffer starting from offset
+  ssize_t Append(std::span<const Byte> buffer, uint64_t offset) override;
 
 private:
-  ssize_t Write_(const char *buffer, size_t size);
+  ssize_t Append_(const uint8_t *buffer, size_t size, uint64_t offset);
 
-  std::string file_name_;
+  std::string filename_;
 
   Fd fd_; // file descriptor
 

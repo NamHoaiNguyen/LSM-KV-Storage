@@ -10,9 +10,9 @@
 
 namespace kvs {
 
-class BaseMemtable {
+class BaseMemTable {
 public:
-  virtual ~BaseMemtable() = default;
+  virtual ~BaseMemTable() = default;
 
   virtual std::vector<std::pair<std::string, bool>>
   BatchDelete(std::span<std::string_view>, TxnId txn_id) = 0;

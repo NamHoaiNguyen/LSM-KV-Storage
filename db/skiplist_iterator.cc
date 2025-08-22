@@ -14,6 +14,8 @@ std::string_view SkipListIterator::GetKey() { return node_->key_; }
 
 std::string_view SkipListIterator::GetValue() { return node_->value_; }
 
+TxnId SkipListIterator::GetTransactionId() { return node_->txn_id_; }
+
 bool SkipListIterator::IsValid() { return node_ != nullptr; }
 
 void SkipListIterator::Next() { node_ = node_->forward_[0]; }

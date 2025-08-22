@@ -2,6 +2,7 @@
 #define DB_MEMTABLE_ITERATOR_H
 
 #include "common/base_iterator.h"
+#include "common/macros.h"
 
 #include <memory>
 #include <string>
@@ -10,17 +11,19 @@
 namespace kvs {
 
 class SkipListNode;
-class MemTable;
+class BaseMemTable;
 
 class MemTableIterator : public BaseIterator {
 public:
-  MemTableIterator(const MemTable *memtable);
+  MemTableIterator(const BaseMemTable *memtable);
 
   ~MemTableIterator() override;
 
   std::string_view GetKey() override;
 
   std::string_view GetValue() override;
+
+  TxnId GetTransactionId() override;
 
   bool IsValid() override;
 
@@ -35,7 +38,7 @@ public:
   void SeekToLast() override;
 
 private:
-  const MemTable *memtable_;
+  const BaseMemTable *memtable_;
 };
 
 } // namespace kvs

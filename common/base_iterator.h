@@ -1,6 +1,9 @@
 #ifndef COMMON_BASE_ITERATOR_H
 #define COMMON_BASE_ITERATOR_H
 
+#include "common/macros.h"
+
+// libC++
 #include <string_view>
 
 namespace kvs {
@@ -20,6 +23,8 @@ public:
   virtual std::string_view GetKey() = 0;
 
   virtual std::string_view GetValue() = 0;
+
+  virtual TxnId GetTransactionId() = 0;
 
   virtual void Next() = 0;
 

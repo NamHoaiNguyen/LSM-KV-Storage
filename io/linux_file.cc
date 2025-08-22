@@ -14,8 +14,8 @@
 
 namespace kvs {
 
-LinuxAccessFile::LinuxAccessFile(std::string &&file_name)
-    : file_name_(std::move(file_name)), buffer_(std::make_unique<Buffer>()) {}
+LinuxAccessFile::LinuxAccessFile(std::string &&filename)
+    : filename_(std::move(filename)), buffer_(std::make_unique<Buffer>()) {}
 
 LinuxAccessFile::~LinuxAccessFile() { Close(); }
 
@@ -36,7 +36,7 @@ void LinuxAccessFile::Flush() {
 }
 
 bool LinuxAccessFile::Open() {
-  fd_ = ::open(file_name_.c_str(), O_CREAT | O_TRUNC | O_WRONLY);
+  fd_ = ::open(filename_.c_str(), /*O_CREAT |*/ O_TRUNC | O_WRONLY);
   if (fd_ == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -84,26 +84,30 @@ ssize_t LinuxAccessFile::Read() {
 //   return total_bytes;
 // }
 
-ssize_t LinuxAccessFile::Write(DynamicBuffer &&buffer) {
-  std::vector<Byte> tmp_buffer = std::move(buffer);
-  const char *buff = reinterpret_cast<const char *>(tmp_buffer.data());
-  size_t size = tmp_buffer.size();
+// append
+ssize_t LinuxAccessFile::Append(DynamicBuffer &&buffer, uint64_t offset) {
+  // std::vector<Byte> tmp_buffer = std::move(buffer);
+  // const char *buff = reinterpret_cast<const char *>(tmp_buffer.data());
+  // size_t size = tmp_buffer.size();
 
-  return Write_(buff, size);
+  return Append_(buffer.data(), buffer.size(), offset);
 }
 
-ssize_t LinuxAccessFile::Write(std::span<const Byte> buffer) {
-  const char *buff = reinterpret_cast<const char *>(buffer.data());
-  size_t size = buffer.size();
+// append
+ssize_t LinuxAccessFile::Append(std::span<const Byte> buffer, uint64_t offset) {
+  // const char *buff = reinterpret_cast<const char *>(buffer.data());
+  // size_t size = buffer.size();
 
-  return Write_(buff, size);
+  return Append_(buffer.data(), buffer.size(), offset);
 }
 
-ssize_t LinuxAccessFile::Write_(const char *buffer, size_t size) {
+ssize_t LinuxAccessFile::Append_(const uint8_t *buffer, size_t size,
+                                 uint64_t offset) {
   ssize_t total_bytes = 0;
 
   while (size > 0) {
-    ssize_t bytes_written = ::write(fd_, buffer, size);
+    ssize_t bytes_written =
+        ::pwrite64(fd_, buffer, size, static_cast<off64_t>(offset));
     if (bytes_written < 0) {
       if (errno == EINTR) {
         continue; // Retry
