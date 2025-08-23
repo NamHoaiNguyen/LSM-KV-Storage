@@ -46,7 +46,8 @@ private:
 
   std::string filename_;
 
-  Fd fd_; // file descriptor
+  // file descriptor
+  Fd fd_;
 
   std::unique_ptr<Buffer> buffer_;
 };
