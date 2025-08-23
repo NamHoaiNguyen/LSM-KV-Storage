@@ -4,6 +4,7 @@
 #include <common/macros.h>
 
 // libC++
+#include <span>
 #include <string>
 
 namespace kvs {
@@ -36,6 +37,10 @@ public:
   // ONLY call this method after finish writing all data to block.
   // Otherwise, it can cause dangling pointer.
   std::span<const Byte> GetBufferView();
+
+  size_t GetBlockIndexSize() const;
+
+  friend class BlockBuilderTest_Encode_Test;
 
 private:
   std::vector<Byte> buffer_;

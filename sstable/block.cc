@@ -5,8 +5,8 @@
 namespace kvs {
 
 Block::Block()
-    : is_finished_(false), block_size_(0), num_entries_(0), current_offset_(0) {
-}
+    : is_finished_(false), block_size_(0), num_entries_(0),
+      data_current_offset_(0) {}
 
 void Block::AddEntry(std::string_view key, std::string_view value,
                      TxnId txn_id) {
@@ -15,65 +15,62 @@ void Block::AddEntry(std::string_view key, std::string_view value,
   }
 
   // Add entry into data entry section
-  AddDataEntry(key, value, txn_id);
+  EncodeDataEntry(key, value, txn_id);
 
   size_t data_entry_size = sizeof(uint32_t) + key.size() + sizeof(uint32_t) +
                            value.size() + sizeof(TxnId);
 
-  size_t start_entry_offset = current_offset_;
-  current_offset_ += data_entry_size;
-
   // Add offset info of this entry into offset section
-  AddOffsetEntry(start_entry_offset, data_entry_size);
+  EncodeOffsetEntry(data_current_offset_, data_entry_size);
 
   // Update num_entries
   num_entries_++;
 
-  // Update current_offset_
-  current_offset_ += 2 * sizeof(uint64_t);
+  // / Update current_offset_
+  data_current_offset_ += data_entry_size;
 
   // Update block's current size
   block_size_ += data_entry_size + 2 * sizeof(uint64_t);
 }
 
-void Block::AddDataEntry(std::string_view key, std::string_view value,
-                         TxnId txn_id) {
+void Block::EncodeDataEntry(std::string_view key, std::string_view value,
+                            TxnId txn_id) {
   assert(key.size() <= kMaxKeySize);
+
+  // Insert length of key(4 bytes)
   // Safe, because we limit length of key is less than 2^32
   const uint32_t key_len = static_cast<uint32_t>(key.size());
   const Byte *const key_len_bytes =
       reinterpret_cast<const Byte *const>(&key_len);
-  // EncodeFixed32(dst, key_len);
-  const Byte *const key_buff = reinterpret_cast<const Byte *const>(key.data());
+  data_buffer_.insert(data_buffer_.end(), key_len_bytes,
+                      key_len_bytes + sizeof(uint32_t));
 
+  // Insert key
+  const Byte *const key_bytes = reinterpret_cast<const Byte *const>(key.data());
+  data_buffer_.insert(data_buffer_.end(), key_bytes, key_bytes + key_len);
+
+  // Insert length of value(4 bytes)
   // Safe, because we limit length of key is less than 2^32
   const uint32_t value_len = static_cast<uint32_t>(value.size());
   const Byte *const value_len_bytes =
       reinterpret_cast<const Byte *>(&value_len);
-  const Byte *const value_buff =
-      reinterpret_cast<const Byte *const>(value.data());
-
-  // Transaction Id
-  const Byte *const transcation_buff =
-      reinterpret_cast<const Byte *const>(&txn_id);
-
-  // Insert data with order based on block format
-  // Insert length of key(4 bytes)
-  data_buffer_.insert(data_buffer_.end(), key_len_bytes,
-                      key_len_bytes + sizeof(uint32_t));
-  // Insert key
-  data_buffer_.insert(data_buffer_.end(), key_buff, key_buff + key_len);
-  // Insert length of value(4 bytes)
   data_buffer_.insert(data_buffer_.end(), value_len_bytes,
                       value_len_bytes + sizeof(uint32_t));
+
   // Insert value
-  data_buffer_.insert(data_buffer_.end(), value_buff, value_buff + value_len);
+  const Byte *const value_bytes =
+      reinterpret_cast<const Byte *const>(value.data());
+  data_buffer_.insert(data_buffer_.end(), value_bytes, value_bytes + value_len);
+
   // Insert transaction id
-  data_buffer_.insert(data_buffer_.end(), transcation_buff,
-                      transcation_buff + sizeof(TxnId));
+  const Byte *const transaction_id_bytes =
+      reinterpret_cast<const Byte *const>(&txn_id);
+  data_buffer_.insert(data_buffer_.end(), transaction_id_bytes,
+                      transaction_id_bytes + sizeof(TxnId));
 }
 
-void Block::AddOffsetEntry(size_t start_entry_offset, size_t data_entry_size) {
+void Block::EncodeOffsetEntry(size_t start_entry_offset,
+                              size_t data_entry_size) {
   const Byte *const start_entry_offset_buff =
       reinterpret_cast<const Byte *const>(&start_entry_offset);
   uint64_t data_entry_size_bytes = static_cast<uint64_t>(data_entry_size);
@@ -101,7 +98,7 @@ void Block::Reset() {
   num_entries_ = 0;
   data_buffer_.clear();
   offset_buffer_.clear();
-  current_offset_ = 0;
+  data_current_offset_ = 0;
 }
 
 size_t Block::GetBlockSize() const { return block_size_; }

@@ -12,7 +12,7 @@ namespace kvs {
 
 class AccessFile;
 class Block;
-class BlockIndex
+class BlockIndex;
 class BaseIterator;
 class LinuxAccessFile;
 
@@ -56,6 +56,7 @@ public:
   Table &operator=(Table &&) = default;
 
   // Add new key/value pairs to SST
+  // Entries MUST be sorted in ascending order before be added
   void AddEntry(std::string_view key, std::string_view value, TxnId txn_id);
 
   // Flush block data to disk
@@ -63,31 +64,39 @@ public:
 
   void Finish();
 
-  void WriteBlock();
+  // For testing
+  // friend class BlockTest_BasicEncode_Test;
+  Block *GetBlockData();
 
-  friend class BlockBuilderTest_Encode_Test;
+  BlockIndex *GetBlockIndexData();
 
 private:
+  void EncodeExtraInfo();
+
   std::unique_ptr<AccessFile> file_object_;
 
   // TODO(namnh) : unique_ptr or shared_ptr?
-  std::shared_ptr<Block> block_data_;
+  std::unique_ptr<Block> block_data_;
 
   std::string block_first_key_;
 
   std::string block_last_key_;
 
-  size_t block_data_size_;
-
   // TODO(namnh) : unique_ptr?
-  std::shared_ptr<BlockIndex> block_index_;
-
-  size_t block_index_size_;
+  std::unique_ptr<BlockIndex> block_index_;
 
   // TODO(namnh) : unique_ptr or shared_ptr?
   // std::unique_ptr<BaseIterator> iterator_;
 
   uint64_t current_offset_;
+
+  std::vector<Byte> extra_buffer_;
+
+  // Min transaction id of block
+  TxnId min_txnid_;
+
+  // Max transaction id of block
+  TxnId max_txnid_;
 };
 
 } // namespace kvs

@@ -1,10 +1,12 @@
 add_library(sstable
-  block_builder.cc
-  block_builder.h
+  # block_builder.cc
+  # block_builder.h
+  block_index.cc
+  block_index.h
   block.cc
   block.h
-  table_builder.cc
-  table_builder.h
+  # table_builder.cc
+  # table_builder.h
   table.cc
   table.h
 )
