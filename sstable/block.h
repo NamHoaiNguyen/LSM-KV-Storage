@@ -51,8 +51,8 @@ public:
   ~Block() = default;
 
   // No copy allowed
-  Block(const Block &) = default;
-  Block &operator=(Block &) = default;
+  Block(const Block &) = delete;
+  Block &operator=(Block &) = delete;
 
   // Move constructor/assignment
   Block(Block &&) = default;
@@ -78,12 +78,14 @@ public:
   // Otherwise, it can cause dangling pointer.
   std::span<const Byte> GetOffsetView();
 
-  friend class BlockBuilderTest_Encode_Test;
+  // For testing
+  friend class BlockTest_BasicEncode_Test;
 
 private:
-  void AddDataEntry(std::string_view key, std::string_view value, TxnId txn_id);
+  void EncodeDataEntry(std::string_view key, std::string_view value,
+                       TxnId txn_id);
 
-  void AddOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
+  void EncodeOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
 
   bool is_finished_;
 
@@ -96,7 +98,8 @@ private:
 
   std::vector<Byte> offset_buffer_;
 
-  uint64_t current_offset_;
+  // Track current offset of data section format
+  uint64_t data_current_offset_;
 };
 
 } // namespace kvs
