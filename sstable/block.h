@@ -51,8 +51,8 @@ public:
   ~Block() = default;
 
   // No copy allowed
-  Block(const Block &) = default;
-  Block &operator=(Block &) = default;
+  Block(const Block &) = delete;
+  Block &operator=(Block &) = delete;
 
   // Move constructor/assignment
   Block(Block &&) = default;

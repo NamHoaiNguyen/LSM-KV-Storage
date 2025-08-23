@@ -95,6 +95,15 @@ void Block::Finish() {
   // TODO(namnh) : Do we need this info?
 }
 
+void Block::Reset() {
+  is_finished_ = false;
+  block_size_ = 0;
+  num_entries_ = 0;
+  data_buffer_.clear();
+  offset_buffer_.clear();
+  current_offset_ = 0;
+}
+
 size_t Block::GetBlockSize() const { return block_size_; }
 
 std::span<const Byte> Block::GetDataView() { return data_buffer_; }

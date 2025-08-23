@@ -5,12 +5,11 @@
 
 // libC++
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
 namespace kvs {
-
-// class BlockBuilderTest;
 
 /*
 Block data format
@@ -50,14 +49,14 @@ public:
   ~BlockBuilder() = default;
 
   // No copy allowed
-  BlockBuilder(const BlockBuilder &) = default;
-  BlockBuilder &operator=(BlockBuilder &) = default;
+  BlockBuilder(const BlockBuilder &) = delete;
+  BlockBuilder &operator=(BlockBuilder &) = delete;
 
   // Move constructor/assignment
   BlockBuilder(BlockBuilder &&) = default;
-  BlockBuilder &operator=(BlockBuilder &&) = default;
+  BlockBuilder &BlockBuilder=(Block &&) = default;
 
-  void Add(std::string_view key, std::string_view value, TxnId txn_id);
+  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id);
 
   // Finish building the block
   void Finish();
@@ -69,9 +68,23 @@ public:
 
   uint64_t GetNumEntries() const;
 
+  void Reset();
+
+  // ONLY call this method after finish writing all data to block.
+  // Otherwise, it can cause dangling pointer.
+  std::span<const Byte> GetDataView();
+
+  // ONLY call this method after finish writing all data to block.
+  // Otherwise, it can cause dangling pointer.
+  std::span<const Byte> GetOffsetView();
+
   friend class BlockBuilderTest_Encode_Test;
 
 private:
+  void AddDataEntry(std::string_view key, std::string_view value, TxnId txn_id);
+
+  void AddOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
+
   bool is_finished_;
 
   size_t block_size_;
@@ -79,7 +92,11 @@ private:
   uint64_t num_entries_;
 
   // TODO(namnh) : Is there any way to avoid copying?
-  std::vector<Byte> buffer_;
+  std::vector<Byte> data_buffer_;
+
+  std::vector<Byte> offset_buffer_;
+
+  uint64_t current_offset_;
 };
 
 } // namespace kvs
