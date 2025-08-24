@@ -64,8 +64,10 @@ public:
 
   void Finish();
 
+  bool Open();
+
   // For testing
-  // friend class BlockTest_BasicEncode_Test;
+  friend class TableTest_BasicEncode_Test;
   Block *GetBlockData();
 
   BlockIndex *GetBlockIndexData();

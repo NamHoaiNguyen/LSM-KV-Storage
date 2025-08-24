@@ -7,7 +7,7 @@
 #include "sstable/block_index.h"
 
 namespace kvs {
-constexpr size_t kDebugBlockDataSize = 128;
+constexpr size_t kDebugBlockDataSize = 48;
 }
 
 namespace kvs {
@@ -30,9 +30,11 @@ void Table::AddEntry(std::string_view key, std::string_view value,
   min_txnid_ = std::min(min_txnid_, txn_id);
   max_txnid_ = std::max(max_txnid_, txn_id);
 
+  // Update block last key
+  block_last_key_ = std::string(key);
+
   // TODO(namnh) : For debug
   if (block_data_->GetBlockSize() >= kDebugBlockDataSize) {
-    block_last_key_ = std::string(key);
     FlushBlock();
   }
 }
@@ -64,6 +66,9 @@ void Table::FlushBlock() {
 }
 
 void Table::Finish() {
+  // Flush remaining data to
+  FlushBlock();
+
   // Write block_index_ to page cache
   std::span<const Byte> block_index_buffer = block_index_->GetBufferView();
   // current_offset now is starting offset of block section
@@ -106,6 +111,8 @@ void Table::EncodeExtraInfo() {
   extra_buffer_.insert(extra_buffer_.end(), max_txnid_bytes,
                        max_txnid_bytes + sizeof(uint64_t));
 }
+
+bool Table::Open() { return file_object_->Open(); }
 
 // For testing
 Block *Table::GetBlockData() { return block_data_.get(); };

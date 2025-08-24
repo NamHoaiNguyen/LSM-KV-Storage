@@ -36,7 +36,7 @@ void LinuxAccessFile::Flush() {
 }
 
 bool LinuxAccessFile::Open() {
-  fd_ = ::open(filename_.c_str(), /*O_CREAT |*/ O_TRUNC | O_WRONLY);
+  fd_ = ::open(filename_.c_str(), O_CREAT | O_TRUNC | O_WRONLY);
   if (fd_ == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
