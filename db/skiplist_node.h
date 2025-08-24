@@ -10,8 +10,6 @@
 
 namespace kvs {
 
-class SkipListIter;
-class SkipList;
 class SkipListNode : public std::enable_shared_from_this<SkipListNode> {
 public:
   SkipListNode(std::string_view key, std::string_view value, int num_level);

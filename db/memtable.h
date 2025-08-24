@@ -52,12 +52,14 @@ public:
 
   size_t GetMemTableSize() override;
 
+  const SkipList *GetMemTable() const override;
+
 private:
   bool is_immutable_;
 
   std::unique_ptr<SkipList> table_;
 
-  std::shared_mutex mutex_;
+  mutable std::shared_mutex mutex_;
 };
 
 } // namespace kvs

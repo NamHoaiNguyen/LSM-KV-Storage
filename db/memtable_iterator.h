@@ -10,7 +10,7 @@
 
 namespace kvs {
 
-class SkipListNode;
+class SkipListIterator;
 class BaseMemTable;
 
 class MemTableIterator : public BaseIterator {
@@ -31,14 +31,14 @@ public:
 
   void Prev() override;
 
-  void Seek(std::string_view) override;
+  void Seek(std::string_view key) override;
 
   void SeekToFirst() override;
 
   void SeekToLast() override;
 
 private:
-  const BaseMemTable *memtable_;
+  std::unique_ptr<SkipListIterator> iterator_;
 };
 
 } // namespace kvs

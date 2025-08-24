@@ -30,7 +30,7 @@ public:
 
   virtual void Prev() = 0;
 
-  virtual void Seek(std::string_view) = 0;
+  virtual void Seek(std::string_view key) = 0;
 
   virtual void SeekToFirst() = 0;
 

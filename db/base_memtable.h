@@ -10,6 +10,8 @@
 
 namespace kvs {
 
+class SkipList;
+
 class BaseMemTable {
 public:
   virtual ~BaseMemTable() = default;
@@ -33,6 +35,8 @@ public:
                    TxnId txn_id) = 0;
 
   virtual size_t GetMemTableSize() = 0;
+
+  virtual const SkipList *GetMemTable() const = 0;
 
   virtual bool IsImmutable() = 0;
 

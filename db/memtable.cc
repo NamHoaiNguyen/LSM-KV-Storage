@@ -137,6 +137,11 @@ size_t MemTable::GetMemTableSize() {
   return table_->GetCurrentSize();
 }
 
+const SkipList *MemTable::GetMemTable() const {
+  std::shared_lock<std::shared_mutex> rlock(mutex_);
+  return table_.get();
+}
+
 bool MemTable::IsImmutable() {
   std::shared_lock<std::shared_mutex> rlock(mutex_);
   return is_immutable_;

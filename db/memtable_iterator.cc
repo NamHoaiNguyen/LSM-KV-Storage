@@ -2,30 +2,33 @@
 
 #include "common/base_iterator.h"
 #include "db/base_memtable.h"
+#include "db/skiplist_iterator.h"
 
 namespace kvs {
 
 MemTableIterator::MemTableIterator(const BaseMemTable *memtable)
-    : memtable_(memtable) {}
+    : iterator_(std::make_unique<SkipListIterator>(memtable->GetMemTable())) {}
 
 MemTableIterator::~MemTableIterator() = default;
 
-std::string_view MemTableIterator::GetKey() { return ""; }
+std::string_view MemTableIterator::GetKey() { return iterator_->GetKey(); }
 
-std::string_view MemTableIterator::GetValue() { return ""; }
+std::string_view MemTableIterator::GetValue() { return iterator_->GetValue(); }
 
-TxnId MemTableIterator::GetTransactionId() { return 0; }
+TxnId MemTableIterator::GetTransactionId() {
+  return iterator_->GetTransactionId();
+}
 
-bool MemTableIterator::IsValid() { return false; }
+bool MemTableIterator::IsValid() { return iterator_->IsValid(); }
 
-void MemTableIterator::Next() {}
+void MemTableIterator::Next() { iterator_->Next(); }
 
-void MemTableIterator::Prev() {}
+void MemTableIterator::Prev() { iterator_->Prev(); }
 
-void MemTableIterator::Seek(std::string_view) {}
+void MemTableIterator::Seek(std::string_view key) { iterator_->Seek(key); }
 
-void MemTableIterator::SeekToFirst() {}
+void MemTableIterator::SeekToFirst() { iterator_->SeekToFirst(); }
 
-void MemTableIterator::SeekToLast() {}
+void MemTableIterator::SeekToLast() { iterator_->SeekToLast(); }
 
 } // namespace kvs
