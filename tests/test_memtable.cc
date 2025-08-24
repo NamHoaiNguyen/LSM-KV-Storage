@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "db/memtable.h"
+#include "db/memtable_iterator.h"
 #include "db/skiplist.h"
 
 #include <memory>
@@ -82,5 +83,28 @@ TEST(MemTableTest, LargeScaleDelete) {
     value = "value" + std::to_string(i);
 
     EXPECT_FALSE(memtable->Get(key, 0).has_value());
+  }
+}
+
+TEST(MemTableTest, Iterator) {
+  auto memtable = std::make_unique<kvs::MemTable>();
+
+  const int num_keys = 10;
+  std::string key{}, value{};
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+    memtable->Put(key, value, 0);
+  }
+
+  auto iterator = std::make_unique<kvs::MemTableIterator>(memtable.get());
+
+  int count = 0;
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    key = "key" + std::to_string(count);
+    value = "value" + std::to_string(count);
+    EXPECT_EQ(iterator->GetKey(), key);
+    EXPECT_EQ(iterator->GetValue(), value);
+    count++;
   }
 }
