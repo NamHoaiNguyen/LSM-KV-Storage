@@ -1,6 +1,6 @@
 add_library(db
   base_memtable.h
-  db_flush_memtable_job.cc
+  db_flush_job.cc
   db_impl.cc
   db_impl.h
   memtable_iterator.cc
@@ -13,6 +13,7 @@ add_library(db
   skiplist_node.h
   skiplist.cc
   skiplist.h
+  value_type.h
 )
 
 target_include_directories(db PUBLIC ${CMAKE_SOURCE_DIR})

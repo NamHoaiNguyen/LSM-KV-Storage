@@ -2,6 +2,7 @@
 
 #include "db/skiplist.h"
 #include "db/skiplist_iterator.h"
+#include "db/value_type.h"
 
 #include <memory>
 

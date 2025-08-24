@@ -43,31 +43,14 @@ bool SkipList::Delete(std::string_view key, TxnId txn_id) {
     return false;
   }
 
-  if (current->key_ != key) {
-    // Key doesn't exist
-    return false;
+  if (current->key_ == key) {
+    // If key which is being found exists, just update value type
+    current->value_type_ = ValueType::DELETE;
+    return true;
   }
 
-  for (int level = 0; level < current_level_; ++level) {
-    if (updates[level]->forward_[level] != current) {
-      // No need to go to higher level
-      break;
-    }
-    updates[level]->forward_[level] = current->forward_[level];
-    if (current->forward_[level]) {
-      current->forward_[level]->backward_[level] = updates[level];
-    }
-  }
-
-  // Update size of skiplist
-  current_size_ -= key.size() + current->value_.size();
-
-  // Update current_level_
-  while (current_level_ > 1 && head_->forward_[current_level_ - 1] == nullptr) {
-    current_level_--;
-  }
-
-  return true;
+  // Key not found
+  return false;
 }
 
 std::vector<std::pair<std::string, std::optional<std::string>>>
@@ -87,7 +70,8 @@ SkipList::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
 // TODO(namnh) : update when transaction is implemented.
 std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
   std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key);
-  if (current && current->key_ == key) {
+  if (current && current->key_ == key &&
+      current->value_type_ != ValueType::DELETE) {
     return std::make_optional<std::string>(std::string(current->value_));
   }
 
@@ -156,7 +140,8 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 }
 
 std::shared_ptr<SkipListNode> SkipList::FindLowerBoundNode(
-    std::string_view key, std::vector<std::shared_ptr<SkipListNode>> *updates) const {
+    std::string_view key,
+    std::vector<std::shared_ptr<SkipListNode>> *updates) const {
   std::shared_ptr<SkipListNode> current = head_;
 
   for (int level = current_level_ - 1; level >= 0; --level) {
@@ -174,19 +159,6 @@ std::shared_ptr<SkipListNode> SkipList::FindLowerBoundNode(
 }
 
 size_t SkipList::GetCurrentSize() { return current_size_; }
-
-// =======================Iterator========================
-// SkipListIterator SkipList::Begin() {
-//   if (!head_) {
-//     return SkipListIterator{};
-//   }
-
-//   return head_->forward_[0];
-// }
-
-// SkipListIterator SkipList::End() { return SkipListIterator{}; }
-
-// ====================End of Iterator====================
 
 void SkipList::PrintSkipList() {
   for (int level = 0; level < current_level_; level++) {

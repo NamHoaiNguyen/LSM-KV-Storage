@@ -23,6 +23,8 @@ public:
 
   std::string_view GetValue() override;
 
+  ValueType GetType() override;
+
   TxnId GetTransactionId() override;
 
   bool IsValid() override;

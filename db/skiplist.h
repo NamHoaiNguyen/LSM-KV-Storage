@@ -56,10 +56,6 @@ public:
   // If key existed, update new value.
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
-  // Range Query
-  std::vector<std::string> RangeQuery(std::string_view key_start,
-                                      std::string_view key_end);
-
   // TODO(namnh) : check type
   size_t GetCurrentSize();
 

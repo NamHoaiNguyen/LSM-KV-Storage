@@ -2,6 +2,7 @@
 #define COMMON_BASE_ITERATOR_H
 
 #include "common/macros.h"
+#include "db/value_type.h"
 
 // libC++
 #include <string_view>
@@ -23,6 +24,8 @@ public:
   virtual std::string_view GetKey() = 0;
 
   virtual std::string_view GetValue() = 0;
+
+  virtual ValueType GetType() = 0;
 
   virtual TxnId GetTransactionId() = 0;
 

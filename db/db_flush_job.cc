@@ -13,9 +13,13 @@
 namespace kvs {
 
 void DBImpl::FlushMemTableJob(int immutable_memtable_index) {
-  std::string path = "~/lsm-kv-storage/data/000001.sst";
+  std::string filename =
+      "/home/hoainam/self/biggg/lsm-kv-storage/data/000002.sst";
+  auto sstable = std::make_unique<Table>(std::move(filename));
+  if (!sstable->Open()) {
+    throw std::runtime_error("Can't create sstable file");
+  }
 
-  auto sstable = std::make_unique<Table>(std::move(path));
   // TODO(namnh) : unique_ptr or shared_ptr?
   const BaseMemTable *immutable_memtable =
       immutable_memtables_.at(immutable_memtable_index).get();
@@ -24,7 +28,7 @@ void DBImpl::FlushMemTableJob(int immutable_memtable_index) {
   // Iterate through all key/value pairs to add them to sst
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     sstable->AddEntry(iterator->GetKey(), iterator->GetValue(),
-                      iterator->GetTransactionId());
+                      iterator->GetTransactionId(), iterator->GetType());
   }
 
   // All of key/value pairs had been written to sst. SST should be flushed to

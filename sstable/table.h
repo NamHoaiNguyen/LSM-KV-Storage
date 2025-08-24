@@ -2,6 +2,7 @@
 #define SSTABLE_TABLE_H
 
 #include "common/macros.h"
+#include "db/value_type.h"
 
 // libC++
 #include <memory>
@@ -57,7 +58,8 @@ public:
 
   // Add new key/value pairs to SST
   // Entries MUST be sorted in ascending order before be added
-  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id);
+  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
+                ValueType value_type);
 
   // Flush block data to disk
   void FlushBlock();

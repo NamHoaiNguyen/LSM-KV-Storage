@@ -2,6 +2,7 @@
 #define DB_SKIPLIST_NODE_H
 
 #include "common/macros.h"
+#include "db/value_type.h"
 
 #include <memory>
 #include <string>
@@ -31,6 +32,8 @@ private:
 
   // Number of level that this node appears
   int num_level_;
+
+  ValueType value_type_;
 
   // Travel from high level to low level
   std::vector<std::shared_ptr<SkipListNode>> forward_;

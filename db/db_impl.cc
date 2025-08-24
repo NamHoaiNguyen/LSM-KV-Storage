@@ -11,7 +11,7 @@ namespace {
 
 // TODO(namnh) : dynamic
 constexpr size_t kMemTableSize = 4 * 1024 * 1024; // MB
-constexpr size_t kDebugMemTableSize = 5;          // Bytes
+constexpr size_t kDebugMemTableSize = 32;         // Bytes
 
 // TODO(namnh) : dynamic(Yeah, I want to challenge myself!!!)
 constexpr size_t kMaxNumberImmutableTablesInMemory = 3;

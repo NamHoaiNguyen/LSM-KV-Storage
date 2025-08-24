@@ -28,3 +28,41 @@
   //     }
   //   }
   // }
+
+===============================skiplist.cc======================================
+  // bool SkipList::Delete(std::string_view key, TxnId txn_id) {
+//   // Each element in updates is a pointer pointing node whose key is
+//   // largest but less than key.
+//   std::vector<std::shared_ptr<SkipListNode>> updates(current_level_,
+//   nullptr); std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key,
+//   &updates); if (!current) {
+//     return false;
+//   }
+
+//   if (current->key_ != key) {
+//     // Key doesn't exist
+//     return false;
+//   }
+
+//   for (int level = 0; level < current_level_; ++level) {
+//     if (updates[level]->forward_[level] != current) {
+//       // No need to go to higher level
+//       break;
+//     }
+//     updates[level]->forward_[level] = current->forward_[level];
+//     if (current->forward_[level]) {
+//       current->forward_[level]->backward_[level] = updates[level];
+//     }
+//   }
+
+//   // Update size of skiplist
+//   current_size_ -= key.size() + current->value_.size();
+
+//   // Update current_level_
+//   while (current_level_ > 1 && head_->forward_[current_level_ - 1] ==
+//   nullptr) {
+//     current_level_--;
+//   }
+
+//   return true;
+// }

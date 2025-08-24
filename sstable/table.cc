@@ -7,7 +7,7 @@
 #include "sstable/block_index.h"
 
 namespace kvs {
-constexpr size_t kDebugBlockDataSize = 48;
+constexpr size_t kDebugBlockDataSize = 256;
 }
 
 namespace kvs {
@@ -18,13 +18,13 @@ Table::Table(std::string &&filename)
       block_index_(std::make_unique<BlockIndex>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0) {}
 
-void Table::AddEntry(std::string_view key, std::string_view value,
-                     TxnId txn_id) {
+void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
+                     ValueType value_type) {
   if (block_data_->GetBlockSize() == 0) {
     block_first_key_ = std::string(key);
   }
 
-  block_data_->AddEntry(key, value, txn_id);
+  block_data_->AddEntry(key, value, txn_id, value_type);
 
   // Update min/max transaction id of sst
   min_txnid_ = std::min(min_txnid_, txn_id);

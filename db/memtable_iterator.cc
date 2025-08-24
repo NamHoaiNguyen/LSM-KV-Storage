@@ -15,6 +15,8 @@ std::string_view MemTableIterator::GetKey() { return iterator_->GetKey(); }
 
 std::string_view MemTableIterator::GetValue() { return iterator_->GetValue(); }
 
+ValueType MemTableIterator::GetType() { return iterator_->GetType(); }
+
 TxnId MemTableIterator::GetTransactionId() {
   return iterator_->GetTransactionId();
 }

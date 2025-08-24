@@ -2,6 +2,7 @@
 #define SSTABLE_BLOCK_H
 
 #include "common/macros.h"
+#include "db/value_type.h"
 
 // libC++
 #include <optional>
@@ -23,11 +24,16 @@ Block data format
 
 
 Data entry format
---------------------------------------------------------------------
-|                           Data Entry                             |
---------------------------------------------------------------------
-| key_len (4B) | key | value_len (4B) | value | transaction_id(8B) |
---------------------------------------------------------------------
+--------------------------------------------------------------------------------
+|                                 Data Entry                                   |
+--------------------------------------------------------------------------------
+| ValueType | key_len (4B) | key | value_len (4B) | value | transaction_id(8B) |
+--------------------------------------------------------------------------------
+(Valuetype(uint8_t) shows that value is deleted or not)
+(0 = PUT = NOT DELETED)
+(1 = DELETE = DELETED)
+db/value_type.h
+
 
 Offset entry format
 -----------------------------------------------------------------------------
@@ -58,7 +64,8 @@ public:
   Block(Block &&) = default;
   Block &operator=(Block &&) = default;
 
-  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id);
+  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
+                ValueType value_type);
 
   // Finish building the block
   void Finish();
@@ -83,7 +90,7 @@ public:
 
 private:
   void EncodeDataEntry(std::string_view key, std::string_view value,
-                       TxnId txn_id);
+                       TxnId txn_id, ValueType value_type);
 
   void EncodeOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
 
