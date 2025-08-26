@@ -6,6 +6,7 @@
 #include "concurrency/transaction_manager.h"
 #include "db/memtable.h"
 #include "db/memtable_iterator.h"
+#include "db/status.h"
 
 namespace {
 
@@ -27,30 +28,30 @@ DBImpl::DBImpl()
 DBImpl::~DBImpl() { delete thread_pool_; }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
-  std::optional<std::string> value;
+  GetStatus status;
 
   // Find data from Memtable
-  value = memtable_->Get(key, txn_id);
-  if (value.has_value()) {
-    return value;
+  status = memtable_->Get(key, txn_id);
+  if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
+    return status.value;
   }
 
-  // Continue finding from immutable memtables
+  // If key is not found, continue finding from immutable memtables
   {
     // TODO(namnh) : holding lock when traversing immutable memtables list
     // is quite expensive. Should find another approach.
     std::shared_lock<std::shared_mutex> rlock_immutable_memtables_(
         immutable_memtables_mutex_);
     for (const auto &immu_memtable : immutable_memtables_) {
-      value = immu_memtable->Get(key, txn_id);
-      if (value.has_value()) {
-        return value;
+      status = immu_memtable->Get(key, txn_id);
+      if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
+        return status.value;
       }
     }
   }
 
   // TODO(namnh) : Find from sstable
-  return value;
+  return std::nullopt;
 }
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {

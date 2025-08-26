@@ -45,7 +45,7 @@ bool SkipList::Delete(std::string_view key, TxnId txn_id) {
 
   if (current->key_ == key) {
     // If key which is being found exists, just update value type
-    current->value_type_ = ValueType::DELETE;
+    current->value_type_ = ValueType::DELETED;
     return true;
   }
 
@@ -53,29 +53,37 @@ bool SkipList::Delete(std::string_view key, TxnId txn_id) {
   return false;
 }
 
-std::vector<std::pair<std::string, std::optional<std::string>>>
+std::vector<std::pair<std::string, GetStatus>>
 SkipList::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
-  std::vector<std::pair<std::string, std::optional<std::string>>> values;
+  std::vector<std::pair<std::string, GetStatus>> values;
   std::shared_ptr<SkipListNode> current{nullptr};
 
-  std::optional<std::string> value;
+  GetStatus status;
   for (std::string_view key : keys) {
-    value = Get(key, txn_id);
-    values.push_back({std::string{key}, value});
+    status = Get(key, txn_id);
+    values.push_back({std::string{key}, std::move(status)});
   }
 
   return values;
 }
 
 // TODO(namnh) : update when transaction is implemented.
-std::optional<std::string> SkipList::Get(std::string_view key, TxnId txn_id) {
+GetStatus SkipList::Get(std::string_view key, TxnId txn_id) {
   std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key);
-  if (current && current->key_ == key &&
-      current->value_type_ != ValueType::DELETE) {
-    return std::make_optional<std::string>(std::string(current->value_));
+  GetStatus status;
+
+  if (!current || current->key_ != key) {
+    status.type = ValueType::NOT_FOUND;
+    status.value = std::nullopt;
+
+    return status;
   }
 
-  return std::nullopt;
+  status.type = current->value_type_;
+  status.value = (current->value_type_ == ValueType::PUT)
+                     ? std::make_optional<std::string>(current->value_)
+                     : std::nullopt;
+  return status;
 }
 
 std::vector<std::string> SkipList::GetAllPrefixes(std::string_view key,

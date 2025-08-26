@@ -2,7 +2,7 @@
 #define SSTABLE_TABLE_H
 
 #include "common/macros.h"
-#include "db/value_type.h"
+#include "db/status.h"
 
 // libC++
 #include <memory>

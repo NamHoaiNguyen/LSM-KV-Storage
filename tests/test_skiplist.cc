@@ -2,7 +2,7 @@
 
 #include "db/skiplist.h"
 #include "db/skiplist_iterator.h"
-#include "db/value_type.h"
+#include "db/status.h"
 
 #include <memory>
 
@@ -11,23 +11,29 @@ TEST(SkipListTest, BasicOperations) {
 
   // Add new key/value
   skip_list->Put("k1", "v1", 0);
-  EXPECT_EQ(skip_list->Get("k1", 0).value(), "v1");
+  EXPECT_TRUE(skip_list->Get("k1", 0).type == ValueType::PUT);
+  EXPECT_EQ(skip_list->Get("k1", 0).value, "v1");
 
   // Add new key/value
   skip_list->Put("k3", "v3", 0);
-  EXPECT_EQ(skip_list->Get("k3", 0).value(), "v3");
+  EXPECT_TRUE(skip_list->Get("k3", 0).type == ValueType::PUT);
+  EXPECT_EQ(skip_list->Get("k3", 0).value, "v3");
 
   skip_list->Put("k2", "v2", 0);
-  EXPECT_EQ(skip_list->Get("k2", 0).value(), "v2");
+  EXPECT_TRUE(skip_list->Get("k2", 0).type == ValueType::PUT);
+  EXPECT_EQ(skip_list->Get("k2", 0).value, "v2");
 
   EXPECT_TRUE(skip_list->Delete("k2", 0));
-  EXPECT_TRUE(!skip_list->Get("k2", 0).has_value());
+  EXPECT_TRUE(skip_list->Get("k2", 0).type == ValueType::DELETED);
+  EXPECT_TRUE(skip_list->Get("k2", 0).value == std::nullopt);
 
   EXPECT_TRUE(skip_list->Delete("k1", 0));
-  EXPECT_TRUE(!skip_list->Get("k1", 0).has_value());
+  EXPECT_TRUE(skip_list->Get("k1", 0).type == ValueType::DELETED);
+  EXPECT_TRUE(skip_list->Get("k1", 0).value == std::nullopt);
 
   EXPECT_TRUE(skip_list->Delete("k3", 0));
-  EXPECT_TRUE(!skip_list->Get("k3", 0).has_value());
+  EXPECT_TRUE(skip_list->Get("k1", 0).type == ValueType::DELETED);
+  EXPECT_TRUE(skip_list->Get("k1", 0).value == std::nullopt);
 }
 
 TEST(SkipListTest, DuplicatePut) {
@@ -39,7 +45,8 @@ TEST(SkipListTest, DuplicatePut) {
 
   // When PUT a new value for a key which existed before,
   // value of key will be updated instead of creating a new one.
-  EXPECT_EQ(skip_list->Get("k1", 0).value(), "v3");
+  EXPECT_EQ(skip_list->Get("k1", 0).value, "v3");
+  EXPECT_TRUE(skip_list->Get("k1", 0).type == ValueType::PUT);
 }
 
 TEST(SkipListTest, BatchOperations) {
@@ -66,12 +73,12 @@ TEST(SkipListTest, BatchOperations) {
     keys_view.push_back(pair.first);
   }
 
-  std::vector<std::pair<std::string, std::optional<std::string>>> get_res;
+  std::vector<std::pair<std::string, GetStatus>> get_res;
   get_res = skip_list->BatchGet(keys_view, 0 /*txn_id*/);
 
   for (int i = 0; i < num_keys; i++) {
     EXPECT_EQ(pairs[i].first, get_res[i].first);
-    EXPECT_EQ(pairs[i].second, get_res[i].second);
+    EXPECT_EQ(pairs[i].second, get_res[i].second.value);
   }
 
   std::vector<std::pair<std::string, bool>> del_res;
@@ -86,7 +93,8 @@ TEST(SkipListTest, BatchOperations) {
 
   for (int i = 0; i < num_keys; i++) {
     EXPECT_EQ(pairs[i].first, get_res[i].first);
-    EXPECT_FALSE(get_res[i].second.has_value());
+    EXPECT_TRUE(get_res[i].second.type == ValueType::DELETED);
+    EXPECT_TRUE(get_res[i].second.value == std::nullopt);
   }
 }
 
@@ -106,7 +114,8 @@ TEST(SkipListTest, GetAllPrefixes) {
   values = skip_list->GetAllPrefixes("ap", 0);
   EXPECT_EQ(values.size(), 2);
   for (int i = 0; i < values.size(); i++) {
-    EXPECT_EQ(skip_list->Get(pairs[i].first, 0).value(), values[i]);
+    EXPECT_EQ(skip_list->Get(pairs[i].first, 0).type, ValueType::PUT);
+    EXPECT_EQ(skip_list->Get(pairs[i].first, 0).value, values[i]);
   }
 
   values.clear();
@@ -130,14 +139,12 @@ TEST(SkipListTest, LargeScalePutAndGet) {
     skip_list->Put(key, value, 0);
   }
 
-  std::optional<std::string> val;
   for (int i = 0; i < num_keys; i++) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    val = skip_list->Get(key, 0);
-    EXPECT_TRUE(val.has_value());
-    EXPECT_EQ(val.value(), value);
+    EXPECT_TRUE(skip_list->Get(key, 0).type == ValueType::PUT);
+    EXPECT_EQ(skip_list->Get(key, 0).value, value);
   }
 
   // Update
@@ -151,9 +158,8 @@ TEST(SkipListTest, LargeScalePutAndGet) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i + num_keys);
 
-    val = skip_list->Get(key, 0);
-    EXPECT_TRUE(val.has_value());
-    EXPECT_EQ(val.value(), value);
+    EXPECT_TRUE(skip_list->Get(key, 0).type == ValueType::PUT);
+    EXPECT_EQ(skip_list->Get(key, 0).value, value);
   }
 }
 
@@ -179,7 +185,8 @@ TEST(SkipListTest, LargeScaleDelete) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    EXPECT_FALSE(skip_list->Get(key, 0).has_value());
+    EXPECT_TRUE(skip_list->Get(key, 0).type == ValueType::DELETED);
+    EXPECT_TRUE(skip_list->Get(key, 0).value == std::nullopt);
   }
 }
 

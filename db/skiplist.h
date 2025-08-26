@@ -2,6 +2,7 @@
 #define DB_SKIPLIST_H
 
 #include "common/macros.h"
+#include "db/status.h"
 
 #include <iostream>
 #include <memory>
@@ -42,10 +43,10 @@ public:
   bool Delete(std::string_view key, TxnId txn_id);
 
   // TODO(namnh) : shoud we use std::string?
-  std::vector<std::pair<std::string, std::optional<std::string>>>
+  std::vector<std::pair<std::string, GetStatus>>
   BatchGet(std::span<std::string_view> keys, TxnId txn_id);
 
-  std::optional<std::string> Get(std::string_view key, TxnId txn_id);
+  GetStatus Get(std::string_view key, TxnId txn_id);
 
   std::vector<std::string> GetAllPrefixes(std::string_view key, TxnId txn_id);
 

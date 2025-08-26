@@ -2,7 +2,7 @@
 #define DB_SKIPLIST_NODE_H
 
 #include "common/macros.h"
-#include "db/value_type.h"
+#include "db/status.h"
 
 #include <memory>
 #include <string>

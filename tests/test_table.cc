@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "common/macros.h"
-#include "db/value_type.h"
+#include "db/status.h"
 #include "io/linux_file.h"
 #include "sstable/block.h"
 #include "sstable/block_index.h"

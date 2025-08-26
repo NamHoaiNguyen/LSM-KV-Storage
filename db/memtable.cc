@@ -60,13 +60,14 @@ bool MemTable::Delete(std::string_view key, TxnId txn_id) {
   return table_->Delete(key, txn_id);
 }
 
-std::vector<std::pair<std::string, std::optional<std::string>>>
+std::vector<std::pair<std::string, GetStatus>>
 MemTable::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
   std::shared_lock<std::shared_mutex> rlock(mutex_);
-  std::vector<std::pair<std::string, std::optional<std::string>>> result;
+  std::vector<std::pair<std::string, GetStatus>> result;
+
   // List of {key, index in result} keys that not be found in writable memtable
   std::vector<std::pair<std::string_view, uint32_t>> keys_not_found;
-  std::optional<std::string> value;
+  GetStatus status;
 
   if (!table_) {
     std::exit(EXIT_FAILURE);
@@ -75,17 +76,17 @@ MemTable::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
   // First, get value from writable table
   // TODO(namnh) : should use batchGet skiplist API?
   for (std::string_view key : keys) {
-    value = table_->Get(key, txn_id);
-    result.push_back({std::string(key), value});
-    if (!value.has_value()) {
-      keys_not_found.push_back({key, result.size() - 1});
-    }
+    status = table_->Get(key, txn_id);
+    result.push_back({std::string(key), std::move(status)});
+    // if (!value.has_value()) {
+    //   keys_not_found.push_back({key, result.size() - 1});
+    // }
   }
 
   return result;
 }
 
-std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
+GetStatus MemTable::Get(std::string_view key, TxnId txn_id) {
   std::shared_lock<std::shared_mutex> rlock(mutex_);
   std::optional<std::string> value;
 
@@ -93,13 +94,7 @@ std::optional<std::string> MemTable::Get(std::string_view key, TxnId txn_id) {
     std::exit(EXIT_FAILURE);
   }
 
-  // First, get value from writable table
-  value = table_->Get(key, txn_id);
-  if (value.has_value()) {
-    return value;
-  }
-
-  return std::nullopt;
+  return table_->Get(key, txn_id);
 }
 
 void MemTable::BatchPut(

@@ -13,7 +13,7 @@ add_library(db
   skiplist_node.h
   skiplist.cc
   skiplist.h
-  value_type.h
+  status.h
 )
 
 target_include_directories(db PUBLIC ${CMAKE_SOURCE_DIR})

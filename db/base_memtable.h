@@ -2,6 +2,7 @@
 #define DB_BASE_MEMTABLE_H
 
 #include "common/macros.h"
+#include "db/status.h"
 
 #include <optional>
 #include <span>
@@ -21,11 +22,10 @@ public:
 
   virtual bool Delete(std::string_view key, TxnId txn_id) = 0;
 
-  virtual std::vector<std::pair<std::string, std::optional<std::string>>>
+  virtual std::vector<std::pair<std::string, GetStatus>>
   BatchGet(std::span<std::string_view>, TxnId txn_id) = 0;
 
-  virtual std::optional<std::string> Get(std::string_view key,
-                                         TxnId txn_id) = 0;
+  virtual GetStatus Get(std::string_view key, TxnId txn_id) = 0;
 
   virtual void
   BatchPut(std::span<std::pair<std::string_view, std::string_view>> keys,

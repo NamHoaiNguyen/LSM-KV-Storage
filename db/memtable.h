@@ -3,6 +3,7 @@
 
 #include "common/macros.h"
 #include "db/base_memtable.h"
+#include "db/status.h"
 
 #include <memory>
 #include <mutex>
@@ -36,10 +37,10 @@ public:
 
   bool Delete(std::string_view key, TxnId txn_id) override;
 
-  std::vector<std::pair<std::string, std::optional<std::string>>>
+  virtual std::vector<std::pair<std::string, GetStatus>>
   BatchGet(std::span<std::string_view> keys, TxnId txn_id) override;
 
-  std::optional<std::string> Get(std::string_view key, TxnId txn_id) override;
+  GetStatus Get(std::string_view key, TxnId txn_id) override;
 
   void BatchPut(std::span<std::pair<std::string_view, std::string_view>> keys,
                 TxnId txn_id) override;
