@@ -32,6 +32,18 @@ public:
   //  Append new data at offset
   virtual ssize_t Append(std::span<const Byte> buffer, uint64_t offset) = 0;
 };
+
+class RandomReadOnlyFile {
+public:
+  virtual ~RandomReadOnlyFile() = 0;
+
+  virtual bool Close() = 0;
+
+  virtual bool Open() = 0;
+
+  virtual ssize_t Read(uint64_t offset) = 0;
+};
+
 } // namespace kvs
 
 #endif // IO_BASE_FILE_H

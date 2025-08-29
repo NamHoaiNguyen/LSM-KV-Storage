@@ -51,6 +51,27 @@ private:
 
   std::unique_ptr<Buffer> buffer_;
 };
+
+class LinuxRandomReadOnlyFile : public RandomReadOnlyFile {
+public:
+  LinuxRandomReadOnlyFile();
+
+  ~LinuxRandomReadOnlyFile();
+
+  bool Open() override;
+
+  bool Close() override;
+
+  ssize_t Read(uint64_t offset) override;
+
+private:
+  std::string filename_;
+
+  Fd fd_;
+
+  std::unique_ptr<Buffer> buffer_;
+};
+
 } // namespace kvs
 
 #endif // IO_LINUX_FILE_H
