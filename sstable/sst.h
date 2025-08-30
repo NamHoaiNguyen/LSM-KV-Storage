@@ -74,6 +74,8 @@ public:
 
   BlockIndex *GetBlockIndexData();
 
+  friend class Compact;
+
 private:
   void EncodeExtraInfo();
 
@@ -82,9 +84,11 @@ private:
   // TODO(namnh) : unique_ptr or shared_ptr?
   std::unique_ptr<Block> block_data_;
 
-  std::string block_first_key_;
+  // Smallest key of each block
+  std::string block_smallest_key_;
 
-  std::string block_last_key_;
+  // Largest key of each block
+  std::string block_largest_key_;
 
   // TODO(namnh) : unique_ptr?
   std::unique_ptr<BlockIndex> block_index_;
@@ -101,6 +105,12 @@ private:
 
   // Max transaction id of block
   TxnId max_txnid_;
+
+  // uint64_t
+
+  std::string table_smallest_key_;
+
+  std::string table_largest_key_;
 };
 
 } // namespace kvs

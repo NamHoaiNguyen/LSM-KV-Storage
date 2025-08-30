@@ -1,4 +1,4 @@
-#include "sstable/table.h"
+#include "sstable/sst.h"
 
 #include "db/memtable_iterator.h"
 #include "io/base_file.h"
@@ -20,8 +20,12 @@ Table::Table(std::string &&filename)
 
 void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
                      ValueType value_type) {
+  if (table_smallest_key_.empty()) {
+    table_smallest_key_ = std::string(key);
+  }
+
   if (block_data_->GetBlockSize() == 0) {
-    block_first_key_ = std::string(key);
+    block_smallest_key_ = std::string(key);
   }
 
   block_data_->AddEntry(key, value, txn_id, value_type);
@@ -30,8 +34,9 @@ void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
   min_txnid_ = std::min(min_txnid_, txn_id);
   max_txnid_ = std::max(max_txnid_, txn_id);
 
-  // Update block last key
-  block_last_key_ = std::string(key);
+  // Update block/table largest key
+  block_largest_key_ = std::string(key);
+  table_largest_key_ = std::string(key);
 
   // TODO(namnh) : For debug
   if (block_data_->GetBlockSize() >= kDebugBlockDataSize) {
@@ -57,7 +62,7 @@ void Table::FlushBlock() {
   file_object_->Flush();
 
   // Build MetaEntry format (block_meta)
-  block_index_->AddEntry(block_first_key_, block_last_key_,
+  block_index_->AddEntry(block_smallest_key_, block_largest_key_,
                          block_starting_offset,
                          current_offset_ - block_starting_offset);
 
