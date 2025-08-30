@@ -1,0 +1,48 @@
+#ifndef DB_COMPACT_H
+#define DB_COMPACT_H
+
+#include "db_impl.h"
+
+#include <vector>
+
+namespace kvs {
+
+class Compact {
+public:
+  Compact(const DBImpl *db);
+
+  ~Compact() = default;
+
+  // Copy constructor/movement
+  Compact(Compact &&) = default;
+  Compact &operator=(Compact &&) = default;
+
+  // sst_lvl0_size works like a snapshot of SSTInfo size at the time that
+  // compact is triggered
+  void PickCompact(int sst_lvl0_size);
+
+private:
+  void DoL0L1LvlCompact();
+
+  // Find all overlapping sst files at level
+  std::pair<std::string_view, std::string_view> GetOverlappingSSTLvl0();
+
+  void GetOverlappingSSTOtherLvls(uint8_t level, std::string_view smallest_key,
+                                  std::string_view largest_key);
+
+  // Find starting index of file in level_sst_infos_ that overlaps with
+  // the fiels to be compacted from upper level
+  size_t FindNonOverlappingFiles(uint8_t level, std::string_view smallest_key,
+                                 std::string_view largest_key);
+
+  void DoCompactJob();
+
+  const DBImpl *db_;
+
+  // std::vector<std::reference_wrapper<const DBImpl::SSTInfo>> compact_info_;
+  std::vector<const DBImpl::SSTInfo *> compact_info_;
+};
+
+} // namespace kvs
+
+#endif // DB_COMPACT_H

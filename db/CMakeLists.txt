@@ -1,6 +1,7 @@
 add_library(db
   base_memtable.h
-  db_flush_job.cc
+  compact.cc
+  compact.h
   db_impl.cc
   db_impl.h
   memtable_iterator.cc

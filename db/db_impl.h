@@ -8,21 +8,27 @@
 #include <memory>
 #include <optional>
 #include <shared_mutex>
+#include <string>
 #include <string_view>
 #include <thread>
 #include <vector>
+
+namespace {
+constexpr size_t kDefaultSSTLevel = 7;
+} // namespace
 
 namespace kvs {
 
 class BaseIterator;
 class BaseMemTable;
-class SSTable;
+class Compact;
+class Table;
 class ThreadPool;
 class TransactionManager;
 
 class DBImpl {
 public:
-  DBImpl();
+  DBImpl(std::string_view dbname);
 
   ~DBImpl();
 
@@ -31,8 +37,8 @@ public:
   DBImpl &operator=(const DBImpl &) = delete;
 
   // No move allowed
-  DBImpl(DBImpl &&) = delete;
-  DBImpl &operator=(DBImpl &&) = delete;
+  DBImpl(DBImpl &&) = default;
+  DBImpl &operator=(DBImpl &&) = default;
 
   std::optional<std::string> Get(std::string_view key, TxnId txn_id);
 
@@ -40,22 +46,85 @@ public:
 
   std::unique_ptr<BaseIterator> CreateNewIterator();
 
+  friend class Compact;
+
 private:
+  class SSTInfo {
+  public:
+    SSTInfo() = default;
+    SSTInfo(std::unique_ptr<Table> table);
+
+    ~SSTInfo() = default;
+
+    // No copy allowed
+    SSTInfo(const SSTInfo &) = delete;
+    SSTInfo &operator=(SSTInfo &) = delete;
+
+    SSTInfo(SSTInfo &&) = default;
+    SSTInfo &operator=(SSTInfo &&) = default;
+
+    friend class DBImpl;
+    friend class Compact;
+
+  private:
+    std::unique_ptr<Table> table_;
+
+    SSTId table_id_;
+
+    uint8_t level_;
+
+    std::string smallest_key_;
+
+    std::string largest_key_;
+  };
+
   void FlushMemTableJob(int immutable_memtable_index);
+
+  std::unique_ptr<Table> CreateNewSST(int immutable_memtable_index);
+
+  void MaybeCompact();
+
+  void CompactSST();
+
+  void UpdateVersionInfo();
+
+  const std::string dbname_;
 
   std::atomic<uint64_t> next_sstable_id_;
 
-  std::unique_ptr<TransactionManager> txn_manager_;
+  struct PairHash {
+    std::size_t
+    operator()(const std::pair<uint64_t, uint8_t> &p) const noexcept {
+      // Shift the small 8-bit value into the lower bits
+      return std::hash<uint64_t>()((p.first << 8) | p.second);
+    }
+  };
+
+  // To know that a SST belongs to which level
+  std::vector<std::unique_ptr<SSTInfo>> levels_sst_info_[kDefaultSSTLevel];
+  // Map contains info of level and size of of it levels
+  // std::unordered_map<SSTId, std::unique_ptr<SSTInfo>> levels_sst_info_;
+
+  std::atomic<int> current_L0_files_;
+
+  // std::unordered_map<SSTId, >
 
   std::unique_ptr<BaseMemTable> memtable_;
 
   std::vector<std::unique_ptr<BaseMemTable>> immutable_memtables_;
 
-  std::shared_mutex immutable_memtables_mutex_;
+  std::unique_ptr<Compact> compact_;
+
+  std::unique_ptr<TransactionManager> txn_manager_;
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
   ThreadPool *thread_pool_;
+
+  // Mutex to protect some critical data structures
+  // (immutable_memtables_ list, levels_sst_info_)
+  // std::shared_mutex immutable_memtables_mutex_;
+  std::shared_mutex mutex_;
 };
 
 } // namespace kvs

@@ -25,6 +25,7 @@ struct GetStatus {
   }
 
   ValueType type;
+
   std::optional<std::string> value;
 };
 
