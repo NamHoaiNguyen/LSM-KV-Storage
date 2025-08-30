@@ -53,6 +53,7 @@ DBImpl::DBImpl(std::string_view dbname)
 DBImpl::~DBImpl() { delete thread_pool_; }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
+  std::shared_lock rlock(mutex_);
   GetStatus status;
 
   // Find data from Memtable
@@ -62,14 +63,11 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
   }
 
   // If key is not found, continue finding from immutable memtables
-  {
-    std::shared_lock<std::shared_mutex> rlock(mutex_);
-    for (const auto &immu_memtable :
-         immutable_memtables_ | std::views::reverse) {
-      status = immu_memtable->Get(key, txn_id);
-      if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-        return status.value;
-      }
+
+  for (const auto &immu_memtable : immutable_memtables_ | std::views::reverse) {
+    status = immu_memtable->Get(key, txn_id);
+    if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
+      return status.value;
     }
   }
 
@@ -78,21 +76,18 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 }
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
+  std::scoped_lock rwlock(mutex_);
   memtable_->Put(key, value, txn_id);
 
   if (memtable_->GetMemTableSize() >= kDebugMemTableSize) {
     // memtable_->SetImmutable();
-    size_t immutable_memtables_size;
-    {
-      std::scoped_lock rwlock(mutex_);
-      immutable_memtables_.push_back(std::move(memtable_));
-      immutable_memtables_size = immutable_memtables_.size();
+    immutable_memtables_.push_back(std::move(memtable_));
 
-      if (immutable_memtables_size >= kDebugMaxNumberImmutableTablesInMemory) {
-        // Flush thread to flush memtable to disk
-        for (int i = 0; i < immutable_memtables_.size(); i++) {
-          thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this, i);
-        }
+    if (immutable_memtables_.size() >= kDebugMaxNumberImmutableTablesInMemory) {
+      // Flush thread to flush memtable to disk
+      for (const auto &immu_memtable : immutable_memtables_) {
+        thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this,
+                              immu_memtable.get());
       }
     }
 
@@ -101,51 +96,55 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   }
 }
 
-void DBImpl::FlushMemTableJob(int immutable_memtable_index) {
-  // Create new level 0 SST
-  std::unique_ptr<Table> new_sst = CreateNewSST(immutable_memtable_index);
-  auto new_sst_info = std::make_unique<SSTInfo>(std::move(new_sst));
+void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
+  CreateNewSST(immutable_memtable);
 
-  {
-    // Need to acquire lock when moving data from immutable into buffer
-    std::scoped_lock rwlock(mutex_);
-    immutable_memtables_.erase(immutable_memtables_.begin() +
-                               immutable_memtable_index);
-    levels_sst_info_[0].push_back(std::move(new_sst_info));
-
-    if (current_L0_files_ >= kL0_CompactionTrigger) {
-      thread_pool_->Enqueue(&Compact::PickCompact, compact_.get(),
-                            levels_sst_info_[0].size());
-    }
+  // Execute compaction if need
+  if (current_L0_files_ >= kL0_CompactionTrigger) {
+    thread_pool_->Enqueue(&Compact::PickCompact, compact_.get(),
+                          levels_sst_info_[0].size());
   }
 }
 
-std::unique_ptr<Table> DBImpl::CreateNewSST(int immutable_memtable_index) {
+void DBImpl::CreateNewSST(const BaseMemTable *const immutable_memtable) {
   std::string next_sst = std::to_string(next_sstable_id_.fetch_add(1));
   std::string filename = path + next_sst + ".sst";
-  auto sst = std::make_unique<Table>(std::move(filename));
-  if (!sst->Open()) {
+  auto new_sst = std::make_unique<Table>(std::move(filename));
+  if (!new_sst->Open()) {
     throw std::runtime_error("Can't create sstable file");
   }
 
-  // TODO(namnh) : unique_ptr or shared_ptr?
-  const BaseMemTable *immutable_memtable =
-      immutable_memtables_.at(immutable_memtable_index).get();
-  auto iterator = std::make_unique<MemTableIterator>(immutable_memtable);
-
+  std::unique_ptr<MemTableIterator> iterator;
+  {
+    // TODO(namnh) : Do we need to acquire lock ?
+    // std::scoped_lock rwlock(mutex_);
+    iterator = std::make_unique<MemTableIterator>(immutable_memtable);
+  }
   // Iterate through all key/value pairs to add them to sst
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-    sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
-                  iterator->GetTransactionId(), iterator->GetType());
+    new_sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
+                      iterator->GetTransactionId(), iterator->GetType());
   }
 
   // All of key/value pairs had been written to sst. SST should be flushed to
   // disk
-  sst->Finish();
+  new_sst->Finish();
 
   current_L0_files_++;
 
-  return sst;
+  // Save info of new sst
+  levels_sst_info_[0].emplace_back(
+      std::make_unique<SSTInfo>(std::move(new_sst)));
+
+  {
+    std::scoped_lock rwlock(mutex_);
+    immutable_memtables_.erase(
+        std::remove_if(immutable_memtables_.begin(), immutable_memtables_.end(),
+                       [immutable_memtable](const auto &ptr) {
+                         return ptr.get() == immutable_memtable;
+                       }),
+        immutable_memtables_.end());
+  }
 }
 
 // SST INFO

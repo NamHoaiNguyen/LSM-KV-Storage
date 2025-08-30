@@ -6,7 +6,7 @@
 
 namespace kvs {
 
-MemTableIterator::MemTableIterator(const BaseMemTable *memtable)
+MemTableIterator::MemTableIterator(const BaseMemTable *const memtable)
     : iterator_(std::make_unique<SkipListIterator>(memtable->GetMemTable())) {}
 
 MemTableIterator::~MemTableIterator() = default;

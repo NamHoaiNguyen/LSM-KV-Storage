@@ -78,9 +78,9 @@ private:
     std::string largest_key_;
   };
 
-  void FlushMemTableJob(int immutable_memtable_index);
+  void FlushMemTableJob(const BaseMemTable *const immutable_memtable);
 
-  std::unique_ptr<Table> CreateNewSST(int immutable_memtable_index);
+  void CreateNewSST(const BaseMemTable *const memtable);
 
   void MaybeCompact();
 

@@ -25,6 +25,10 @@ void SkipListIterator::Next() { node_ = node_->forward_[0]; }
 void SkipListIterator::Prev() { node_ = node_->backward_[0].lock(); }
 
 void SkipListIterator::Seek(std::string_view key) {
+  if (!skiplist_) {
+    return;
+  }
+
   node_ = skiplist_->FindLowerBoundNode(key);
   if (node_ && node_->key_ == key) {
     return;
@@ -32,9 +36,18 @@ void SkipListIterator::Seek(std::string_view key) {
   node_ = node_->forward_[0];
 }
 
-void SkipListIterator::SeekToFirst() { node_ = skiplist_->head_->forward_[0]; }
+void SkipListIterator::SeekToFirst() {
+  if (!skiplist_) {
+    return;
+  }
+  node_ = skiplist_->head_->forward_[0];
+}
 
 void SkipListIterator::SeekToLast() {
+  if (!skiplist_) {
+    return;
+  }
+
   node_ = skiplist_->head_->forward_[0];
   while (node_->forward_[0]) {
     node_ = node_->forward_[0];

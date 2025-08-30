@@ -15,7 +15,6 @@ Compact::Compact(const DBImpl *db) : db_(db) {}
 void Compact::PickCompact(int sst_lvl0_size) {
   // TODO(namnh) : Do we need to acquire lock ?
   // What happen if when compact is executing, new SST file appears ?
-  std::cout << "namnh2 check that Compact::PickCompact is called";
 
   if (!db_) {
     return;

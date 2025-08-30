@@ -15,7 +15,7 @@ class BaseMemTable;
 
 class MemTableIterator : public BaseIterator {
 public:
-  MemTableIterator(const BaseMemTable *memtable);
+  MemTableIterator(const BaseMemTable *const memtable);
 
   ~MemTableIterator() override;
 

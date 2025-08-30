@@ -59,8 +59,6 @@ private:
   bool is_immutable_;
 
   std::unique_ptr<SkipList> table_;
-
-  mutable std::shared_mutex mutex_;
 };
 
 } // namespace kvs

@@ -11,7 +11,6 @@ MemTable::MemTable()
 MemTable::~MemTable() = default;
 
 MemTable::MemTable(MemTable &&other) {
-  std::scoped_lock rwlock_memtable(mutex_, other.mutex_);
   is_immutable_ = other.is_immutable_;
   table_ = std::move(other.table_);
 }
@@ -21,20 +20,14 @@ MemTable &MemTable::operator=(MemTable &&other) {
     return *this;
   }
 
-  std::scoped_lock rwlock_memtable(mutex_, other.mutex_);
   is_immutable_ = other.is_immutable_;
   table_ = std::move(other.table_);
 
   return *this;
 }
 
-// std::unique_ptr<BaseIterator> MemTable::CreateNewIterator() {
-//   return std::make_unique<MemTableIterator>(this);
-// }
-
 std::vector<std::pair<std::string, bool>>
 MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
-  std::scoped_lock rwlock(mutex_);
   if (is_immutable_) {
     throw std::runtime_error("Can't delete in immutable memtable!!!");
   }
@@ -49,7 +42,6 @@ MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
 }
 
 bool MemTable::Delete(std::string_view key, TxnId txn_id) {
-  std::scoped_lock rwlock(mutex_);
   if (is_immutable_) {
     throw std::runtime_error("Can't delete in immutable memtable!!!");
   }
@@ -62,7 +54,6 @@ bool MemTable::Delete(std::string_view key, TxnId txn_id) {
 
 std::vector<std::pair<std::string, GetStatus>>
 MemTable::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
-  std::shared_lock<std::shared_mutex> rlock(mutex_);
   std::vector<std::pair<std::string, GetStatus>> result;
 
   // List of {key, index in result} keys that not be found in writable memtable
@@ -87,7 +78,6 @@ MemTable::BatchGet(std::span<std::string_view> keys, TxnId txn_id) {
 }
 
 GetStatus MemTable::Get(std::string_view key, TxnId txn_id) {
-  std::shared_lock<std::shared_mutex> rlock(mutex_);
   std::optional<std::string> value;
 
   if (!table_) {
@@ -100,7 +90,6 @@ GetStatus MemTable::Get(std::string_view key, TxnId txn_id) {
 void MemTable::BatchPut(
     std::span<std::pair<std::string_view, std::string_view>> keys,
     TxnId txn_id) {
-  std::scoped_lock rwlock(mutex_);
   if (is_immutable_) {
     throw std::runtime_error("Can't BATCH PUT in immutable memtable!!!");
   }
@@ -112,7 +101,6 @@ void MemTable::BatchPut(
 }
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  std::scoped_lock rwlock(mutex_);
   if (is_immutable_) {
     throw std::runtime_error("Can't PUT in immutable memtable!!!");
   }
@@ -124,7 +112,6 @@ void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 }
 
 size_t MemTable::GetMemTableSize() {
-  std::shared_lock<std::shared_mutex> rlock(mutex_);
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }
@@ -133,18 +120,14 @@ size_t MemTable::GetMemTableSize() {
 }
 
 const SkipList *MemTable::GetMemTable() const {
-  std::shared_lock<std::shared_mutex> rlock(mutex_);
+  if (!table_) {
+    return nullptr;
+  }
   return table_.get();
 }
 
-bool MemTable::IsImmutable() {
-  std::shared_lock<std::shared_mutex> rlock(mutex_);
-  return is_immutable_;
-}
+bool MemTable::IsImmutable() { return is_immutable_; }
 
-void MemTable::SetImmutable() {
-  std::scoped_lock rwlock(mutex_);
-  is_immutable_ = true;
-}
+void MemTable::SetImmutable() { is_immutable_ = true; }
 
 } // namespace kvs
