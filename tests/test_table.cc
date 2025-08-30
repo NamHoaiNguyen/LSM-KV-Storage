@@ -5,7 +5,7 @@
 #include "io/linux_file.h"
 #include "sstable/block.h"
 #include "sstable/block_index.h"
-#include "sstable/table.h"
+#include "sstable/sst.h"
 
 #include <cmath>
 #include <memory>
