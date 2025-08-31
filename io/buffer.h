@@ -7,6 +7,8 @@
 
 namespace kvs {
 
+namespace io {
+
 class Buffer {
 public:
   explicit Buffer(size_t capacity = kDefaultBufferSize);
@@ -34,6 +36,8 @@ public:
 private:
   DynamicBuffer buffer_;
 };
+
+} // namespace io
 
 } // namespace kvs
 

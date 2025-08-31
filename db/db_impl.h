@@ -19,12 +19,22 @@ constexpr size_t kDefaultSSTLevel = 7;
 
 namespace kvs {
 
+class ThreadPool;
+
+namespace mvcc {
+class TransactionManager;
+} // namespace mvcc
+
+namespace sstable {
+class Table;
+} // namespace sstable
+
+namespace db {
+
 class BaseIterator;
 class BaseMemTable;
 class Compact;
 class Table;
-class ThreadPool;
-class TransactionManager;
 
 class DBImpl {
 public:
@@ -52,7 +62,7 @@ private:
   class SSTInfo {
   public:
     SSTInfo() = default;
-    SSTInfo(std::unique_ptr<Table> table);
+    SSTInfo(std::unique_ptr<sstable::Table> table);
 
     ~SSTInfo() = default;
 
@@ -67,7 +77,7 @@ private:
     friend class Compact;
 
   private:
-    std::unique_ptr<Table> table_;
+    std::unique_ptr<sstable::Table> table_;
 
     SSTId table_id_;
 
@@ -115,7 +125,7 @@ private:
 
   std::unique_ptr<Compact> compact_;
 
-  std::unique_ptr<TransactionManager> txn_manager_;
+  std::unique_ptr<mvcc::TransactionManager> txn_manager_;
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
@@ -126,6 +136,8 @@ private:
   // std::shared_mutex immutable_memtables_mutex_;
   std::shared_mutex mutex_;
 };
+
+} // namespace db
 
 } // namespace kvs
 

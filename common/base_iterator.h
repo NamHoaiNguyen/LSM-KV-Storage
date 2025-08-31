@@ -25,7 +25,7 @@ public:
 
   virtual std::string_view GetValue() = 0;
 
-  virtual ValueType GetType() = 0;
+  virtual db::ValueType GetType() = 0;
 
   virtual TxnId GetTransactionId() = 0;
 

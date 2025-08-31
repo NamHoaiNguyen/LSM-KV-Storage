@@ -1,10 +1,13 @@
-#include "concurrency/transaction.h"
+#include "mvcc/transaction.h"
 
-#include "concurrency/transaction_manager.h"
 #include "db/db_impl.h"
+#include "mvcc/transaction_manager.h"
 
 namespace kvs {
-Transaction::Transaction(TransactionManager *txn_manager, DBImpl *db,
+
+namespace mvcc {
+
+Transaction::Transaction(TransactionManager *txn_manager, db::DBImpl *db,
                          TxnId txn_id, IsolationLevel isolation_level)
     : txn_manager_(txn_manager), db_(db), txn_id_(txn_id),
       isolation_level_(isolation_level) {}
@@ -35,4 +38,7 @@ std::optional<std::string> Transaction::Get(std::string_view key) {
 void Transaction::Put(std::string_view key) {}
 // If isolation_level_ == READ_UNCOMMITED,
 // write direcly to memtable
+
+} // namespace mvcc
+
 } // namespace kvs

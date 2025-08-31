@@ -17,6 +17,8 @@ Block meta format
 -----------------------------------------------------------------------------
 */
 
+namespace sstable {
+
 class BlockIndex {
 public:
   BlockIndex() = default;
@@ -45,6 +47,8 @@ public:
 private:
   std::vector<Byte> buffer_;
 };
+
+} // namespace sstable
 
 } // namespace kvs
 

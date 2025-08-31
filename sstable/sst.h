@@ -11,11 +11,17 @@
 
 namespace kvs {
 
+namespace db {
 class AccessFile;
-class Block;
-class BlockIndex;
 class BaseIterator;
+class Compact;
+} // namespace db
+
+class SSTTest_BasicEncode_Test;
+
+namespace io {
 class WriteOnlyFile;
+} // namespace io
 
 /*
 SST data format
@@ -42,6 +48,11 @@ Extra format(in order from top to bottom, left to right)
 -----------------------------------------------------
 */
 
+namespace sstable {
+
+class Block;
+class BlockIndex;
+
 class Table {
 public:
   Table(std::string &&filename);
@@ -59,7 +70,7 @@ public:
   // Add new key/value pairs to SST
   // Entries MUST be sorted in ascending order before be added
   void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                ValueType value_type);
+                db::ValueType value_type);
 
   // Flush block data to disk
   void FlushBlock();
@@ -69,17 +80,18 @@ public:
   bool Open();
 
   // For testing
-  friend class TableTest_BasicEncode_Test;
+  // friend class TableTest_BasicEncode_Test;
   Block *GetBlockData();
 
   BlockIndex *GetBlockIndexData();
 
-  friend class Compact;
+  friend class kvs::db::Compact;
+  friend class kvs::SSTTest_BasicEncode_Test;
 
 private:
   void EncodeExtraInfo();
 
-  std::unique_ptr<WriteOnlyFile> file_object_;
+  std::unique_ptr<io::WriteOnlyFile> file_object_;
 
   // TODO(namnh) : unique_ptr or shared_ptr?
   std::unique_ptr<Block> block_data_;
@@ -112,6 +124,8 @@ private:
 
   std::string table_largest_key_;
 };
+
+} // namespace sstable
 
 } // namespace kvs
 

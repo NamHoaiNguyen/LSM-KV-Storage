@@ -10,6 +10,8 @@
 
 namespace kvs {
 
+namespace db {
+
 class SkipList;
 class SkipListNode;
 
@@ -49,6 +51,8 @@ private:
 
   std::shared_ptr<const SkipListNode> node_;
 };
+
+} // namespace db
 
 } // namespace kvs
 

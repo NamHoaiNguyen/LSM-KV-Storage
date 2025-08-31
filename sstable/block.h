@@ -12,8 +12,6 @@
 
 namespace kvs {
 
-// class BlockBuilderTest;
-
 /*
 Block data format
 --------------------------------------------------------------------------------
@@ -50,6 +48,8 @@ Extra format
 ------------------------------------
 */
 
+namespace sstable {
+
 class Block {
 public:
   Block();
@@ -65,7 +65,7 @@ public:
   Block &operator=(Block &&) = default;
 
   void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                ValueType value_type);
+                db::ValueType value_type);
 
   // Finish building the block
   void Finish();
@@ -90,7 +90,7 @@ public:
 
 private:
   void EncodeDataEntry(std::string_view key, std::string_view value,
-                       TxnId txn_id, ValueType value_type);
+                       TxnId txn_id, db::ValueType value_type);
 
   void EncodeOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
 
@@ -108,6 +108,8 @@ private:
   // Track current offset of data section format
   uint64_t data_current_offset_;
 };
+
+} // namespace sstable
 
 } // namespace kvs
 

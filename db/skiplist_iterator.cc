@@ -5,6 +5,8 @@
 
 namespace kvs {
 
+namespace db {
+
 SkipListIterator::SkipListIterator(const SkipList *skiplist)
     : skiplist_(skiplist) {}
 
@@ -53,5 +55,7 @@ void SkipListIterator::SeekToLast() {
     node_ = node_->forward_[0];
   }
 }
+
+} // namespace db
 
 } // namespace kvs

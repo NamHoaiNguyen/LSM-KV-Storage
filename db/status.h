@@ -4,6 +4,10 @@
 #include <optional>
 #include <string>
 
+namespace kvs {
+
+namespace db {
+
 enum class ValueType : uint8_t {
   PUT = 0,
 
@@ -28,5 +32,9 @@ struct GetStatus {
 
   std::optional<std::string> value;
 };
+
+} // namespace db
+
+} // namespace kvs
 
 #endif // DB_VALUE_TYPE_H

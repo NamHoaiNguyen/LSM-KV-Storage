@@ -2,6 +2,8 @@
 
 namespace kvs {
 
+namespace sstable {
+
 void BlockIndex::AddEntry(std::string_view first_key, std::string_view last_key,
                           uint64_t block_start_offset, uint64_t block_length) {
   // Safe, because we limit length of key is less than 2^32
@@ -47,5 +49,7 @@ void BlockIndex::AddEntry(std::string_view first_key, std::string_view last_key,
 std::span<const Byte> BlockIndex::GetBufferView() { return buffer_; }
 
 size_t BlockIndex::GetBlockIndexSize() const { return buffer_.size(); }
+
+} // namespace sstable
 
 } // namespace kvs

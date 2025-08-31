@@ -5,6 +5,8 @@
 
 namespace kvs {
 
+namespace db {
+
 MemTable::MemTable()
     : is_immutable_(false), table_(std::make_unique<SkipList>()) {}
 
@@ -129,5 +131,7 @@ const SkipList *MemTable::GetMemTable() const {
 bool MemTable::IsImmutable() { return is_immutable_; }
 
 void MemTable::SetImmutable() { is_immutable_ = true; }
+
+} // namespace db
 
 } // namespace kvs

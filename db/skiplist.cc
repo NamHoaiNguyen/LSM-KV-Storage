@@ -4,6 +4,8 @@
 
 namespace kvs {
 
+namespace db {
+
 SkipList::SkipList(int max_level)
     : current_level_(1), max_level_(max_level),
       gen_(std::mt19937(std::random_device()())), current_size_(0),
@@ -184,5 +186,7 @@ void SkipList::PrintSkipList() {
   }
   std::cout << std::endl;
 }
+
+} // namespace db
 
 } // namespace kvs

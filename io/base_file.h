@@ -11,6 +11,8 @@
 
 namespace kvs {
 
+namespace io {
+
 class Buffer;
 
 class WriteOnlyFile {
@@ -43,6 +45,8 @@ public:
 
   virtual Buffer *GetBuffer() = 0;
 };
+
+} // namespace io
 
 } // namespace kvs
 

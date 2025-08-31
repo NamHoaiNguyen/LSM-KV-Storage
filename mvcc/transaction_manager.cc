@@ -1,13 +1,15 @@
-#include "concurrency/transaction_manager.h"
+#include "mvcc/transaction_manager.h"
 
-#include "concurrency/transaction.h"
 #include "db/db_impl.h"
+#include "mvcc/transaction.h"
 
 #include <cassert>
 
 namespace kvs {
 
-TransactionManager::TransactionManager(DBImpl *db) : db_(db) {}
+namespace mvcc {
+
+TransactionManager::TransactionManager(db::DBImpl *db) : db_(db) {}
 
 Transaction *TransactionManager::CreateNewTransaction() {
   // TODO(namnh) : Do we need to lock when creating new transaction.
@@ -35,5 +37,7 @@ IsolationLevel TransactionManager::GetIsolationLevel() {
   std::scoped_lock<std::mutex> lock(mutex_);
   return isolation_level_;
 }
+
+} // namespace mvcc
 
 } // namespace kvs

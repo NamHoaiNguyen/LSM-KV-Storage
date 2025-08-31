@@ -12,4 +12,4 @@ add_library(sstable
 )
 
 target_include_directories(sstable PUBLIC ${CMAKE_SOURCE_DIR})
-target_link_libraries(sstable PUBLIC concurrency io)
+target_link_libraries(sstable PUBLIC io mvcc)

@@ -50,22 +50,22 @@ TEST(BlockTest, BasicEncode) {
       0x20, 0, 0, 0, 0, 0, 0, 0, // length of data entry 2
   };
 
-  auto block = std::make_unique<Block>();
+  auto block = std::make_unique<sstable::Block>();
 
   std::string key1 = "apple";
   std::string value1 = "value1";
   TxnId txn_id = 12345;
-  block->AddEntry(key1, value1, txn_id, ValueType::PUT);
+  block->AddEntry(key1, value1, txn_id, db::ValueType::PUT);
 
   key1 = "apply";
   value1 = "success";
   txn_id = 9876;
-  block->AddEntry(key1, value1, txn_id, ValueType::PUT);
+  block->AddEntry(key1, value1, txn_id, db::ValueType::PUT);
 
   key1 = "colossus";
   value1 = "thunder";
   txn_id = std::pow(2, 32) - 1;
-  block->AddEntry(key1, value1, txn_id, ValueType::PUT);
+  block->AddEntry(key1, value1, txn_id, db::ValueType::PUT);
 
   EXPECT_TRUE(std::ranges::equal(block->GetDataView(), data_encoded));
   EXPECT_TRUE(std::ranges::equal(block->GetOffsetView(), offset_encoded));
@@ -88,9 +88,9 @@ TEST(BlockTest, EdgeCasesEncode) {
       0x11, 0, 0, 0, 0, 0, 0, 0, // length of data entry 0
   };
 
-  auto block = std::make_unique<Block>();
+  auto block = std::make_unique<sstable::Block>();
 
-  block->AddEntry("", "", 10, ValueType::PUT);
+  block->AddEntry("", "", 10, db::ValueType::PUT);
   EXPECT_TRUE(std::ranges::equal(block->GetDataView(), data_encoded));
   EXPECT_TRUE(std::ranges::equal(block->GetOffsetView(), offset_encoded));
 }

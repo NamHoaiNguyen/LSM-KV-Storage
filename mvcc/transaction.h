@@ -2,7 +2,7 @@
 #define CONCURRENCY_TRANSACTION__H
 
 #include "common/macros.h"
-#include "concurrency/transaction_manager.h"
+#include "mvcc/transaction_manager.h"
 
 #include <mutex>
 #include <optional>
@@ -12,7 +12,11 @@
 
 namespace kvs {
 
+namespace db {
 class DBImpl;
+} // namespace db
+
+namespace mvcc {
 
 enum class TransactionState {
   ABORTED,
@@ -24,7 +28,7 @@ enum class TransactionState {
 
 class Transaction {
 public:
-  Transaction(TransactionManager *txn_manager, DBImpl *db, TxnId txn_id,
+  Transaction(TransactionManager *txn_manager, db::DBImpl *db, TxnId txn_id,
               IsolationLevel isolation_level);
 
   ~Transaction() = default;
@@ -52,8 +56,10 @@ private:
 
   TransactionManager *txn_manager_;
 
-  DBImpl *db_;
+  db::DBImpl *db_;
 };
+
+} // namespace mvcc
 
 } // namespace kvs
 

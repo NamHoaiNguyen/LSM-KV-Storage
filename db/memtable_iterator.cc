@@ -6,6 +6,8 @@
 
 namespace kvs {
 
+namespace db {
+
 MemTableIterator::MemTableIterator(const BaseMemTable *const memtable)
     : iterator_(std::make_unique<SkipListIterator>(memtable->GetMemTable())) {}
 
@@ -32,5 +34,7 @@ void MemTableIterator::Seek(std::string_view key) { iterator_->Seek(key); }
 void MemTableIterator::SeekToFirst() { iterator_->SeekToFirst(); }
 
 void MemTableIterator::SeekToLast() { iterator_->SeekToLast(); }
+
+} // namespace db
 
 } // namespace kvs

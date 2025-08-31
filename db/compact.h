@@ -7,6 +7,8 @@
 
 namespace kvs {
 
+namespace db {
+
 class Compact {
 public:
   Compact(const DBImpl *db);
@@ -42,6 +44,8 @@ private:
   // std::vector<std::reference_wrapper<const DBImpl::SSTInfo>> compact_info_;
   std::vector<const DBImpl::SSTInfo *> compact_info_;
 };
+
+} // namespace db
 
 } // namespace kvs
 

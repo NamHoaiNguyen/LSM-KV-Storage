@@ -2,13 +2,13 @@
 
 #include "common/base_iterator.h"
 #include "common/thread_pool.h"
-#include "concurrency/transaction.h"
-#include "concurrency/transaction_manager.h"
 #include "db/compact.h"
 #include "db/memtable.h"
 #include "db/memtable_iterator.h"
 #include "db/status.h"
 #include "io/base_file.h"
+#include "mvcc/transaction.h"
+#include "mvcc/transaction_manager.h"
 #include "sstable/block.h"
 #include "sstable/block_index.h"
 #include "sstable/sst.h"
@@ -43,11 +43,13 @@ uint64_t MaxSizePerLevel(uint8_t level) {
 
 namespace kvs {
 
+namespace db {
+
 DBImpl::DBImpl(std::string_view dbname)
     : dbname_(std::string(dbname)), next_sstable_id_(0),
       memtable_(std::make_unique<MemTable>()),
       compact_(std::make_unique<Compact>(this)),
-      txn_manager_(std::make_unique<TransactionManager>(this)),
+      txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
       current_L0_files_(0), thread_pool_(new ThreadPool()) {}
 
 DBImpl::~DBImpl() { delete thread_pool_; }
@@ -109,7 +111,7 @@ void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
 void DBImpl::CreateNewSST(const BaseMemTable *const immutable_memtable) {
   std::string next_sst = std::to_string(next_sstable_id_.fetch_add(1));
   std::string filename = path + next_sst + ".sst";
-  auto new_sst = std::make_unique<Table>(std::move(filename));
+  auto new_sst = std::make_unique<sstable::Table>(std::move(filename));
   if (!new_sst->Open()) {
     throw std::runtime_error("Can't create sstable file");
   }
@@ -148,7 +150,9 @@ void DBImpl::CreateNewSST(const BaseMemTable *const immutable_memtable) {
 }
 
 // SST INFO
-DBImpl::SSTInfo::SSTInfo(std::unique_ptr<Table> table)
+DBImpl::SSTInfo::SSTInfo(std::unique_ptr<sstable::Table> table)
     : table_(std::move(table)) {}
+
+} // namespace db
 
 } // namespace kvs

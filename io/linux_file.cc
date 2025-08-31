@@ -15,6 +15,8 @@
 
 namespace kvs {
 
+namespace io {
+
 // ==========================Start LinuxWriteOnlyFile==========================
 
 LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string &&filename)
@@ -126,5 +128,7 @@ ssize_t LinuxReadOnlyFile::RandomRead(uint64_t offset, size_t size) {
 Buffer *LinuxReadOnlyFile::GetBuffer() { return buffer_.get(); }
 
 // ===========================End LinuxReadOnlyFile===========================
+
+} // namespace io
 
 } // namespace kvs

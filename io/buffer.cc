@@ -2,6 +2,8 @@
 
 namespace kvs {
 
+namespace io {
+
 Buffer::Buffer(size_t capacity) { buffer_.reserve(capacity); }
 
 std::span<Byte> Buffer::GetBufferView() { return std::span<Byte>(buffer_); }
@@ -15,5 +17,7 @@ std::span<const Byte> Buffer::GetImmutableBufferView() const {
 DynamicBuffer &Buffer::GetBuffer() { return buffer_; }
 
 void Buffer::WriteData(DynamicBuffer &&buffer) { buffer_ = std::move(buffer); }
+
+} // namespace io
 
 } // namespace kvs

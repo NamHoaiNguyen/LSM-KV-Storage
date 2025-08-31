@@ -14,6 +14,8 @@
 
 namespace kvs {
 
+namespace db {
+
 class SkipListIterator;
 class SkipListNode;
 
@@ -93,6 +95,8 @@ private:
   // For testing mem leak
   std::shared_ptr<SkipListNode> deleted_node_;
 };
+
+} // namespace db
 
 } // namespace kvs
 

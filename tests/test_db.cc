@@ -6,22 +6,27 @@
 
 #include <memory>
 
-TEST(MemTableTest, BasicOperations) {
-  auto db = std::make_unique<kvs::DBImpl>();
+namespace kvs {
 
-  // db->Put("k1", "v1", 0);
-  // EXPECT_TRUE(db->Get("k1", 0).has_value());
-  // EXPECT_EQ(db->Get("k1", 0).value(), "v1");
+struct DBStore {
+  // Used to extend lifetime of DBImpl instance
+  std::unique_ptr<db::DBImpl> db;
+};
 
-  // // update
-  // db->Put("k1", "v22", 0);
-  // EXPECT_TRUE(db->Get("k1", 0).has_value());
-  // EXPECT_EQ(db->Get("k1", 0).value(), "v22");
-
-  // delete
-  // EXPECT_TRUE(memtable->Delete("k1", 0));
+TEST(DBTest, BasicOperations) {
+  auto db = std::make_unique<db::DBImpl>("hoainam");
 
   db->Put("apple", "value1", 12345);
   db->Put("apply", "success", 9876);
+  db->Put("zoodiac", "drident", 32);
   db->Put("thunder", "colossus", 4294967295);
+  db->Put("tearlament", "reinoheart", 85);
+
+  DBStore *db_store = new DBStore;
+  db_store->db = std::move(db);
+
+  // std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  // delete db_store;
 }
+
+} // namespace kvs

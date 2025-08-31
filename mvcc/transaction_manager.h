@@ -10,7 +10,12 @@
 
 namespace kvs {
 
+namespace db {
 class DBImpl;
+} // namespace db
+
+namespace mvcc {
+
 class Transaction;
 
 enum class IsolationLevel {
@@ -25,7 +30,7 @@ enum class IsolationLevel {
 
 class TransactionManager {
 public:
-  TransactionManager(DBImpl *db);
+  TransactionManager(db::DBImpl *db);
 
   ~TransactionManager() = default;
 
@@ -51,13 +56,15 @@ private:
   // TODO(namnh) : unique_ptr or shared_ptr
   std::unordered_map<TxnId, std::unique_ptr<Transaction>> txns_;
 
-  DBImpl *db_;
+  db::DBImpl *db_;
 
   std::atomic<TxnId> next_txn_id_;
 
   // Only 1 transaction can commit at a point
   std::mutex mutex_;
 };
+
+} // namespace mvcc
 
 } // namespace kvs
 

@@ -10,6 +10,8 @@
 
 namespace kvs {
 
+namespace db {
+
 Compact::Compact(const DBImpl *db) : db_(db) {}
 
 void Compact::PickCompact(int sst_lvl0_size) {
@@ -128,5 +130,7 @@ size_t Compact::FindNonOverlappingFiles(uint8_t level,
 }
 
 void Compact::DoCompactJob() {}
+
+} // namespace db
 
 } // namespace kvs

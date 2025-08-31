@@ -13,6 +13,8 @@
 
 namespace kvs {
 
+namespace db {
+
 class BaseIterator;
 class SkipList;
 
@@ -60,6 +62,8 @@ private:
 
   std::unique_ptr<SkipList> table_;
 };
+
+} // namespace db
 
 } // namespace kvs
 

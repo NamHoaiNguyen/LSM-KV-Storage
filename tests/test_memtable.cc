@@ -7,16 +7,18 @@
 
 #include <memory>
 
+namespace kvs {
+
 TEST(MemTableTest, BasicOperations) {
-  auto memtable = std::make_unique<kvs::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>();
 
   memtable->Put("k1", "v1", 0);
-  EXPECT_TRUE(memtable->Get("k1", 0).type == ValueType::PUT);
+  EXPECT_TRUE(memtable->Get("k1", 0).type == db::ValueType::PUT);
   EXPECT_EQ(memtable->Get("k1", 0).value, "v1");
 
   // update
   memtable->Put("k1", "v2", 0);
-  EXPECT_TRUE(memtable->Get("k1", 0).type == ValueType::PUT);
+  EXPECT_TRUE(memtable->Get("k1", 0).type == db::ValueType::PUT);
   EXPECT_EQ(memtable->Get("k1", 0).value, "v2");
 
   // delete
@@ -24,7 +26,7 @@ TEST(MemTableTest, BasicOperations) {
 }
 
 TEST(MemTableTest, LargeScalePutAndGet) {
-  auto memtable = std::make_unique<kvs::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>();
 
   const int num_keys = 100000;
   std::string key{}, value{};
@@ -38,7 +40,7 @@ TEST(MemTableTest, LargeScalePutAndGet) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    EXPECT_TRUE(memtable->Get(key, 0).type == ValueType::PUT);
+    EXPECT_TRUE(memtable->Get(key, 0).type == db::ValueType::PUT);
     EXPECT_EQ(memtable->Get(key, 0).value, value);
   }
 
@@ -53,13 +55,13 @@ TEST(MemTableTest, LargeScalePutAndGet) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i + num_keys);
 
-    EXPECT_TRUE(memtable->Get(key, 0).type == ValueType::PUT);
+    EXPECT_TRUE(memtable->Get(key, 0).type == db::ValueType::PUT);
     EXPECT_EQ(memtable->Get(key, 0).value, value);
   }
 }
 
 TEST(MemTableTest, LargeScaleDelete) {
-  auto memtable = std::make_unique<kvs::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>();
 
   const int num_keys = 100000;
   std::string key{}, value{};
@@ -80,13 +82,13 @@ TEST(MemTableTest, LargeScaleDelete) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    EXPECT_TRUE(memtable->Get(key, 0).type == ValueType::DELETED);
+    EXPECT_TRUE(memtable->Get(key, 0).type == db::ValueType::DELETED);
     EXPECT_TRUE(memtable->Get(key, 0).value == std::nullopt);
   }
 }
 
 TEST(MemTableTest, Iterator) {
-  auto memtable = std::make_unique<kvs::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>();
 
   const int num_keys = 10;
   std::string key{}, value{};
@@ -96,7 +98,7 @@ TEST(MemTableTest, Iterator) {
     memtable->Put(key, value, 0);
   }
 
-  auto iterator = std::make_unique<kvs::MemTableIterator>(memtable.get());
+  auto iterator = std::make_unique<db::MemTableIterator>(memtable.get());
 
   int count = 0;
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
@@ -104,7 +106,9 @@ TEST(MemTableTest, Iterator) {
     value = "value" + std::to_string(count);
     EXPECT_EQ(iterator->GetKey(), key);
     EXPECT_EQ(iterator->GetValue(), value);
-    EXPECT_EQ(iterator->GetType(), ValueType::PUT);
+    EXPECT_EQ(iterator->GetType(), db::ValueType::PUT);
     count++;
   }
 }
+
+} // namespace kvs

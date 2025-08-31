@@ -11,6 +11,8 @@
 
 namespace kvs {
 
+namespace db {
+
 class SkipList;
 
 class BaseMemTable {
@@ -42,6 +44,8 @@ public:
 
   virtual void SetImmutable() = 0;
 };
+
+} // namespace db
 
 } // namespace kvs
 

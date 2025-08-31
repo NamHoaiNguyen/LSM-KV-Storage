@@ -4,12 +4,14 @@
 
 namespace kvs {
 
+namespace sstable {
+
 Block::Block()
     : is_finished_(false), block_size_(0), num_entries_(0),
       data_current_offset_(0) {}
 
 void Block::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                     ValueType value_type) {
+                     db::ValueType value_type) {
   if (is_finished_) {
     return;
   }
@@ -34,7 +36,7 @@ void Block::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
 }
 
 void Block::EncodeDataEntry(std::string_view key, std::string_view value,
-                            TxnId txn_id, ValueType value_type) {
+                            TxnId txn_id, db::ValueType value_type) {
   assert(key.size() <= kMaxKeySize);
 
   // Insert value type
@@ -112,5 +114,7 @@ std::span<const Byte> Block::GetDataView() { return data_buffer_; }
 std::span<const Byte> Block::GetOffsetView() { return offset_buffer_; }
 
 uint64_t Block::GetNumEntries() const { return num_entries_; }
+
+} // namespace sstable
 
 } // namespace kvs

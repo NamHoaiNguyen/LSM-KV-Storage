@@ -11,6 +11,8 @@
 
 namespace kvs {
 
+namespace db {
+
 class SkipListNode : public std::enable_shared_from_this<SkipListNode> {
 public:
   SkipListNode(std::string_view key, std::string_view value, int num_level);
@@ -41,6 +43,8 @@ private:
   // Use weak_ptr to avoid circular
   std::vector<std::weak_ptr<SkipListNode>> backward_;
 };
+
+} // namespace db
 
 } // namespace kvs
 

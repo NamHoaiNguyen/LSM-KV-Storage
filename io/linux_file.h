@@ -12,6 +12,8 @@
 
 namespace kvs {
 
+namespace io {
+
 class Buffer;
 
 class LinuxWriteOnlyFile : public WriteOnlyFile {
@@ -70,6 +72,8 @@ private:
 
   std::unique_ptr<Buffer> buffer_;
 };
+
+} // namespace io
 
 } // namespace kvs
 

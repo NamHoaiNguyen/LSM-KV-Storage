@@ -64,26 +64,26 @@ std::vector<Byte> block_index_buffer_encoded = {
     0x86, 0,   0,   0,   0,   0,   0,   0,   // block size(8B) (data + metadata)
 };
 
-TEST(TableTest, BasicEncode) {
+TEST(SSTTest, BasicEncode) {
   std::string filename =
       "/home/hoainam/self/biggg/lsm-kv-storage/data/000001.sst";
-  auto table = std::make_unique<Table>(std::move(filename));
+  auto table = std::make_unique<sstable::Table>(std::move(filename));
   table->file_object_->Open();
 
   std::string key1 = "apple";
   std::string value1 = "value1";
   TxnId txn_id = 0;
-  table->AddEntry(key1, value1, txn_id, ValueType::PUT);
+  table->AddEntry(key1, value1, txn_id, db::ValueType::PUT);
 
   key1 = "apply";
   value1 = "success";
   txn_id = 0;
-  table->AddEntry(key1, value1, txn_id, ValueType::PUT);
+  table->AddEntry(key1, value1, txn_id, db::ValueType::PUT);
 
   key1 = "colossus";
   value1 = "thunder";
   txn_id = 0;
-  table->AddEntry(key1, value1, txn_id, ValueType::PUT);
+  table->AddEntry(key1, value1, txn_id, db::ValueType::PUT);
 
   // EXPECT_EQ(table->block_data_->data_buffer_, encoded);
   // EXPECT_EQ(table->block_data_->offset_buffer_, buffer_encoded);

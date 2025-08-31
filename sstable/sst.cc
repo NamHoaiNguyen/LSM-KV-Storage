@@ -9,20 +9,23 @@
 // libC++
 #include <cassert>
 
-namespace kvs {
+namespace {
 constexpr size_t kDebugBlockDataSize = 256;
-}
+} // namespace
 
 namespace kvs {
+
+namespace sstable {
 
 Table::Table(std::string &&filename)
-    : file_object_(std::make_unique<LinuxWriteOnlyFile>(std::move(filename))),
+    : file_object_(
+          std::make_unique<io::LinuxWriteOnlyFile>(std::move(filename))),
       block_data_(std::make_unique<Block>()),
       block_index_(std::make_unique<BlockIndex>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0) {}
 
 void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                     ValueType value_type) {
+                     db::ValueType value_type) {
   if (table_smallest_key_.empty()) {
     table_smallest_key_ = std::string(key);
   }
@@ -138,5 +141,7 @@ bool Table::Open() {
 Block *Table::GetBlockData() { return block_data_.get(); };
 
 BlockIndex *Table::GetBlockIndexData() { return block_index_.get(); };
+
+} // namespace sstable
 
 } // namespace kvs

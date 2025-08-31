@@ -10,10 +10,12 @@
 
 namespace kvs {
 
+namespace db {
+
 class SkipListIterator;
 class BaseMemTable;
 
-class MemTableIterator : public BaseIterator {
+class MemTableIterator : public kvs::BaseIterator {
 public:
   MemTableIterator(const BaseMemTable *const memtable);
 
@@ -42,6 +44,8 @@ public:
 private:
   std::unique_ptr<SkipListIterator> iterator_;
 };
+
+} // namespace db
 
 } // namespace kvs
 
