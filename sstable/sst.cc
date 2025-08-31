@@ -6,6 +6,9 @@
 #include "sstable/block.h"
 #include "sstable/block_index.h"
 
+// libC++
+#include <cassert>
+
 namespace kvs {
 constexpr size_t kDebugBlockDataSize = 256;
 }
@@ -13,7 +16,7 @@ constexpr size_t kDebugBlockDataSize = 256;
 namespace kvs {
 
 Table::Table(std::string &&filename)
-    : file_object_(std::make_unique<LinuxAccessFile>(std::move(filename))),
+    : file_object_(std::make_unique<LinuxWriteOnlyFile>(std::move(filename))),
       block_data_(std::make_unique<Block>()),
       block_index_(std::make_unique<BlockIndex>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0) {}
@@ -45,6 +48,8 @@ void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
 }
 
 void Table::FlushBlock() {
+  assert(file_object_);
+
   // Starting offset of block
   const uint64_t block_starting_offset = current_offset_;
 
@@ -86,7 +91,11 @@ void Table::Finish() {
   EncodeExtraInfo();
 
   // Ensure that data is persisted to disk from page cache
-  file_object_->Flush();
+  if (file_object_->Flush()) {
+    // All data in SST is persisted to disk. Free file object
+    // to not allow any writing
+    file_object_.reset();
+  }
 }
 
 void Table::EncodeExtraInfo() {
@@ -117,7 +126,13 @@ void Table::EncodeExtraInfo() {
                        max_txnid_bytes + sizeof(uint64_t));
 }
 
-bool Table::Open() { return file_object_->Open(); }
+bool Table::Open() {
+  if (!file_object_) {
+    return false;
+  }
+
+  return file_object_->Open();
+}
 
 // For testing
 Block *Table::GetBlockData() { return block_data_.get(); };

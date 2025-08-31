@@ -13,18 +13,16 @@ namespace kvs {
 
 class Buffer;
 
-class AccessFile {
+class WriteOnlyFile {
 public:
-  virtual ~AccessFile() {}
+  virtual ~WriteOnlyFile() {}
 
   virtual bool Close() = 0;
 
   // Persist data from memory to disk
-  virtual void Flush() = 0;
+  virtual bool Flush() = 0;
 
   virtual bool Open() = 0;
-
-  virtual ssize_t Read() = 0;
 
   //  Append new data at offset
   virtual ssize_t Append(DynamicBuffer &&buffer, uint64_t offset) = 0;
@@ -33,15 +31,17 @@ public:
   virtual ssize_t Append(std::span<const Byte> buffer, uint64_t offset) = 0;
 };
 
-class RandomReadOnlyFile {
+class ReadOnlyFile {
 public:
-  virtual ~RandomReadOnlyFile() = 0;
+  virtual ~ReadOnlyFile() {};
 
   virtual bool Close() = 0;
 
   virtual bool Open() = 0;
 
-  virtual ssize_t Read(uint64_t offset) = 0;
+  virtual ssize_t RandomRead(uint64_t offset, size_t size) = 0;
+
+  virtual Buffer *GetBuffer() = 0;
 };
 
 } // namespace kvs

@@ -14,27 +14,25 @@ namespace kvs {
 
 class Buffer;
 
-class LinuxAccessFile : public AccessFile {
+class LinuxWriteOnlyFile : public WriteOnlyFile {
 public:
-  LinuxAccessFile(std::string &&filename);
+  LinuxWriteOnlyFile(std::string &&filename);
 
-  ~LinuxAccessFile();
+  ~LinuxWriteOnlyFile();
 
   // No copy allowed
-  LinuxAccessFile(const LinuxAccessFile &) = delete;
-  LinuxAccessFile &operator=(LinuxAccessFile &) = delete;
+  LinuxWriteOnlyFile(const LinuxWriteOnlyFile &) = delete;
+  LinuxWriteOnlyFile &operator=(LinuxWriteOnlyFile &) = delete;
 
   // Move constructor/assignment
-  LinuxAccessFile(LinuxAccessFile &&) = default;
-  LinuxAccessFile &operator=(LinuxAccessFile &&) = default;
-
-  bool Close() override;
-
-  void Flush() override;
+  LinuxWriteOnlyFile(LinuxWriteOnlyFile &&) = default;
+  LinuxWriteOnlyFile &operator=(LinuxWriteOnlyFile &&) = default;
 
   bool Open() override;
 
-  ssize_t Read() override;
+  bool Close() override;
+
+  bool Flush() override;
 
   ssize_t Append(DynamicBuffer &&buffer, uint64_t offset) override;
 
@@ -48,21 +46,22 @@ private:
 
   // file descriptor
   Fd fd_;
-
-  std::unique_ptr<Buffer> buffer_;
 };
 
-class LinuxRandomReadOnlyFile : public RandomReadOnlyFile {
+class LinuxReadOnlyFile : public ReadOnlyFile {
 public:
-  LinuxRandomReadOnlyFile();
+  LinuxReadOnlyFile(std::string &&file_name);
 
-  ~LinuxRandomReadOnlyFile();
+  ~LinuxReadOnlyFile();
 
   bool Open() override;
 
   bool Close() override;
 
-  ssize_t Read(uint64_t offset) override;
+  ssize_t RandomRead(uint64_t offset,
+                     size_t size = kDefaultBufferSize) override;
+
+  Buffer *GetBuffer() override;
 
 private:
   std::string filename_;

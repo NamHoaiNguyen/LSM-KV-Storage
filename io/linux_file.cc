@@ -10,16 +10,19 @@
 
 // C libs
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 namespace kvs {
 
-LinuxAccessFile::LinuxAccessFile(std::string &&filename)
-    : filename_(std::move(filename)), buffer_(std::make_unique<Buffer>()) {}
+// ==========================Start LinuxWriteOnlyFile==========================
 
-LinuxAccessFile::~LinuxAccessFile() { Close(); }
+LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string &&filename)
+    : filename_(std::move(filename)) {}
 
-bool LinuxAccessFile::Close() {
+LinuxWriteOnlyFile::~LinuxWriteOnlyFile() { Close(); }
+
+bool LinuxWriteOnlyFile::Close() {
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -28,15 +31,20 @@ bool LinuxAccessFile::Close() {
   return true;
 }
 
-void LinuxAccessFile::Flush() {
+bool LinuxWriteOnlyFile::Flush() {
   if (::fsync(fd_) < 0) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
-    return;
+    return false;
   }
+
+  return true;
 }
 
-bool LinuxAccessFile::Open() {
-  fd_ = ::open(filename_.c_str(), O_CREAT | O_TRUNC | O_WRONLY);
+bool LinuxWriteOnlyFile::Open() {
+  // TODO(namnh) : Recheck
+  chmod(filename_.c_str(), 0644);
+
+  fd_ = ::open(filename_.c_str(), O_TRUNC | O_WRONLY | O_CREAT, 0644);
   if (fd_ == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -44,25 +52,19 @@ bool LinuxAccessFile::Open() {
   return true;
 }
 
-ssize_t LinuxAccessFile::Read() {
-  char *buff = reinterpret_cast<char *>(buffer_->GetBuffer().data());
-  size_t buff_len = buffer_->GetBufferLength();
-
-  return ::read(fd_, buff, buff_len);
-}
-
 // append
-ssize_t LinuxAccessFile::Append(DynamicBuffer &&buffer, uint64_t offset) {
+ssize_t LinuxWriteOnlyFile::Append(DynamicBuffer &&buffer, uint64_t offset) {
   return Append_(buffer.data(), buffer.size(), offset);
 }
 
 // append
-ssize_t LinuxAccessFile::Append(std::span<const Byte> buffer, uint64_t offset) {
+ssize_t LinuxWriteOnlyFile::Append(std::span<const Byte> buffer,
+                                   uint64_t offset) {
   return Append_(buffer.data(), buffer.size(), offset);
 }
 
-ssize_t LinuxAccessFile::Append_(const uint8_t *buffer, size_t size,
-                                 uint64_t offset) {
+ssize_t LinuxWriteOnlyFile::Append_(const uint8_t *buffer, size_t size,
+                                    uint64_t offset) {
   ssize_t total_bytes = 0;
 
   while (size > 0) {
@@ -81,5 +83,48 @@ ssize_t LinuxAccessFile::Append_(const uint8_t *buffer, size_t size,
 
   return total_bytes;
 }
+
+// ===========================End LinuxWriteOnlyFile===========================
+
+// ===========================Start LinuxReadOnlyFile===========================
+
+LinuxReadOnlyFile::LinuxReadOnlyFile(std::string &&filename)
+    : filename_(std::move(filename)), buffer_(std::make_unique<Buffer>()) {}
+
+LinuxReadOnlyFile::~LinuxReadOnlyFile() { Close(); }
+
+bool LinuxReadOnlyFile::Open() {
+  fd_ = ::open(filename_.c_str(), O_RDONLY);
+  if (fd_ == -1) {
+    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    return false;
+  }
+  return true;
+}
+
+bool LinuxReadOnlyFile::Close() {
+  if (::close(fd_) == -1) {
+    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    return false;
+  }
+
+  return true;
+}
+
+ssize_t LinuxReadOnlyFile::RandomRead(uint64_t offset, size_t size) {
+  size = std::min(size, kDefaultBufferSize);
+
+  ssize_t read_bytes =
+      ::pread(fd_, buffer_.get(), size, static_cast<off64_t>(offset));
+  if (read_bytes < 0) {
+    return -1;
+  }
+
+  return read_bytes;
+}
+
+Buffer *LinuxReadOnlyFile::GetBuffer() { return buffer_.get(); }
+
+// ===========================End LinuxReadOnlyFile===========================
 
 } // namespace kvs

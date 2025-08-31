@@ -15,7 +15,7 @@ class AccessFile;
 class Block;
 class BlockIndex;
 class BaseIterator;
-class LinuxAccessFile;
+class WriteOnlyFile;
 
 /*
 SST data format
@@ -79,7 +79,7 @@ public:
 private:
   void EncodeExtraInfo();
 
-  std::unique_ptr<AccessFile> file_object_;
+  std::unique_ptr<WriteOnlyFile> file_object_;
 
   // TODO(namnh) : unique_ptr or shared_ptr?
   std::unique_ptr<Block> block_data_;
