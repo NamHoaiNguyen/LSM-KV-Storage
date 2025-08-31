@@ -2,6 +2,8 @@ add_library(db
   base_memtable.h
   compact.cc
   compact.h
+  config.cc
+  config.h
   db_impl.cc
   db_impl.h
   memtable_iterator.cc

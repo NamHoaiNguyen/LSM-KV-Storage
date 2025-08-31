@@ -85,7 +85,6 @@ public:
   // Otherwise, it can cause dangling pointer.
   std::span<const Byte> GetOffsetView();
 
-  // For testing
   friend class BlockTest_BasicEncode_Test;
 
 private:

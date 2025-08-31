@@ -1,0 +1,18 @@
+# Project Configuration File
+# Used to replace hardcoded values from macro definitions
+
+[lsm]
+# Per-memory table size limit (4MB)
+LSM_PER_MEM_SIZE_LIMIT = 4194304  # 4 * 1024 * 1024
+
+# Maximum number of immutable memtables in memory
+MAX_IMMUTABLE_MEMTABLES_IN_MEMORY = 2
+
+# Block size (4KB)
+SST_BLOCK_SIZE = 4096  # 4 * 1024
+
+# Number of SST levels
+LSM_SST_NUM_LEVELS = 7
+
+# Maximum number of SST level-0 files before triggering compaction
+LVL0_COMPACTION_TRIGGER = 4

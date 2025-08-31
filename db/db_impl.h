@@ -34,6 +34,7 @@ namespace db {
 class BaseIterator;
 class BaseMemTable;
 class Compact;
+class Config;
 class Table;
 
 class DBImpl {
@@ -130,6 +131,8 @@ private:
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
   ThreadPool *thread_pool_;
+
+  std::unique_ptr<Config> config_;
 
   // Mutex to protect some critical data structures
   // (immutable_memtables_ list, levels_sst_info_)

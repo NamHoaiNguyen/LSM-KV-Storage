@@ -3,6 +3,7 @@
 #include "common/base_iterator.h"
 #include "common/thread_pool.h"
 #include "db/compact.h"
+#include "db/config.h"
 #include "db/memtable.h"
 #include "db/memtable_iterator.h"
 #include "db/status.h"
