@@ -15,6 +15,7 @@
 #include "sstable/sst.h"
 
 // libC++
+#include <algorithm>
 #include <cmath>
 #include <ranges>
 
