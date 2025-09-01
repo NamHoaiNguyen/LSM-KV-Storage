@@ -11,7 +11,7 @@ namespace db {
 
 class Compact {
 public:
-  Compact(const DBImpl *db);
+  explicit Compact(const DBImpl *db);
 
   ~Compact() = default;
 

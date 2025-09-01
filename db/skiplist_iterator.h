@@ -17,7 +17,7 @@ class SkipListNode;
 
 class SkipListIterator : public BaseIterator {
 public:
-  SkipListIterator(const SkipList *skiplist);
+  explicit SkipListIterator(const SkipList *skiplist);
 
   ~SkipListIterator() override;
 

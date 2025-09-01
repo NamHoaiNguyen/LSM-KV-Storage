@@ -55,7 +55,7 @@ class BlockIndex;
 
 class Table {
 public:
-  Table(std::string &&filename);
+  explicit Table(std::string &&filename);
 
   ~Table() = default;
 

@@ -35,7 +35,7 @@ class Table;
 
 class DBImpl {
 public:
-  DBImpl(std::string_view dbname);
+  explicit DBImpl(std::string_view dbname);
 
   ~DBImpl();
 

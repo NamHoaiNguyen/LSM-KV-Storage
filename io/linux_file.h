@@ -18,7 +18,7 @@ class Buffer;
 
 class LinuxWriteOnlyFile : public WriteOnlyFile {
 public:
-  LinuxWriteOnlyFile(std::string &&filename);
+  explicit LinuxWriteOnlyFile(std::string &&filename);
 
   ~LinuxWriteOnlyFile();
 
@@ -52,7 +52,7 @@ private:
 
 class LinuxReadOnlyFile : public ReadOnlyFile {
 public:
-  LinuxReadOnlyFile(std::string &&file_name);
+  explicit LinuxReadOnlyFile(std::string &&file_name);
 
   ~LinuxReadOnlyFile();
 

@@ -30,7 +30,7 @@ enum class IsolationLevel {
 
 class TransactionManager {
 public:
-  TransactionManager(db::DBImpl *db);
+  explicit TransactionManager(db::DBImpl *db);
 
   ~TransactionManager() = default;
 

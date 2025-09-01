@@ -17,7 +17,7 @@ class BaseMemTable;
 
 class MemTableIterator : public kvs::BaseIterator {
 public:
-  MemTableIterator(const BaseMemTable *const memtable);
+  explicit MemTableIterator(const BaseMemTable *const memtable);
 
   ~MemTableIterator() override;
 
