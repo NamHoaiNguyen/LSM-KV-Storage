@@ -36,9 +36,7 @@ public:
 
   const int GetLvl0SSTCompactionTrigger() const;
 
-  // Not best practises. But in this case, it is fine because this is never be
-  // changed!!!
-  std::string_view GetSavedDataPath() const;
+  const std::string GetSavedDataPath() const;
 
   // For testing
   friend class ConfigTest_LoadConfigFromPathSuccess_Test;

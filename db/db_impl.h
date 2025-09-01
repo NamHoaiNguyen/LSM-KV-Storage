@@ -13,10 +13,6 @@
 #include <thread>
 #include <vector>
 
-namespace {
-constexpr size_t kDefaultSSTLevel = 7;
-} // namespace
-
 namespace kvs {
 
 class ThreadPool;
@@ -111,8 +107,6 @@ private:
     }
   };
 
-  // To know that a SST belongs to which level
-  std::vector<std::unique_ptr<SSTInfo>> levels_sst_info_[kDefaultSSTLevel];
   // Map contains info of level and size of of it levels
   // std::unordered_map<SSTId, std::unique_ptr<SSTInfo>> levels_sst_info_;
 
@@ -133,6 +127,9 @@ private:
   ThreadPool *thread_pool_;
 
   std::unique_ptr<Config> config_;
+
+  // To know that a SST belongs to which level
+  std::vector<std::vector<std::unique_ptr<SSTInfo>>> levels_sst_info_;
 
   // Mutex to protect some critical data structures
   // (immutable_memtables_ list, levels_sst_info_)

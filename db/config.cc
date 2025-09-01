@@ -5,6 +5,7 @@
 
 // libC++
 #include <filesystem>
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -151,7 +152,7 @@ const int Config::GetLvl0SSTCompactionTrigger() const {
   return lvl0_compaction_trigger_;
 }
 
-std::string_view Config::GetSavedDataPath() const { return data_path_; }
+const std::string Config::GetSavedDataPath() const { return data_path_; }
 
 } // namespace db
 
