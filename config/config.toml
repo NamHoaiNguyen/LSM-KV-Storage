@@ -18,4 +18,4 @@ LSM_SST_NUM_LEVELS = 7
 LVL0_COMPACTION_TRIGGER = 4
 
 # Saved Data Path
-DATA_PATH = "/home/hoainam/self/bigg/lsm-kv-storage/data"
+DATA_PATH = "/var/lib/lsm-kv-storage/data"

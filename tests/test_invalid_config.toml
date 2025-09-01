@@ -3,7 +3,7 @@
 
 [lsm]
 # Per-memory table size limit (4MB)
-LSM_PER_MEM_SIZE_LIMIT = 4194304  # 4 * 1024 * 1024
+LSM_PER_MEM_SIZE_LIMIT = 84194304 # Invalid mem size
 
 # Maximum number of immutable memtables in memory
 MAX_IMMUTABLE_MEMTABLES_IN_MEMORY = 2
@@ -18,4 +18,4 @@ LSM_SST_NUM_LEVELS = 7
 LVL0_COMPACTION_TRIGGER = 4
 
 # Saved Data Path
-DATA_PATH = "/home/hoainam/self/bigg/lsm-kv-storage/data"
+DATA_PATH = "/var/lib/lsm-kv-storage/data"
