@@ -1,8 +1,10 @@
 #ifndef DB_COMPACT_H
 #define DB_COMPACT_H
 
-#include "db_impl.h"
+#include "version.h"
 
+#include <cstdint>
+#include <string_view>
 #include <vector>
 
 namespace kvs {
@@ -11,7 +13,7 @@ namespace db {
 
 class Compact {
 public:
-  explicit Compact(const DBImpl *db);
+  explicit Compact(const Version *version);
 
   ~Compact() = default;
 
@@ -39,10 +41,9 @@ private:
 
   void DoCompactJob();
 
-  const DBImpl *db_;
+  const Version *version_;
 
-  // std::vector<std::reference_wrapper<const DBImpl::SSTInfo>> compact_info_;
-  std::vector<const DBImpl::SSTInfo *> compact_info_;
+  std::vector<const Version::SSTInfo *> compact_info_;
 };
 
 } // namespace db

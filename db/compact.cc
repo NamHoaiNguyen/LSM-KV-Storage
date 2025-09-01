@@ -2,6 +2,7 @@
 
 #include "common/macros.h"
 #include "db/db_impl.h"
+#include "db/version.h"
 #include "sstable/sst.h"
 
 // libC++
@@ -12,17 +13,17 @@ namespace kvs {
 
 namespace db {
 
-Compact::Compact(const DBImpl *db) : db_(db) {}
+Compact::Compact(const Version *version) : version_(version) {}
 
 void Compact::PickCompact(int sst_lvl0_size) {
   // TODO(namnh) : Do we need to acquire lock ?
   // What happen if when compact is executing, new SST file appears ?
 
-  if (!db_) {
+  if (!version_) {
     return;
   }
 
-  if (db_->levels_sst_info_[0].empty()) {
+  if (version_->levels_sst_info_[0].empty()) {
     // TODO(namnh) : check that higher level need to merge or not ?
     // DoFullCompact();
     return;
@@ -43,30 +44,30 @@ void Compact::DoL0L1LvlCompact() {
 }
 
 std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
-  assert(!db_->levels_sst_info_[0].empty());
+  assert(!version_->levels_sst_info_[0].empty());
 
   std::string_view smallest_key =
-      db_->levels_sst_info_[0][0]->table_->table_smallest_key_;
+      version_->levels_sst_info_[0][0]->table_->table_smallest_key_;
   std::string_view largest_key =
-      db_->levels_sst_info_[0][0]->table_->table_largest_key_;
+      version_->levels_sst_info_[0][0]->table_->table_largest_key_;
 
   // Iterate through all sst lvl 0
-  for (int i = 0; i < db_->levels_sst_info_[0].size(); i++) {
-    if (smallest_key <= db_->levels_sst_info_[0][i]->largest_key_ &&
-        largest_key >= db_->levels_sst_info_[0][i]->smallest_key_) {
+  for (int i = 0; i < version_->levels_sst_info_[0].size(); i++) {
+    if (smallest_key <= version_->levels_sst_info_[0][i]->largest_key_ &&
+        largest_key >= version_->levels_sst_info_[0][i]->smallest_key_) {
       // If overllaping, this file should also be added to compact list
-      compact_info_.push_back(db_->levels_sst_info_[0][i].get());
+      compact_info_.push_back(version_->levels_sst_info_[0][i].get());
 
-      if (db_->levels_sst_info_[0][i]->smallest_key_ < smallest_key) {
+      if (version_->levels_sst_info_[0][i]->smallest_key_ < smallest_key) {
         // Update smallest key
-        smallest_key = db_->levels_sst_info_[0][i]->smallest_key_;
+        smallest_key = version_->levels_sst_info_[0][i]->smallest_key_;
         // Re-iterating
         i = 0;
       }
 
-      if (largest_key < db_->levels_sst_info_[0][i]->largest_key_) {
+      if (largest_key < version_->levels_sst_info_[0][i]->largest_key_) {
         // Update largest key
-        largest_key = db_->levels_sst_info_[0][i]->largest_key_;
+        largest_key = version_->levels_sst_info_[0][i]->largest_key_;
         // Re-iterating
         i = 0;
       }
@@ -79,18 +80,18 @@ std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
 void Compact::GetOverlappingSSTOtherLvls(uint8_t level,
                                          std::string_view smallest_key,
                                          std::string_view largest_key) {
-  if (db_->levels_sst_info_[level].empty()) {
+  if (version_->levels_sst_info_[level].empty()) {
     return;
   }
 
   size_t starting_file_index =
       FindNonOverlappingFiles(level, smallest_key, largest_key);
 
-  for (size_t i = starting_file_index; i < db_->levels_sst_info_[level].size();
-       i++) {
-    if (smallest_key <= db_->levels_sst_info_[level][i]->largest_key_ &&
-        largest_key >= db_->levels_sst_info_[level][i]->smallest_key_) {
-      compact_info_.push_back(db_->levels_sst_info_[level][i].get());
+  for (size_t i = starting_file_index;
+       i < version_->levels_sst_info_[level].size(); i++) {
+    if (smallest_key <= version_->levels_sst_info_[level][i]->largest_key_ &&
+        largest_key >= version_->levels_sst_info_[level][i]->smallest_key_) {
+      compact_info_.push_back(version_->levels_sst_info_[level][i].get());
     } else {
       // Because at these levels, files are not overllaping with each other.
       // Because 'i.smallest_key' > 'i - 1.largest_key' then if file at "i"
@@ -111,11 +112,11 @@ size_t Compact::FindNonOverlappingFiles(uint8_t level,
 
   size_t left = 0;
   // TODO(namnh) : SAFE ?
-  size_t right = db_->levels_sst_info_[level].size() - 1;
+  size_t right = version_->levels_sst_info_[level].size() - 1;
 
   while (left < right) {
     size_t mid = left + (right - left) / 2;
-    if (db_->levels_sst_info_[level][mid]->largest_key_ < smallest_key) {
+    if (version_->levels_sst_info_[level][mid]->largest_key_ < smallest_key) {
       // Largest key of sst index "mid" < smallest_key. Therefor all files
       // at or before "mid" are uninteresting
       left = mid + 1;

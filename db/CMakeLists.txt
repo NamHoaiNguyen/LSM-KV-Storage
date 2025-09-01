@@ -17,6 +17,10 @@ add_library(db
   skiplist.cc
   skiplist.h
   status.h
+  version_manager.cc
+  version_manager.h
+  version.cc
+  version.h
 )
 
 target_include_directories(db PUBLIC ${CMAKE_SOURCE_DIR})

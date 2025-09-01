@@ -29,9 +29,8 @@ namespace db {
 
 class BaseIterator;
 class BaseMemTable;
-class Compact;
 class Config;
-class Table;
+class VersionManager;
 
 class DBImpl {
 public:
@@ -51,7 +50,7 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
-  std::unique_ptr<BaseIterator> CreateNewIterator();
+  uint64_t GetNextSSTId();
 
   friend class Compact;
 
@@ -87,14 +86,6 @@ private:
 
   void FlushMemTableJob(const BaseMemTable *const immutable_memtable);
 
-  void CreateNewSST(const BaseMemTable *const memtable);
-
-  void MaybeCompact();
-
-  void CompactSST();
-
-  void UpdateVersionInfo();
-
   const std::string dbname_;
 
   std::atomic<uint64_t> next_sstable_id_;
@@ -107,26 +98,19 @@ private:
     }
   };
 
-  // Map contains info of level and size of of it levels
-  // std::unordered_map<SSTId, std::unique_ptr<SSTInfo>> levels_sst_info_;
-
-  std::atomic<int> current_L0_files_;
-
-  // std::unordered_map<SSTId, >
-
   std::unique_ptr<BaseMemTable> memtable_;
 
   std::vector<std::unique_ptr<BaseMemTable>> immutable_memtables_;
-
-  std::unique_ptr<Compact> compact_;
 
   std::unique_ptr<mvcc::TransactionManager> txn_manager_;
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
-  ThreadPool *thread_pool_;
+  kvs::ThreadPool *thread_pool_;
 
   std::unique_ptr<Config> config_;
+
+  std::unique_ptr<VersionManager> version_manager_;
 
   // To know that a SST belongs to which level
   std::vector<std::vector<std::unique_ptr<SSTInfo>>> levels_sst_info_;

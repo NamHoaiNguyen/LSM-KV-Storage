@@ -20,7 +20,7 @@ public:
   Config(const Config &) = delete;
   Config &operator=(Config &) = delete;
 
-  // Move constructor/alignment
+  // Move constructor/assignment
   Config(Config &&) = default;
   Config &operator=(Config &&) = default;
 
