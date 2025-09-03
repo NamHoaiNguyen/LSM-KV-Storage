@@ -42,8 +42,6 @@ public:
 
   size_t GetBlockIndexSize() const;
 
-  friend class BlockBuilderTest_Encode_Test;
-
 private:
   std::vector<Byte> buffer_;
 };
