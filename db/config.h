@@ -38,10 +38,6 @@ public:
 
   const std::string GetSavedDataPath() const;
 
-  // For testing
-  friend class ConfigTest_LoadConfigFromPathSuccess_Test;
-  friend class ConfigTest_UseDefaultConfig_Test;
-
 private:
   bool LoadConfigFromPath();
 
