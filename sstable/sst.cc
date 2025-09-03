@@ -1,5 +1,6 @@
 #include "sstable/sst.h"
 
+#include "db/config.h"
 #include "db/memtable_iterator.h"
 #include "io/base_file.h"
 #include "io/linux_file.h"
@@ -9,20 +10,16 @@
 // libC++
 #include <cassert>
 
-namespace {
-constexpr size_t kDebugBlockDataSize = 256;
-} // namespace
-
 namespace kvs {
 
 namespace sstable {
 
-Table::Table(std::string &&filename)
+Table::Table(std::string &&filename, const db::Config *config)
     : file_object_(
           std::make_unique<io::LinuxWriteOnlyFile>(std::move(filename))),
       block_data_(std::make_unique<Block>()),
       block_index_(std::make_unique<BlockIndex>()), current_offset_(0),
-      min_txnid_(UINT64_MAX), max_txnid_(0) {}
+      min_txnid_(UINT64_MAX), max_txnid_(0), config_(config) {}
 
 void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
                      db::ValueType value_type) {
@@ -44,8 +41,7 @@ void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
   block_largest_key_ = std::string(key);
   table_largest_key_ = std::string(key);
 
-  // TODO(namnh) : For debug
-  if (block_data_->GetBlockSize() >= kDebugBlockDataSize) {
+  if (block_data_->GetBlockSize() >= config_->GetSSTBlockSize()) {
     FlushBlock();
   }
 }
@@ -66,7 +62,6 @@ void Table::FlushBlock() {
   file_object_->Append(offset_buffer, current_offset_);
   current_offset_ += offset_buffer.size();
 
-  // Ensure that data is persisted to disk from page cache
   file_object_->Flush();
 
   // Build MetaEntry format (block_meta)

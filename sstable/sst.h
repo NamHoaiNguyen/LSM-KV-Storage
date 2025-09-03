@@ -15,6 +15,7 @@ namespace db {
 class AccessFile;
 class BaseIterator;
 class Compact;
+class Config;
 } // namespace db
 
 class SSTTest_BasicEncode_Test;
@@ -55,7 +56,7 @@ class BlockIndex;
 
 class Table {
 public:
-  explicit Table(std::string &&filename);
+  Table(std::string &&filename, const db::Config *config);
 
   ~Table() = default;
 
@@ -80,7 +81,6 @@ public:
   bool Open();
 
   // For testing
-  // friend class TableTest_BasicEncode_Test;
   Block *GetBlockData();
 
   BlockIndex *GetBlockIndexData();
@@ -123,6 +123,8 @@ private:
   std::string table_smallest_key_;
 
   std::string table_largest_key_;
+
+  const db::Config *config_;
 };
 
 } // namespace sstable
