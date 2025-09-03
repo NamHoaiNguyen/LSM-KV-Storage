@@ -139,6 +139,10 @@ Block *Table::GetBlockData() { return block_data_.get(); };
 
 BlockIndex *Table::GetBlockIndexData() { return block_index_.get(); };
 
+io::WriteOnlyFile *Table::GetWriteOnlyFileObject() {
+  return file_object_.get();
+}
+
 } // namespace sstable
 
 } // namespace kvs

@@ -85,8 +85,9 @@ public:
 
   BlockIndex *GetBlockIndexData();
 
+  io::WriteOnlyFile *GetWriteOnlyFileObject();
+
   friend class kvs::db::Compact;
-  friend class kvs::SSTTest_BasicEncode_Test;
 
 private:
   void EncodeExtraInfo();

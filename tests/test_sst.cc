@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
 #include "common/macros.h"
+#include "common/thread_pool.h"
+#include "db/config.h"
 #include "db/status.h"
 #include "io/linux_file.h"
 #include "sstable/block.h"
@@ -65,10 +67,14 @@ std::vector<Byte> block_index_buffer_encoded = {
 };
 
 TEST(SSTTest, BasicEncode) {
+  auto config = std::make_unique<db::Config>(true /*is_testing*/);
+  config->LoadConfig();
+
   std::string filename =
       "/home/hoainam/self/biggg/lsm-kv-storage/data/000001.sst";
-  auto table = std::make_unique<sstable::Table>(std::move(filename));
-  table->file_object_->Open();
+  auto table =
+      std::make_unique<sstable::Table>(std::move(filename), config.get());
+  table->GetWriteOnlyFileObject()->Open();
 
   std::string key1 = "apple";
   std::string value1 = "value1";
