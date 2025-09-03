@@ -73,7 +73,7 @@ public:
   // Clear data of block to reuse
   void Reset();
 
-  size_t GetBlockSize() const;
+  const size_t GetBlockSize() const;
 
   uint64_t GetNumEntries() const;
 
@@ -84,8 +84,6 @@ public:
   // ONLY call this method after finish writing all data to block.
   // Otherwise, it can cause dangling pointer.
   std::span<const Byte> GetOffsetView();
-
-  friend class BlockTest_BasicEncode_Test;
 
 private:
   void EncodeDataEntry(std::string_view key, std::string_view value,
