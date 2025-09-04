@@ -14,7 +14,7 @@ struct DBStore {
 };
 
 TEST(DBTest, BasicOperations) {
-  auto db = std::make_unique<db::DBImpl>("hoainam");
+  auto db = std::make_unique<db::DBImpl>();
 
   db->Put("apple", "value1", 12345);
   db->Put("apply", "success", 9876);

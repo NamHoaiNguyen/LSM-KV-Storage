@@ -34,7 +34,7 @@ class VersionManager;
 
 class DBImpl {
 public:
-  explicit DBImpl(std::string_view dbname);
+  explicit DBImpl();
 
   ~DBImpl();
 
@@ -51,6 +51,12 @@ public:
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
   uint64_t GetNextSSTId();
+
+  void LoadDB();
+
+  const Config *const GetConfig();
+
+  const VersionManager *GetVersionManager();
 
   friend class Compact;
 

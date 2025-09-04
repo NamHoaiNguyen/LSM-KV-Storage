@@ -25,17 +25,28 @@ namespace kvs {
 
 namespace db {
 
-DBImpl::DBImpl(std::string_view dbname)
-    : dbname_(std::string(dbname)), next_sstable_id_(0),
-      memtable_(std::make_unique<MemTable>()),
+DBImpl::DBImpl()
+    : next_sstable_id_(0), memtable_(std::make_unique<MemTable>()),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
-      config_(std::make_unique<Config>()),
-      version_manager_(std::make_unique<VersionManager>(this, config_.get())),
-      thread_pool_(new kvs::ThreadPool()) {}
+      config_(std::make_unique<Config>()), thread_pool_(new kvs::ThreadPool()),
+      version_manager_(
+          std::make_unique<VersionManager>(this, config_.get(), thread_pool_)) {
+  config_->LoadConfig();
+}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
   thread_pool_ = nullptr;
+}
+
+void DBImpl::LoadDB() {
+  Version *latest_version = version_manager_->CreateLatestVersion();
+  if (!latest_version) {
+    // return;
+    std::exit(EXIT_FAILURE);
+  }
+
+  // TODO(namnh) : Read ALL of SST files and init there info
 }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
@@ -70,10 +81,13 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 
     if (immutable_memtables_.size() >= config_->GetMaxImmuMemTablesInMem()) {
       // Flush thread to flush memtable to disk
-      for (const auto &immu_memtable : immutable_memtables_) {
-        thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this,
-                              immu_memtable.get());
-      }
+      // TODO(namnh) : CRASH!!!. When number of write ops is high, an immutable
+      // memtable can be flushed to disk multiple time => double free
+      // for (const auto &immu_memtable : immutable_memtables_) {
+      thread_pool_->Enqueue(
+          &DBImpl::FlushMemTableJob, this,
+          immutable_memtables_[immutable_memtables_.size() - 1].get());
+      // }
     }
 
     // Create new empty mutable memtable
@@ -82,7 +96,11 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 }
 
 void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
-  Version *latest_version = version_manager_->CreateNewVersion();
+  // Key point: Db DOES NOT need to acquire mutex here. Because
+  // CreateLatestVersion is protected by mutex. So, at a time, there is always 1
+  // thread/process can access. It means that, each latest version returned is
+  // ensured to be race condition free
+  Version *latest_version = version_manager_->CreateLatestVersion();
   if (!latest_version) {
     return;
   }
@@ -91,7 +109,9 @@ void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
     return;
   }
 
-  // After sst is persisted to disk, remove immutable memtable from memory
+  // TODO(namnh) : Update manifest info
+  // After sst is persisted to disk and manifest is updated, remove immutable
+  // memtable from memory
   {
     std::scoped_lock rwlock(mutex_);
     immutable_memtables_.erase(
@@ -106,6 +126,12 @@ void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
 uint64_t DBImpl::GetNextSSTId() {
   next_sstable_id_.fetch_add(1);
   return next_sstable_id_.load();
+}
+
+const Config *const DBImpl::GetConfig() { return config_.get(); }
+
+const VersionManager *DBImpl::GetVersionManager() {
+  return version_manager_.get();
 }
 
 // SST INFO
