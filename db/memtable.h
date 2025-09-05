@@ -5,6 +5,7 @@
 #include "db/base_memtable.h"
 #include "db/status.h"
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -53,12 +54,22 @@ public:
 
   void SetImmutable() override;
 
+  bool IsFlushing() override;
+  void SetFlushing() override;
+
+  uint64_t GetSequenceNumber() const;
+  void SetSequenceNumber(uint64_t sequence_number);
+
   size_t GetMemTableSize() override;
 
   const SkipList *GetMemTable() const override;
 
 private:
   bool is_immutable_;
+
+  std::atomic<bool> is_flushing_;
+
+  std::atomic<uint64_t> sequence_number_;
 
   std::unique_ptr<SkipList> table_;
 };

@@ -8,7 +8,7 @@ namespace kvs {
 namespace db {
 
 MemTable::MemTable()
-    : is_immutable_(false), table_(std::make_unique<SkipList>()) {}
+    : is_immutable_(false), is_flushing_(false), table_(std::make_unique<SkipList>()) {}
 
 MemTable::~MemTable() = default;
 
@@ -131,6 +131,18 @@ const SkipList *MemTable::GetMemTable() const {
 bool MemTable::IsImmutable() { return is_immutable_; }
 
 void MemTable::SetImmutable() { is_immutable_ = true; }
+
+bool MemTable::IsFlushing() { return is_flushing_; }
+
+void MemTable::SetFlushing() { is_flushing_ = true; }
+
+uint64_t MemTable::GetSequenceNumber() const {
+  return sequence_number_;
+}
+
+void MemTable::SetSequenceNumber(uint64_t sequence_number) {
+  sequence_number_ = sequence_number;
+}
 
 } // namespace db
 

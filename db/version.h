@@ -74,7 +74,10 @@ public:
   Version(Version &&) = default;
   Version &operator=(Version &&) = default;
 
-  bool CreateNewSST(const BaseMemTable *const immutable_memtable);
+  bool CreateNewSST(const std::vector<std::unique_ptr<BaseMemTable>>& immutable_memtables);
+  bool CreateNewSST(const std::vector<const BaseMemTable*>& immutable_memtables);
+  bool CreateNewSST(const std::vector<const std::unique_ptr<BaseMemTable>*>& immutable_memtable);
+  bool CreateNewSST(const std::unique_ptr<BaseMemTable> *const immutable_memtable);
 
   const std::vector<std::vector<std::shared_ptr<SSTInfo>>> &
   GetImmutableSSTInfo() const;

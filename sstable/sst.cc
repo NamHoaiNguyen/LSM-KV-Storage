@@ -65,7 +65,7 @@ void Table::FlushBlock() {
   // Ensure that data is persisted to disk from page cache
   // TODO(namnh, IMPORTANCE) : Do we need to do that right now? it significantly
   // degrades performance
-  file_object_->Flush();
+  // file_object_->Flush();
 
   // Build MetaEntry format (block_meta)
   block_index_->AddEntry(block_smallest_key_, block_largest_key_,

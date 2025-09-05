@@ -22,7 +22,7 @@ TEST(VersionManagerTest, BasicOperation) {
 
   const Config *const config = db->GetConfig();
   // That number of key/value pairs is enough to create a new sst
-  const int nums_elem = 300000;
+  const int nums_elem = 500000;
 
   // When db is first loaded, number of older version = 0
   EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 0);
@@ -31,6 +31,7 @@ TEST(VersionManagerTest, BasicOperation) {
   size_t current_size = 0;
   // Include latest_version
   int number_version = 1;
+  int immutable_memtables_in_mem = 0;
   for (int i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
@@ -39,15 +40,18 @@ TEST(VersionManagerTest, BasicOperation) {
 
     current_size += key.size() + value.size();
     if (current_size >= config->GetPerMemTableSizeLimit()) {
-      // Only create 1 SST
-      number_version++;
       current_size = 0;
-      break;
+      immutable_memtables_in_mem++;
+      if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
+        number_version++;
+        immutable_memtables_in_mem = 0;
+        break;
+      }
     }
   }
 
   // Need time for new SST is persisted to disk
-  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(4000));
 
   // Creating new SST when memtable is overlow means that new latest version is
   // created
@@ -95,20 +99,25 @@ TEST(VersionManagerTest, LatestVersion) {
   std::string key, value;
   size_t current_size = 0;
   int number_version = 1;
+  int immutable_memtables_in_mem = 0;
   for (int i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
     current_size += key.size() + value.size();
     if (current_size >= config->GetPerMemTableSizeLimit()) {
-      number_version++;
       current_size = 0;
+      immutable_memtables_in_mem++;
+      if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
+        number_version++;
+        immutable_memtables_in_mem = 0;
+      }
     }
 
     db->Put(key, value, 0 /*txn_id*/);
   }
 
-  // std::this_thread::sleep_for(std::chrono::milliseconds(7000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(30000));
 
   int num_sst_files = 0;
   int num_sst_files_info = 0;

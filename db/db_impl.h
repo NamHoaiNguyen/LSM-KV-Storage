@@ -90,7 +90,10 @@ private:
     std::string largest_key_;
   };
 
-  void FlushMemTableJob(const BaseMemTable *const immutable_memtable);
+  bool ShouldFlushMemTable();
+
+  void FlushMemTableJob(const uint64_t flush_sequence_number);
+  // void FlushMemTableJob(const BaseMemTable *const immutable_memtable);
 
   const std::string dbname_;
 
@@ -108,6 +111,8 @@ private:
 
   std::vector<std::unique_ptr<BaseMemTable>> immutable_memtables_;
 
+  std::vector<const BaseMemTable*> flushing_memtables_;
+
   std::unique_ptr<mvcc::TransactionManager> txn_manager_;
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
@@ -121,10 +126,14 @@ private:
   // To know that a SST belongs to which level
   std::vector<std::vector<std::unique_ptr<SSTInfo>>> levels_sst_info_;
 
+  std::atomic<uint64_t> flushing_sequence_number_{0};
+
   // Mutex to protect some critical data structures
   // (immutable_memtables_ list, levels_sst_info_)
   // std::shared_mutex immutable_memtables_mutex_;
   std::shared_mutex mutex_;
+
+std::condition_variable_any cv_;
 };
 
 } // namespace db
