@@ -77,7 +77,7 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::unique_lock rwlock(mutex_);
-  // Write Stop problem
+  // TODO(namnh): Write Stop problem. Improve in future
   cv_.wait(rwlock, [this]() {
     return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
   });
@@ -89,9 +89,6 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 
     if (immutable_memtables_.size() >= config_->GetMaxImmuMemTablesInMem()) {
       // Flush thread to flush memtable to disk
-      // TODO(namnh) : CRASH!!!. When number of write ops is high, an immutable
-      // memtable can be flushed to disk multiple time => double free
-      // flushing_sequence_number_++;
       thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this);
     }
 
@@ -133,7 +130,7 @@ void DBImpl::FlushMemTableJob() {
   {
     std::scoped_lock rwlock(mutex_);
     immutable_memtables_.clear();
-    cv_.notify_one();
+    cv_.notify_all();
   }
 }
 

@@ -182,17 +182,19 @@ TEST(VersionManagerTest, Concurrency) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
 
-      std::scoped_lock lock(mutex);
-      current_size += key.size() + value.size();
-      if (current_size >= config->GetPerMemTableSizeLimit()) {
-        current_size = 0;
-        immutable_memtables_in_mem++;
-        if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
-          number_version++;
-          immutable_memtables_in_mem = 0;
+      {
+        std::scoped_lock lock(mutex);
+        current_size += key.size() + value.size();
+        if (current_size >= config->GetPerMemTableSizeLimit()) {
+          current_size = 0;
+          immutable_memtables_in_mem++;
+          if (immutable_memtables_in_mem >=
+              config->GetMaxImmuMemTablesInMem()) {
+            number_version++;
+            immutable_memtables_in_mem = 0;
+          }
         }
       }
-
       db->Put(key, value, 0 /*txn_id*/);
     }
     all_done.count_down();
