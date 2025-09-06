@@ -5,6 +5,7 @@
 #include "db/compact.h"
 #include "db/config.h"
 #include "db/db_impl.h"
+#include "db/memtable.h"
 #include "db/memtable_iterator.h"
 #include "db/version.h"
 #include "db/version_manager.h"
@@ -13,7 +14,6 @@
 #include "sstable/block_index.h"
 #include "sstable/sst.h"
 
-#include <cassert>
 #include <iostream>
 
 namespace kvs {
@@ -25,30 +25,24 @@ Version::Version(DBImpl *db, const Config *config, ThreadPool *thread_pool)
       compact_(std::make_unique<Compact>(this)), db_(db), config_(config),
       thread_pool_(thread_pool) {}
 
-bool Version::CreateNewSST(const std::vector<std::unique_ptr<BaseMemTable>>& immutable_memtables) {
-// bool Version::CreateNewSST(const std::vector<const BaseMemTable*>& immutable_memtables) {
-// bool Version::CreateNewSST(const BaseMemTable *const immutable_memtable) {
-  // std::string next_sst = std::to_string(db_->GetNextSSTId());
-  // std::string filename = config_->GetSavedDataPath() + next_sst + ".sst";
-  // auto new_sst = std::make_unique<sstable::Table>(std::move(filename), config_);
-  // if (!new_sst->Open()) {
-  //   return false;
-  // }
+bool Version::CreateNewSST(
+    const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables) {
 
-
-  std::cout << immutable_memtables.size() << " " << config_->GetMaxImmuMemTablesInMem() << std::endl;
-  assert(immutable_memtables.size() == config_->GetMaxImmuMemTablesInMem());
+  std::cout << immutable_memtables.size() << " "
+            << config_->GetMaxImmuMemTablesInMem() << std::endl;
 
   // TODO(namnh) : Do we need to acquire lock ?
-  for (const auto& immutable_memtable : immutable_memtables) {
+  for (const auto &immutable_memtable : immutable_memtables) {
     std::string next_sst = std::to_string(db_->GetNextSSTId());
     std::string filename = config_->GetSavedDataPath() + next_sst + ".sst";
-    auto new_sst = std::make_unique<sstable::Table>(std::move(filename), config_);
+    auto new_sst =
+        std::make_unique<sstable::Table>(std::move(filename), config_);
     if (!new_sst->Open()) {
       continue;
     }
 
-    auto iterator = std::make_unique<MemTableIterator>(immutable_memtable.get());
+    auto iterator =
+        std::make_unique<MemTableIterator>(immutable_memtable.get());
 
     // Iterate through all key/value pairs to add them to sst
     for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {

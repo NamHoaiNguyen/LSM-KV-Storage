@@ -54,8 +54,9 @@ public:
 
   void SetImmutable() override;
 
-  bool IsFlushing() override;
-  void SetFlushing() override;
+  bool IsFlushing();
+
+  void SetFlushing();
 
   uint64_t GetSequenceNumber() const;
   void SetSequenceNumber(uint64_t sequence_number);

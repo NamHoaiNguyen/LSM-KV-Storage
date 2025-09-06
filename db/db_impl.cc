@@ -18,7 +18,9 @@
 
 // libC++
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <iostream>
 #include <numeric>
 #include <ranges>
 
@@ -26,14 +28,13 @@ namespace kvs {
 
 namespace db {
 
-DBImpl::DBImpl()
+DBImpl::DBImpl(bool is_testing)
     : next_sstable_id_(0), memtable_(std::make_unique<MemTable>()),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
-      config_(std::make_unique<Config>()), thread_pool_(new kvs::ThreadPool()),
-      version_manager_(
-          std::make_unique<VersionManager>(this, config_.get(), thread_pool_)) {
-  config_->LoadConfig();
-}
+      config_(std::make_unique<Config>(is_testing)),
+      thread_pool_(new kvs::ThreadPool()),
+      version_manager_(std::make_unique<VersionManager>(this, config_.get(),
+                                                        thread_pool_)) {}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
@@ -75,13 +76,11 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 }
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  // std::scoped_lock rwlock(mutex_);
   std::unique_lock rwlock(mutex_);
-  if (immutable_memtables_.size() >= config_->GetMaxImmuMemTablesInMem()) {
-    cv_.wait(rwlock, [this](){ 
-      return immutable_memtables_.size() == 0;
-    });
-  }
+  // Write stall/stop.
+  cv_.wait(rwlock, [this]() {
+    return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
+  });
 
   memtable_->Put(key, value, txn_id);
 
@@ -93,18 +92,7 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
       // TODO(namnh) : CRASH!!!. When number of write ops is high, an immutable
       // memtable can be flushed to disk multiple time => double free
       // flushing_sequence_number_++;
-      for (const auto &immu_basememtable : immutable_memtables_) {
-        auto* immutable_memtable = static_cast<MemTable*>(immu_basememtable.get());
-        // if (immutable_memtable->GetSequenceNumber() != 0) {
-        //   continue;
-        // }
-
-
-        // immutable_memtable->SetSequenceNumber(flushing_sequence_number_);
-        // flushing_memtables_.push_back(immu_basememtable.get());
-      }
-      thread_pool_->Enqueue(
-        &DBImpl::FlushMemTableJob, this, flushing_sequence_number_.load());
+      thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this);
     }
 
     // Create new empty mutable memtable
@@ -112,19 +100,23 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   }
 }
 
-bool DBImpl::ShouldFlushMemTable() {
-    int total_flush_memtable = 
-        std::count_if(immutable_memtables_.begin(),
-                      immutable_memtables_.end(),
-                      [this](const auto& elem) { 
-                        return (static_cast<const MemTable*>(elem.get()))->GetSequenceNumber() == flushing_sequence_number_;
-                      });
+void DBImpl::ForceFlushMemTable() {
+  {
+    std::scoped_lock lock(mutex_);
+    if (memtable_->GetMemTableSize() == 0) {
+      return;
+    }
 
-  return (total_flush_memtable == config_->GetMaxImmuMemTablesInMem()) ? true : false;
+    immutable_memtables_.push_back(std::move(memtable_));
+    // Create new empty mutable memtable
+    memtable_ = std::make_unique<MemTable>();
+  }
+
+  return FlushMemTableJob();
 }
 
 // void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
-void DBImpl::FlushMemTableJob(const uint64_t flush_sequence_number) {
+void DBImpl::FlushMemTableJob() {
   // Key point: Db DOES NOT need to acquire mutex here. Because
   // CreateLatestVersion is protected by mutex. So, at a time, there is always 1
   // thread/process can access. It means that, each latest version returned is
@@ -135,39 +127,13 @@ void DBImpl::FlushMemTableJob(const uint64_t flush_sequence_number) {
     return;
   }
 
-  std::vector<const BaseMemTable*> flush_memtables_list_;
-  for (const auto& flushing_base_memtable : flushing_memtables_) {
-    auto* flushing_memtable = static_cast<const MemTable*>(flushing_base_memtable);
-    // if (flushing_memtable->GetSequenceNumber() != flush_sequence_number) {
-      // continue;
-    // }
-
-    // flush_memtables_list_.push_back(flushing_base_memtable);
-  }
-
-  if (!latest_version->CreateNewSST(immutable_memtables_)) {
-    return;
-  }
-  
-  // if (!latest_version->CreateNewSST(immutable_memtable)) {
-  //   return;
-  // }
+  latest_version->CreateNewSST(immutable_memtables_);
 
   // TODO(namnh) : Update manifest info
   // After sst is persisted to disk and manifest is updated, remove immutable
   // memtable from memory
   {
     std::scoped_lock rwlock(mutex_);
-    // immutable_memtables_.erase(
-    //     std::remove_if(immutable_memtables_.begin(), immutable_memtables_.end(),
-    //                    [&flush_memtables_list_, flush_sequence_number](const std::unique_ptr<BaseMemTable> &ptr) {
-    //                     //  return ptr.get() == immutable_memtable;
-    //                     return std::any_of(flush_memtables_list_.begin(),
-    //                                        flush_memtables_list_.end(),
-    //                                         [&](const BaseMemTable* ref) {return ref == ptr.get()/* && (static_cast<const MemTable*>(ref))->GetSequenceNumber() == flush_sequence_number*/;});
-    //                    }),
-    //     immutable_memtables_.end());
-
     immutable_memtables_.clear();
     cv_.notify_one();
   }

@@ -43,10 +43,6 @@ public:
   virtual bool IsImmutable() = 0;
 
   virtual void SetImmutable() = 0;
-
-  virtual bool IsFlushing() = 0;
-
-  virtual void SetFlushing() = 0;
 };
 
 } // namespace db

@@ -17,12 +17,12 @@ namespace kvs {
 namespace db {
 
 TEST(VersionManagerTest, BasicOperation) {
-  auto db = std::make_unique<db::DBImpl>();
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
 
   const Config *const config = db->GetConfig();
   // That number of key/value pairs is enough to create a new sst
-  const int nums_elem = 500000;
+  const int nums_elem = 10000000;
 
   // When db is first loaded, number of older version = 0
   EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 0);
@@ -43,6 +43,7 @@ TEST(VersionManagerTest, BasicOperation) {
       current_size = 0;
       immutable_memtables_in_mem++;
       if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
+        // Stop immediately if flushing is triggered
         number_version++;
         immutable_memtables_in_mem = 0;
         break;
@@ -51,7 +52,8 @@ TEST(VersionManagerTest, BasicOperation) {
   }
 
   // Need time for new SST is persisted to disk
-  std::this_thread::sleep_for(std::chrono::milliseconds(4000));
+  // NOTE: It must be long enough for debug build
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   // Creating new SST when memtable is overlow means that new latest version is
   // created
@@ -90,7 +92,7 @@ TEST(VersionManagerTest, BasicOperation) {
 }
 
 TEST(VersionManagerTest, LatestVersion) {
-  auto db = std::make_unique<db::DBImpl>();
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
   // That number of key/value pairs will create a new sst
@@ -117,7 +119,10 @@ TEST(VersionManagerTest, LatestVersion) {
     db->Put(key, value, 0 /*txn_id*/);
   }
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(30000));
+  db->ForceFlushMemTable();
+  number_version++;
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
   int num_sst_files = 0;
   int num_sst_files_info = 0;
