@@ -18,24 +18,39 @@
 
 // libC++
 #include <algorithm>
+#include <cassert>
 #include <cmath>
+#include <iostream>
+#include <numeric>
 #include <ranges>
 
 namespace kvs {
 
 namespace db {
 
-DBImpl::DBImpl(std::string_view dbname)
-    : dbname_(std::string(dbname)), next_sstable_id_(0),
-      memtable_(std::make_unique<MemTable>()),
+DBImpl::DBImpl(bool is_testing)
+    : next_sstable_id_(0), memtable_(std::make_unique<MemTable>()),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
-      config_(std::make_unique<Config>()),
-      version_manager_(std::make_unique<VersionManager>(this, config_.get())),
-      thread_pool_(new kvs::ThreadPool()) {}
+      config_(std::make_unique<Config>(is_testing)),
+      thread_pool_(new kvs::ThreadPool()),
+      version_manager_(std::make_unique<VersionManager>(this, config_.get(),
+                                                        thread_pool_)) {}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
   thread_pool_ = nullptr;
+}
+
+void DBImpl::LoadDB() {
+  config_->LoadConfig();
+
+  Version *latest_version = version_manager_->CreateLatestVersion();
+  if (!latest_version) {
+    // return;
+    std::exit(EXIT_FAILURE);
+  }
+
+  // TODO(namnh) : Read ALL of SST files and init there info
 }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
@@ -61,19 +76,20 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 }
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  std::scoped_lock rwlock(mutex_);
+  std::unique_lock rwlock(mutex_);
+  // TODO(namnh): Write Stop problem. Improve in future
+  cv_.wait(rwlock, [this]() {
+    return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
+  });
+
   memtable_->Put(key, value, txn_id);
 
   if (memtable_->GetMemTableSize() >= config_->GetPerMemTableSizeLimit()) {
-    // memtable_->SetImmutable();
     immutable_memtables_.push_back(std::move(memtable_));
 
     if (immutable_memtables_.size() >= config_->GetMaxImmuMemTablesInMem()) {
       // Flush thread to flush memtable to disk
-      for (const auto &immu_memtable : immutable_memtables_) {
-        thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this,
-                              immu_memtable.get());
-      }
+      thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this);
     }
 
     // Create new empty mutable memtable
@@ -81,31 +97,52 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   }
 }
 
-void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
-  Version *latest_version = version_manager_->CreateNewVersion();
+void DBImpl::ForceFlushMemTable() {
+  {
+    std::scoped_lock lock(mutex_);
+    if (memtable_->GetMemTableSize() == 0) {
+      return;
+    }
+
+    immutable_memtables_.push_back(std::move(memtable_));
+    // Create new empty mutable memtable
+    memtable_ = std::make_unique<MemTable>();
+  }
+
+  return FlushMemTableJob();
+}
+
+void DBImpl::FlushMemTableJob() {
+  // Key point: Db DOES NOT need to acquire mutex here. Because
+  // CreateLatestVersion is protected by mutex. So, at a time, there is always 1
+  // thread/process can access. It means that, each latest version returned is
+  // ensured to be race condition free
+  Version *latest_version = version_manager_->CreateLatestVersion();
   if (!latest_version) {
     return;
   }
 
-  if (!latest_version->CreateNewSST(immutable_memtable)) {
-    return;
-  }
+  latest_version->CreateNewSSTs(immutable_memtables_);
 
-  // After sst is persisted to disk, remove immutable memtable from memory
+  // TODO(namnh) : Update manifest info
+  // After sst is persisted to disk and manifest is updated, remove immutable
+  // memtable from memory
   {
     std::scoped_lock rwlock(mutex_);
-    immutable_memtables_.erase(
-        std::remove_if(immutable_memtables_.begin(), immutable_memtables_.end(),
-                       [immutable_memtable](const auto &ptr) {
-                         return ptr.get() == immutable_memtable;
-                       }),
-        immutable_memtables_.end());
+    immutable_memtables_.clear();
+    cv_.notify_all();
   }
 }
 
 uint64_t DBImpl::GetNextSSTId() {
   next_sstable_id_.fetch_add(1);
   return next_sstable_id_.load();
+}
+
+const Config *const DBImpl::GetConfig() { return config_.get(); }
+
+const VersionManager *DBImpl::GetVersionManager() {
+  return version_manager_.get();
 }
 
 // SST INFO

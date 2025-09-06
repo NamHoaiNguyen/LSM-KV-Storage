@@ -3,6 +3,7 @@
 
 #include <deque>
 #include <memory>
+#include <mutex>
 
 namespace kvs {
 
@@ -10,6 +11,7 @@ class ThreadPool;
 
 namespace db {
 
+class BaseMemTable;
 class DBImpl;
 class Compact;
 class Config;
@@ -17,7 +19,7 @@ class Version;
 
 class VersionManager {
 public:
-  VersionManager(DBImpl *db, const Config *config);
+  VersionManager(DBImpl *db, const Config *config, ThreadPool *thread_pool);
 
   ~VersionManager() = default;
 
@@ -29,9 +31,40 @@ public:
   VersionManager(VersionManager &&) = default;
   VersionManager &operator=(VersionManager &&) = default;
 
-  Version *CreateNewVersion();
+  // ALWAYS return latest version
+  Version *CreateLatestVersion();
+
+  // For testing
+  const std::deque<std::unique_ptr<Version>> &GetVersions() const;
+
+  const Version *GetLatestVersion() const;
+
+  const Config *const GetConfig();
+
+  const DBImpl *const GetDB();
 
 private:
+  class VersionBuilder {
+  public:
+    VersionBuilder() = default;
+
+    ~VersionBuilder() = default;
+
+    // No copy allowed
+    VersionBuilder(const VersionBuilder &) = delete;
+    VersionBuilder &operator=(VersionBuilder &) = delete;
+
+    // Move constructor/assignment
+    VersionBuilder(VersionBuilder &&) = default;
+    VersionBuilder &operator=(VersionBuilder &&) = default;
+
+    bool CreateNewSST(const BaseMemTable *const immutable_memtable);
+
+    friend class Compact;
+
+  private:
+  };
+
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
   // referenced to anymore
   std::deque<std::unique_ptr<Version>> versions_;
@@ -46,6 +79,8 @@ private:
   const Config *config_;
 
   kvs::ThreadPool *thread_pool_;
+
+  mutable std::mutex mutex_;
 };
 
 } // namespace db
