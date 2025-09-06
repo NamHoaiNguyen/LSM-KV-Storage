@@ -25,46 +25,60 @@ Version::Version(DBImpl *db, const Config *config, ThreadPool *thread_pool)
       compact_(std::make_unique<Compact>(this)), db_(db), config_(config),
       thread_pool_(thread_pool) {}
 
-bool Version::CreateNewSST(
+void Version::CreateNewSSTs(
     const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables) {
 
   std::cout << immutable_memtables.size() << " "
             << config_->GetMaxImmuMemTablesInMem() << std::endl;
 
+  std::latch all_done(immutable_memtables.size());
+
   // TODO(namnh) : Do we need to acquire lock ?
   for (const auto &immutable_memtable : immutable_memtables) {
-    std::string next_sst = std::to_string(db_->GetNextSSTId());
-    std::string filename = config_->GetSavedDataPath() + next_sst + ".sst";
-    auto new_sst =
-        std::make_unique<sstable::Table>(std::move(filename), config_);
-    if (!new_sst->Open()) {
-      continue;
-    }
-
-    auto iterator =
-        std::make_unique<MemTableIterator>(immutable_memtable.get());
-
-    // Iterate through all key/value pairs to add them to sst
-    for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-      new_sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
-                        iterator->GetTransactionId(), iterator->GetType());
-    }
-
-    // All of key/value pairs had been written to sst. SST should be flushed to
-    // disk
-    new_sst->Finish();
-
-    // Update new sst(at level 0) info into this version
-    levels_sst_info_[0].emplace_back(
-        std::make_shared<Version::SSTInfo>(std::move(new_sst)));
+    thread_pool_->Enqueue(&Version::CreateNewSST, this,
+                          std::cref(immutable_memtable), std::ref(all_done));
   }
+
+  // Wait until all workers have finished
+  all_done.wait();
 
   // if (levels_sst_info_[0].size() >= config_->GetLvl0SSTCompactionTrigger()) {
   //   thread_pool_->Enqueue(&Compact::PickCompact, compact_.get(),
   //                         levels_sst_info_[0].size());
   // }
+}
 
-  return true;
+void Version::CreateNewSST(
+    const std::unique_ptr<BaseMemTable> &immutable_memtable,
+    std::latch &work_done) {
+  std::string next_sst = std::to_string(db_->GetNextSSTId());
+  std::string filename = config_->GetSavedDataPath() + next_sst + ".sst";
+  auto new_sst = std::make_unique<sstable::Table>(std::move(filename), config_);
+  if (!new_sst->Open()) {
+    work_done.count_down();
+    return;
+  }
+
+  auto iterator = std::make_unique<MemTableIterator>(immutable_memtable.get());
+  // Iterate through all key/value pairs to add them to sst
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    new_sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
+                      iterator->GetTransactionId(), iterator->GetType());
+  }
+
+  // All of key/value pairs had been written to sst. SST should be flushed to
+  // disk
+  new_sst->Finish();
+
+  {
+    std::scoped_lock lock(mutex_);
+    // Update new sst(at level 0) info into this version
+    levels_sst_info_[0].emplace_back(
+        std::make_shared<Version::SSTInfo>(std::move(new_sst)));
+  }
+
+  // Signal that this worker is done
+  work_done.count_down();
 }
 
 const std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>> &

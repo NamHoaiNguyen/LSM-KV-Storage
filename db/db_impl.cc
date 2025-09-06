@@ -77,7 +77,7 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::unique_lock rwlock(mutex_);
-  // Write stall/stop.
+  // Write Stop problem
   cv_.wait(rwlock, [this]() {
     return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
   });
@@ -115,19 +115,17 @@ void DBImpl::ForceFlushMemTable() {
   return FlushMemTableJob();
 }
 
-// void DBImpl::FlushMemTableJob(const BaseMemTable *const immutable_memtable) {
 void DBImpl::FlushMemTableJob() {
   // Key point: Db DOES NOT need to acquire mutex here. Because
   // CreateLatestVersion is protected by mutex. So, at a time, there is always 1
   // thread/process can access. It means that, each latest version returned is
   // ensured to be race condition free
-
   Version *latest_version = version_manager_->CreateLatestVersion();
   if (!latest_version) {
     return;
   }
 
-  latest_version->CreateNewSST(immutable_memtables_);
+  latest_version->CreateNewSSTs(immutable_memtables_);
 
   // TODO(namnh) : Update manifest info
   // After sst is persisted to disk and manifest is updated, remove immutable
