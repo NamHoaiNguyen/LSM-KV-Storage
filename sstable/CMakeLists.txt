@@ -3,6 +3,8 @@ add_library(sstable
   # block_builder.h
   block_index.cc
   block_index.h
+  block_reader.cc
+  block_reader.h
   block.cc
   block.h
   # table_builder.cc

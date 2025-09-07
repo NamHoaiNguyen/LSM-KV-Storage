@@ -6,6 +6,7 @@
 #include "io/linux_file.h"
 #include "sstable/block.h"
 #include "sstable/block_index.h"
+#include "sstable/block_reader.h"
 
 // libC++
 #include <cassert>
@@ -60,6 +61,12 @@ void Table::FlushBlock() {
   std::span<const Byte> offset_buffer = block_data_->GetOffsetView();
   write_file_object_->Append(offset_buffer, current_offset_);
   current_offset_ += offset_buffer.size();
+
+  // Flush extra info of data block to disk
+  block_data_->EncodeExtraInfo();
+  std::span<const Byte> extra_buffer = block_data_->GetExtraView();
+  write_file_object_->Append(extra_buffer, current_offset_);
+  current_offset_ += extra_buffer.size();
 
   // Ensure that data is persisted to disk from page cache
   // TODO(namnh, IMPORTANCE) : Do we need to do that right now? it significantly
@@ -147,6 +154,13 @@ void Table::Finish() {
     // to not allow any writing
     write_file_object_.reset();
   }
+
+  // Maybe should open file for reading only for using later?
+  if (!read_file_object_) {
+    read_file_object_ = std::make_shared<io::LinuxReadOnlyFile>(filename_);
+    // TODO(namnh) : recheck
+    read_file_object_->Open();
+  }
 }
 
 void Table::EncodeExtraInfo() {
@@ -191,9 +205,47 @@ void Table::Read() {
   }
 }
 
-std::string Table::GetSmallestKey() { return table_smallest_key_; }
+void Table::SearchKey(std::string_view key, TxnId txn_id) {
+  // Find the block that have smallest largest key that >= key
+  int left = 0;
+  int right = block_index_.size();
 
-std::string Table::GetLargestKey() { return table_largest_key_; }
+  while (left < right) {
+    int mid = left + (right - left) / 2;
+    if (block_index_[mid].GetLargestKey() >= key) {
+      right = mid;
+    } else {
+      left = mid + 1;
+    }
+  }
+
+  uint64_t block_offset = block_index_[right].GetBlockStartOffset();
+  uint64_t block_size = block_index_[right].GetBlockSize();
+
+  auto block_reader =
+      std::make_unique<BlockReader>(filename_, read_file_object_);
+  block_reader->SearchKey(block_offset, block_size, key, txn_id);
+
+  // TODO(namnh) : We have 2 ways, only load key/value (if found to) to memory.
+  // Or load entire block to memory
+  // I think that second way is better because it can be cached for using later.
+  // but currently, I will temporarily use first method
+  // size_t bytes_read = read_file_object_->RandomRead(block_offset,
+  // block_size); if (bytes_read < 0) {
+  //   return;
+  // }
+
+  // uint64_t block_extra_offset =
+  //     block_offset + block_size - 1 - sizeof(uint64_t);
+  // size_t bytes_read = read_file_object_->RandomRead(block_extra_offset, 8);
+  // if (bytes_read < 0) {
+  //   return;
+  // }
+}
+
+std::string Table::GetSmallestKey() const { return table_smallest_key_; }
+
+std::string Table::GetLargestKey() const { return table_largest_key_; }
 
 // For testing
 Block *Table::GetBlockData() { return block_data_.get(); };

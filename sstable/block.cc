@@ -120,6 +120,7 @@ void Block::Reset() {
   num_entries_ = 0;
   data_buffer_.clear();
   offset_buffer_.clear();
+  extra_buffer_.clear();
   data_current_offset_ = 0;
 }
 

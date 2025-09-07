@@ -35,16 +35,25 @@ public:
   BlockIndex(BlockIndex &&) = default;
   BlockIndex &operator=(BlockIndex &&) = default;
 
+  // NOT best practise. But it is ok
+  std::string_view GetSmallestKey() const;
+
+  std::string_view GetLargestKey() const;
+
+  const uint64_t GetBlockStartOffset() const;
+
+  const uint64_t GetBlockSize() const;
+
 private:
   std::vector<Byte> buffer_;
 
-  std::string smallest_key_;
+  const std::string smallest_key_;
 
-  std::string largest_key_;
+  const std::string largest_key_;
 
-  uint64_t block_start_offset_;
+  const uint64_t block_start_offset_;
 
-  uint64_t block_size_;
+  const uint64_t block_size_;
 };
 
 } // namespace sstable

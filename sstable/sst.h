@@ -81,15 +81,18 @@ public:
   // Flush block data to disk
   void FlushBlock();
 
+  // After this method is executed, SST file is immutable
   void Finish();
 
   bool Open();
 
   void Read();
 
-  std::string GetSmallestKey();
+  void SearchKey(std::string_view key, TxnId txn_id);
 
-  std::string GetLargestKey();
+  std::string GetSmallestKey() const;
+
+  std::string GetLargestKey() const;
 
   // For testing
   Block *GetBlockData();
@@ -106,7 +109,9 @@ private:
 
   std::string filename_;
 
-  std::unique_ptr<io::ReadOnlyFile> read_file_object_;
+  // std::unique_ptr<io::ReadOnlyFile> read_file_object_;
+
+  std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 
   std::unique_ptr<io::WriteOnlyFile> write_file_object_;
 
