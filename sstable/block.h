@@ -44,7 +44,7 @@ Extra format
 ------------------------------------
 |               Extra              |
 ------------------------------------
-| total number of data entries(8B) |
+| total number of data entries(8B) | Start offset of Offset Section (8B)
 ------------------------------------
 */
 
@@ -67,12 +67,6 @@ public:
   void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
                 db::ValueType value_type);
 
-  // Finish building the block
-  void Finish();
-
-  // Clear data of block to reuse
-  void Reset();
-
   const size_t GetBlockSize() const;
 
   uint64_t GetNumEntries() const;
@@ -84,6 +78,20 @@ public:
   // ONLY call this method after finish writing all data to block.
   // Otherwise, it can cause dangling pointer.
   std::span<const Byte> GetOffsetView();
+
+  // ONLY call this method after finish writing all data to block.
+  // Otherwise, it can cause dangling pointer.
+  std::span<const Byte> GetExtraView();
+
+  void EncodeExtraInfo();
+
+  void SearchKey(std::string_view key, TxnId txn_id);
+
+  // Finish building the block
+  void Finish();
+
+  // Clear data of block to reuse
+  void Reset();
 
 private:
   void EncodeDataEntry(std::string_view key, std::string_view value,
@@ -101,6 +109,8 @@ private:
   std::vector<Byte> data_buffer_;
 
   std::vector<Byte> offset_buffer_;
+
+  std::vector<Byte> extra_buffer_;
 
   // Track current offset of data section format
   uint64_t data_current_offset_;

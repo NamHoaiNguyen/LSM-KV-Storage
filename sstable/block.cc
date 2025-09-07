@@ -91,6 +91,22 @@ void Block::EncodeOffsetEntry(size_t start_entry_offset,
                         data_entry_size_buff + sizeof(uint64_t));
 }
 
+void Block::EncodeExtraInfo() {
+  uint64_t start_offset_offset_section = data_current_offset_;
+
+  const Byte *const num_entries_buff =
+      reinterpret_cast<const Byte *const>(&num_entries_);
+  const Byte *const start_offset_offset_section_buff =
+      reinterpret_cast<const Byte *const>(&start_offset_offset_section);
+
+  // Insert num entries
+  extra_buffer_.insert(extra_buffer_.end(), num_entries_buff,
+                       num_entries_buff + sizeof(uint64_t));
+  // Insert starting offset of offset secion
+  extra_buffer_.insert(extra_buffer_.end(), start_offset_offset_section_buff,
+                       start_offset_offset_section_buff + sizeof(uint64_t));
+}
+
 void Block::Finish() {
   is_finished_ = true;
 
@@ -112,6 +128,8 @@ const size_t Block::GetBlockSize() const { return block_size_; }
 std::span<const Byte> Block::GetDataView() { return data_buffer_; }
 
 std::span<const Byte> Block::GetOffsetView() { return offset_buffer_; }
+
+std::span<const Byte> Block::GetExtraView() { return extra_buffer_; }
 
 uint64_t Block::GetNumEntries() const { return num_entries_; }
 

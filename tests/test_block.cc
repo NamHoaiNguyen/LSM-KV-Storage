@@ -50,6 +50,27 @@ TEST(BlockTest, BasicEncode) {
       0x20, 0, 0, 0, 0, 0, 0, 0, // length of data entry 2
   };
 
+  std::vector<Byte> extra_encoded = {
+      // Total entries
+      0x03,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // Stating offset of offset section
+      0x59,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+  };
+
   auto block = std::make_unique<sstable::Block>();
 
   std::string key1 = "apple";
@@ -67,8 +88,11 @@ TEST(BlockTest, BasicEncode) {
   txn_id = std::pow(2, 32) - 1;
   block->AddEntry(key1, value1, txn_id, db::ValueType::PUT);
 
+  block->EncodeExtraInfo();
+
   EXPECT_TRUE(std::ranges::equal(block->GetDataView(), data_encoded));
   EXPECT_TRUE(std::ranges::equal(block->GetOffsetView(), offset_encoded));
+  EXPECT_TRUE(std::ranges::equal(block->GetExtraView(), extra_encoded));
 }
 
 TEST(BlockTest, EdgeCasesEncode) {
@@ -88,11 +112,36 @@ TEST(BlockTest, EdgeCasesEncode) {
       0x11, 0, 0, 0, 0, 0, 0, 0, // length of data entry 0
   };
 
+  std::vector<Byte> extra_encoded = {
+      // Total entries
+      0x01,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      // Stating offset of offset section
+      0x11,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+  };
+
   auto block = std::make_unique<sstable::Block>();
 
   block->AddEntry("", "", 10, db::ValueType::PUT);
+
+  block->EncodeExtraInfo();
+
   EXPECT_TRUE(std::ranges::equal(block->GetDataView(), data_encoded));
   EXPECT_TRUE(std::ranges::equal(block->GetOffsetView(), offset_encoded));
+  EXPECT_TRUE(std::ranges::equal(block->GetExtraView(), extra_encoded));
 }
 
 } // namespace kvs
