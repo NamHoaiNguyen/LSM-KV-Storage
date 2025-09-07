@@ -16,5 +16,4 @@ LSM_SST_NUM_LEVELS = 7
 # Maximum number of SST level-0 files before triggering compaction
 LVL0_COMPACTION_TRIGGER = 4
 # Saved Data Path
-# DATA_PATH = "/var/lib/lsm-kv-storage/data"
-DATA_PATH = "/home/hoainam/self/biggg/lsm-kv-storage/debug_data/"
+DATA_PATH = "/var/lib/lsm-kv-storage/data"
