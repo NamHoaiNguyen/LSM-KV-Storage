@@ -34,7 +34,7 @@ class VersionManager;
 
 class DBImpl {
 public:
-  explicit DBImpl(std::string_view dbname);
+  explicit DBImpl(bool is_testing = false);
 
   ~DBImpl();
 
@@ -51,6 +51,14 @@ public:
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
   uint64_t GetNextSSTId();
+
+  void LoadDB();
+
+  const Config *const GetConfig();
+
+  const VersionManager *GetVersionManager();
+
+  void ForceFlushMemTable();
 
   friend class Compact;
 
@@ -84,7 +92,8 @@ private:
     std::string largest_key_;
   };
 
-  void FlushMemTableJob(const BaseMemTable *const immutable_memtable);
+  void FlushMemTableJob();
+  // void FlushMemTableJob(const BaseMemTable *const immutable_memtable);
 
   const std::string dbname_;
 
@@ -101,6 +110,8 @@ private:
   std::unique_ptr<BaseMemTable> memtable_;
 
   std::vector<std::unique_ptr<BaseMemTable>> immutable_memtables_;
+
+  std::vector<const BaseMemTable *> flushing_memtables_;
 
   std::unique_ptr<mvcc::TransactionManager> txn_manager_;
 
@@ -119,6 +130,8 @@ private:
   // (immutable_memtables_ list, levels_sst_info_)
   // std::shared_mutex immutable_memtables_mutex_;
   std::shared_mutex mutex_;
+
+  std::condition_variable_any cv_;
 };
 
 } // namespace db

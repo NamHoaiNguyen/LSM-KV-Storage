@@ -7,33 +7,12 @@ namespace kvs {
 
 namespace db {
 
-MemTable::MemTable()
-    : is_immutable_(false), table_(std::make_unique<SkipList>()) {}
+MemTable::MemTable() : table_(std::make_unique<SkipList>()) {}
 
 MemTable::~MemTable() = default;
 
-MemTable::MemTable(MemTable &&other) {
-  is_immutable_ = other.is_immutable_;
-  table_ = std::move(other.table_);
-}
-
-MemTable &MemTable::operator=(MemTable &&other) {
-  if (this == &other) {
-    return *this;
-  }
-
-  is_immutable_ = other.is_immutable_;
-  table_ = std::move(other.table_);
-
-  return *this;
-}
-
 std::vector<std::pair<std::string, bool>>
 MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
-  if (is_immutable_) {
-    throw std::runtime_error("Can't delete in immutable memtable!!!");
-  }
-
   std::vector<std::pair<std::string, bool>> result;
 
   if (!table_) {
@@ -44,9 +23,6 @@ MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
 }
 
 bool MemTable::Delete(std::string_view key, TxnId txn_id) {
-  if (is_immutable_) {
-    throw std::runtime_error("Can't delete in immutable memtable!!!");
-  }
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }
@@ -92,9 +68,6 @@ GetStatus MemTable::Get(std::string_view key, TxnId txn_id) {
 void MemTable::BatchPut(
     std::span<std::pair<std::string_view, std::string_view>> keys,
     TxnId txn_id) {
-  if (is_immutable_) {
-    throw std::runtime_error("Can't BATCH PUT in immutable memtable!!!");
-  }
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }
@@ -103,9 +76,6 @@ void MemTable::BatchPut(
 }
 
 void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  if (is_immutable_) {
-    throw std::runtime_error("Can't PUT in immutable memtable!!!");
-  }
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }
@@ -127,10 +97,6 @@ const SkipList *MemTable::GetMemTable() const {
   }
   return table_.get();
 }
-
-bool MemTable::IsImmutable() { return is_immutable_; }
-
-void MemTable::SetImmutable() { is_immutable_ = true; }
 
 } // namespace db
 

@@ -11,6 +11,7 @@ namespace kvs {
 
 namespace db {
 
+// KEY RULE: Compact is only triggerd by LATEST version
 class Compact {
 public:
   explicit Compact(const Version *version);
@@ -43,6 +44,10 @@ private:
 
   const Version *version_;
 
+  // NO need to acquire lock to protect this data structure. Because
+  // new version is created when there is a change(create new SST, delete old
+  // SST after compaction). So, each version has its own this data structure.
+  // Note: These are also files that be deleted after finish compaction
   std::vector<const Version::SSTInfo *> compact_info_;
 };
 

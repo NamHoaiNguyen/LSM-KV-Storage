@@ -39,10 +39,6 @@ public:
   virtual size_t GetMemTableSize() = 0;
 
   virtual const SkipList *GetMemTable() const = 0;
-
-  virtual bool IsImmutable() = 0;
-
-  virtual void SetImmutable() = 0;
 };
 
 } // namespace db

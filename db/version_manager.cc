@@ -1,7 +1,10 @@
 #include "db/version_manager.h"
 
 #include "common/base_iterator.h"
+#include "common/thread_pool.h"
+#include "db/base_memtable.h"
 #include "db/compact.h"
+#include "db/config.h"
 #include "db/version.h"
 #include "db/version_manager.h"
 #include "io/base_file.h"
@@ -13,15 +16,59 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(DBImpl *db, const Config *config)
-    : db_(db), config_(config) {}
+VersionManager::VersionManager(DBImpl *db, const Config *config,
+                               ThreadPool *thread_pool)
+    : db_(db), config_(config), thread_pool_(thread_pool) {}
 
-Version *VersionManager::CreateNewVersion() {
-  versions_.push_front(std::move(latest_version_));
-  latest_version_ = std::make_unique<Version>(db_, config_);
+Version *VersionManager::CreateLatestVersion() {
+  std::scoped_lock lock(mutex_);
+
+  // First time loading db
+  if (!latest_version_) {
+    latest_version_ = std::make_unique<Version>(db_, config_, thread_pool_);
+    return latest_version_.get();
+  }
+
+  std::unique_ptr<Version> tmp_version = std::move(latest_version_);
+  latest_version_ = std::make_unique<Version>(db_, config_, thread_pool_);
+
+  // Build info of SST for latest version
+  const std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
+      &old_version_sst_info = tmp_version->GetImmutableSSTInfo();
+
+  std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
+      &latest_version_sst_info = latest_version_->GetSSTInfo();
+
+  for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
+    for (const auto &sst_info : old_version_sst_info[level]) {
+      if (sst_info->should_be_deleted_) {
+        continue;
+      }
+
+      latest_version_sst_info[level].push_back(sst_info);
+    }
+  }
+
+  // Add tmp_version(which is the previous version of the latest one) to dequeue
+  versions_.push_front(std::move(tmp_version));
 
   return latest_version_.get();
 }
+
+const std::deque<std::unique_ptr<Version>> &
+VersionManager::GetVersions() const {
+  std::scoped_lock lock(mutex_);
+  return versions_;
+}
+
+const Version *VersionManager::GetLatestVersion() const {
+  std::scoped_lock lock(mutex_);
+  return latest_version_.get();
+}
+
+const Config *const VersionManager::GetConfig() { return config_; }
+
+const DBImpl *const VersionManager::GetDB() { return db_; }
 
 } // namespace db
 

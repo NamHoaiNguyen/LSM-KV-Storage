@@ -5,6 +5,7 @@
 #include "db/base_memtable.h"
 #include "db/status.h"
 
+#include <atomic>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -29,8 +30,8 @@ public:
   MemTable &operator=(MemTable &) = delete;
 
   // Move constructor/assignment
-  MemTable(MemTable &&);
-  MemTable &operator=(MemTable &&);
+  MemTable(MemTable &&) = default;
+  MemTable &operator=(MemTable &&) = default;
 
   std::unique_ptr<BaseIterator> CreateNewIterator();
 
@@ -49,16 +50,14 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id) override;
 
-  bool IsImmutable() override;
-
-  void SetImmutable() override;
-
   size_t GetMemTableSize() override;
 
   const SkipList *GetMemTable() const override;
 
 private:
-  bool is_immutable_;
+  std::atomic<bool> is_flushing_;
+
+  std::atomic<uint64_t> sequence_number_;
 
   std::unique_ptr<SkipList> table_;
 };
