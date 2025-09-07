@@ -4,7 +4,7 @@ namespace kvs {
 
 namespace io {
 
-Buffer::Buffer(size_t capacity) { buffer_.reserve(capacity); }
+Buffer::Buffer(size_t capacity) { buffer_.resize(capacity); }
 
 std::span<Byte> Buffer::GetBufferView() { return std::span<Byte>(buffer_); }
 

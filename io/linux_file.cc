@@ -116,8 +116,8 @@ bool LinuxReadOnlyFile::Close() {
 ssize_t LinuxReadOnlyFile::RandomRead(uint64_t offset, size_t size) {
   size = std::min(size, kDefaultBufferSize);
 
-  ssize_t read_bytes =
-      ::pread(fd_, buffer_.get(), size, static_cast<off64_t>(offset));
+  ssize_t read_bytes = ::pread(fd_, buffer_->GetBuffer().data(), size,
+                               static_cast<off64_t>(offset));
   if (read_bytes < 0) {
     return -1;
   }
