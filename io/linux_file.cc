@@ -19,8 +19,8 @@ namespace io {
 
 // ==========================Start LinuxWriteOnlyFile==========================
 
-LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string &&filename)
-    : filename_(std::move(filename)) {}
+LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string_view filename)
+    : filename_(filename) {}
 
 LinuxWriteOnlyFile::~LinuxWriteOnlyFile() { Close(); }
 
@@ -90,7 +90,7 @@ ssize_t LinuxWriteOnlyFile::Append_(const uint8_t *buffer, size_t size,
 
 // ===========================Start LinuxReadOnlyFile===========================
 
-LinuxReadOnlyFile::LinuxReadOnlyFile(std::string &&filename)
+LinuxReadOnlyFile::LinuxReadOnlyFile(std::string_view filename)
     : filename_(std::move(filename)), buffer_(std::make_unique<Buffer>()) {}
 
 LinuxReadOnlyFile::~LinuxReadOnlyFile() { Close(); }

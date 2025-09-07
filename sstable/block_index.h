@@ -22,6 +22,8 @@ namespace sstable {
 class BlockIndex {
 public:
   BlockIndex() = default;
+  BlockIndex(std::string_view smallest_key, std::string_view largest_key,
+             uint64_t block_start_offset, uint64_t block_size);
 
   ~BlockIndex() = default;
 
@@ -33,17 +35,16 @@ public:
   BlockIndex(BlockIndex &&) = default;
   BlockIndex &operator=(BlockIndex &&) = default;
 
-  void AddEntry(std::string_view first_key, std::string_view last_key,
-                uint64_t block_start_offset, uint64_t block_length);
-
-  // ONLY call this method after finish writing all data to block.
-  // Otherwise, it can cause dangling pointer.
-  std::span<const Byte> GetBufferView();
-
-  size_t GetBlockIndexSize() const;
-
 private:
   std::vector<Byte> buffer_;
+
+  std::string smallest_key_;
+
+  std::string largest_key_;
+
+  uint64_t block_start_offset_;
+
+  uint64_t block_size_;
 };
 
 } // namespace sstable
