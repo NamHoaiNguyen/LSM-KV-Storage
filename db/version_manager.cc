@@ -11,7 +11,6 @@
 #include "sstable/block.h"
 #include "sstable/block_index.h"
 #include "sstable/sst.h"
-#include "version_edit.h"
 
 namespace kvs {
 

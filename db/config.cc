@@ -133,8 +133,7 @@ void Config::LoadDefaultConfig() {
   fs::path exe_dir = fs::current_path();
   fs::path project_dir = exe_dir.parent_path();
 
-  // data_path_ = (project_dir / "data/").string();
-  data_path_ = "/home/hoainam/self/biggg/LSM-KV-Storage/debug_data/";
+  data_path_ = (project_dir / "data/").string();
 }
 
 const size_t Config::GetPerMemTableSizeLimit() const {

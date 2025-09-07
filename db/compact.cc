@@ -40,8 +40,6 @@ void Compact::DoL0L1LvlCompact() {
   // Get overlapping lvl1 sst files
   GetOverlappingSSTOtherLvls(1 /*level*/, keys.first /*smallest_key*/,
                              keys.second /*largest_key*/);
-
-  DoCompactJob();
 }
 
 std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {

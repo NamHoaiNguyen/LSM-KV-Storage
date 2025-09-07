@@ -14,8 +14,6 @@
 #include "sstable/block_index.h"
 #include "sstable/sst.h"
 
-#include <iostream>
-
 namespace kvs {
 
 namespace db {
@@ -27,9 +25,6 @@ Version::Version(DBImpl *db, const Config *config, ThreadPool *thread_pool)
 
 void Version::CreateNewSSTs(
     const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables) {
-
-  std::cout << immutable_memtables.size() << " "
-            << config_->GetMaxImmuMemTablesInMem() << std::endl;
 
   std::latch all_done(immutable_memtables.size());
 
