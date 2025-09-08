@@ -18,6 +18,42 @@ class ReadOnlyFile;
 
 namespace sstable {
 
+/*
+Block data format(unit: Byte)
+--------------------------------------------------------------------------------
+|            Data Section         |           Offset Section         |  Extra  |
+--------------------------------------------------------------------------------
+||Data Entry#1| ... | DataEntry#N|||Offset Entry#1|...|Offset Entry#N|   Info  |
+--------------------------------------------------------------------------------
+
+
+Data entry format(unit: Byte)
+--------------------------------------------------------------------------------
+|                                 Data Entry                                   |
+--------------------------------------------------------------------------------
+| ValueType | key_len (4B) | key | value_len (4B) | value | transaction_id(8B) |
+--------------------------------------------------------------------------------
+(Valuetype(uint8_t) shows that value is deleted or not)
+(0 = PUT = NOT DELETED)
+(1 = DELETE = DELETED)
+db/value_type.h
+
+
+Offset entry format(unit: Byte)
+-----------------------------------------------------------------------------
+|                              Offset Entry                                 |
+-----------------------------------------------------------------------------
+| Starting offset of coresponding data entry(8B) |  Size of data entry(8B)  |
+-----------------------------------------------------------------------------
+
+Extra format
+--------------------------------------------------------------------------
+|               Extra              |                                     |
+--------------------------------------------------------------------------
+| total number of data entries(8B) | Start offset of Offset Section (8B) |
+--------------------------------------------------------------------------
+*/
+
 class BlockReader {
 public:
   BlockReader(std::string_view filename,
@@ -36,13 +72,20 @@ public:
                           TxnId txn_id);
 
 private:
+  // Get starting offset of data entry at index entry_index(th) base on
+  // offset_section(starting offset of offset section)
+  // See block data format above
   uint64_t GetDataEntryOffset(std::span<const Byte> buffer,
                               const uint64_t offset_section,
                               const int entry_index);
 
+  // Get type of key base on data_entry_offset(starting offset of data entry)
+  // See block data format above
   db::ValueType GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
                                           uint64_t data_entry_offset);
 
+  // Get key and value of data entry that start at data_entry_offset
+  // See block data format above
   std::pair<std::string_view, std::string_view>
   GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
                            uint64_t data_entry_offset);

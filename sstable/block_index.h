@@ -35,8 +35,11 @@ public:
   BlockIndex(BlockIndex &&) = default;
   BlockIndex &operator=(BlockIndex &&) = default;
 
-  // NOT best practise. But it is ok
+  // NOT best practise. But because smallest key is immutable, so it is fine.
   std::string_view GetSmallestKey() const;
+
+  // NOT best practise. But because largest key is immutable, so it is
+  // fine.
 
   std::string_view GetLargestKey() const;
 

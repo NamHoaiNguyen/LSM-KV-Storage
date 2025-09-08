@@ -70,6 +70,7 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
 uint64_t BlockReader::GetDataEntryOffset(std::span<const Byte> buffer,
                                          const uint64_t offset_section,
                                          const int entry_index) {
+  // Starting offset of offset entry at index (entry_index) (th)
   uint64_t offset_entry = offset_section + entry_index * 2 * sizeof(uint64_t);
 
   const uint64_t data_entry_offset =
