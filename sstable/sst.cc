@@ -205,7 +205,7 @@ void Table::Read() {
   }
 }
 
-void Table::SearchKey(std::string_view key, TxnId txn_id) {
+db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) {
   // Find the block that have smallest largest key that >= key
   int left = 0;
   int right = block_index_.size();
@@ -222,25 +222,13 @@ void Table::SearchKey(std::string_view key, TxnId txn_id) {
   uint64_t block_offset = block_index_[right].GetBlockStartOffset();
   uint64_t block_size = block_index_[right].GetBlockSize();
 
+  // TODO(namnh) : Should cache this block.
   auto block_reader =
       std::make_unique<BlockReader>(filename_, read_file_object_);
-  block_reader->SearchKey(block_offset, block_size, key, txn_id);
+  db::GetStatus status =
+      block_reader->SearchKey(block_offset, block_size, key, txn_id);
 
-  // TODO(namnh) : We have 2 ways, only load key/value (if found to) to memory.
-  // Or load entire block to memory
-  // I think that second way is better because it can be cached for using later.
-  // but currently, I will temporarily use first method
-  // size_t bytes_read = read_file_object_->RandomRead(block_offset,
-  // block_size); if (bytes_read < 0) {
-  //   return;
-  // }
-
-  // uint64_t block_extra_offset =
-  //     block_offset + block_size - 1 - sizeof(uint64_t);
-  // size_t bytes_read = read_file_object_->RandomRead(block_extra_offset, 8);
-  // if (bytes_read < 0) {
-  //   return;
-  // }
+  return status;
 }
 
 std::string Table::GetSmallestKey() const { return table_smallest_key_; }

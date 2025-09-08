@@ -23,6 +23,26 @@ Version::Version(DBImpl *db, const Config *config, ThreadPool *thread_pool)
       compact_(std::make_unique<Compact>(this)), db_(db), config_(config),
       thread_pool_(thread_pool) {}
 
+GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
+  GetStatus status;
+
+  // Search in SSTs lvl0
+  for (const auto &sst : levels_sst_info_[0]) {
+    if (key < sst->table_->GetSmallestKey() ||
+        key > sst->table_->GetLargestKey()) {
+      continue;
+    }
+
+    // TODO(namnh) : Implement bloom filter
+    status = sst->table_->SearchKey(key, txn_id);
+    if (status.type != db::ValueType::NOT_FOUND) {
+      break;
+    }
+  }
+
+  return status;
+}
+
 void Version::CreateNewSSTs(
     const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables) {
 
@@ -48,7 +68,7 @@ void Version::CreateNewSST(
     std::latch &work_done) {
   std::string next_sst = std::to_string(db_->GetNextSSTId());
   std::string filename = config_->GetSavedDataPath() + next_sst + ".sst";
-  auto new_sst = std::make_unique<sstable::Table>(std::move(filename), config_);
+  auto new_sst = std::make_shared<sstable::Table>(std::move(filename), config_);
   if (!new_sst->Open()) {
     work_done.count_down();
     return;
@@ -89,7 +109,7 @@ Version::GetSSTInfo() {
 // SST INFO
 Version::SSTInfo::SSTInfo() : should_be_deleted_(false) {}
 
-Version::SSTInfo::SSTInfo(std::unique_ptr<sstable::Table> table)
+Version::SSTInfo::SSTInfo(std::shared_ptr<sstable::Table> table)
     : should_be_deleted_(false), table_(std::move(table)) {}
 
 } // namespace db

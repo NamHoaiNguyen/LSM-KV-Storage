@@ -88,7 +88,7 @@ public:
 
   void Read();
 
-  void SearchKey(std::string_view key, TxnId txn_id);
+  db::GetStatus SearchKey(std::string_view key, TxnId txn_id);
 
   std::string GetSmallestKey() const;
 

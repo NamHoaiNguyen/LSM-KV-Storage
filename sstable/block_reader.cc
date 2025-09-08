@@ -1,6 +1,5 @@
 #include "sstable/block_reader.h"
 
-#include "db/status.h"
 #include "io/buffer.h"
 #include "io/linux_file.h"
 
@@ -14,20 +13,22 @@ BlockReader::BlockReader(std::string_view filename,
                          std::shared_ptr<io::ReadOnlyFile> read_file_object)
     : read_file_object_(read_file_object) {}
 
-void BlockReader::SearchKey(uint64_t offset, uint64_t size,
-                            std::string_view key, TxnId txn_id) {
+db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
+                                     std::string_view key, TxnId txn_id) {
+  db::GetStatus status;
+
   if (offset < 0 || size < 0) {
-    return;
+    return status;
   }
 
   ssize_t bytes_read = read_file_object_->RandomRead(offset, size);
   if (bytes_read < 0) {
-    return;
+    return status;
   }
 
   io::Buffer *buffer = read_file_object_->GetBuffer();
   if (!buffer) {
-    return;
+    return status;
   }
 
   std::span<const Byte> buffer_view = buffer->GetImmutableBufferView();
@@ -48,21 +49,27 @@ void BlockReader::SearchKey(uint64_t offset, uint64_t size,
     uint64_t mid = left + (right - left) / 2;
     uint64_t data_entry_offset =
         GetDataEntryOffset(buffer_view, offset_offset_section, mid);
-    std::string key_in_block =
-        GetKeyAtFromDataEntry(buffer_view, data_entry_offset);
+    auto [key_in_block, value_in_block] =
+        GetKeyValueFromDataEntry(buffer_view, data_entry_offset);
     if (key_in_block == key) {
-      return;
+      status.type = GetValueTypeFromDataEntry(buffer_view, data_entry_offset);
+      status.value = (status.type == db::ValueType::PUT)
+                         ? std::make_optional<std::string>(value_in_block)
+                         : std::nullopt;
+      return status;
     } else if (key_in_block < key) {
       left = mid + 1;
     } else {
       right = mid - 1;
     }
   }
+
+  return status;
 }
 
-const uint64_t BlockReader::GetDataEntryOffset(std::span<const Byte> buffer,
-                                               const uint64_t offset_section,
-                                               const int entry_index) {
+uint64_t BlockReader::GetDataEntryOffset(std::span<const Byte> buffer,
+                                         const uint64_t offset_section,
+                                         const int entry_index) {
   uint64_t offset_entry = offset_section + entry_index * 2 * sizeof(uint64_t);
 
   const uint64_t data_entry_offset =
@@ -71,22 +78,38 @@ const uint64_t BlockReader::GetDataEntryOffset(std::span<const Byte> buffer,
   return data_entry_offset;
 }
 
-std::string
-BlockReader::GetKeyAtFromDataEntry(std::span<const Byte> buffer_view,
-                                   uint64_t data_entry_offset) {
-  const Byte value_type_byte = buffer_view[data_entry_offset];
-  const db::ValueType value_type =
+db::ValueType
+BlockReader::GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
+                                       uint64_t data_entry_offset) {
+  Byte value_type_byte = buffer_view[data_entry_offset];
+  db::ValueType value_type =
       *reinterpret_cast<const db::ValueType *>(&value_type_byte);
-  const uint32_t key_len =
-      *reinterpret_cast<const uint32_t *>(&buffer_view[data_entry_offset + 1]);
+
+  return value_type;
+}
+
+std::pair<std::string_view, std::string_view>
+BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
+                                      uint64_t data_entry_offset) {
+  const uint32_t key_len = *reinterpret_cast<const uint32_t *>(
+      &buffer_view[data_entry_offset + sizeof(uint8_t)]);
 
   uint64_t start_offset_key =
       data_entry_offset + sizeof(uint8_t) + sizeof(uint32_t);
 
-  std::string_view sv(
+  std::string_view key(
       reinterpret_cast<const char *>(&buffer_view[start_offset_key]), key_len);
 
-  return "";
+  uint64_t start_offset_value_len = start_offset_key + key.size();
+  const uint32_t value_len =
+      *reinterpret_cast<const uint32_t *>(&buffer_view[start_offset_value_len]);
+
+  uint64_t start_offset_value = start_offset_value_len + sizeof(uint32_t);
+  std::string_view value(
+      reinterpret_cast<const char *>(&buffer_view[start_offset_value]),
+      value_len);
+
+  return {key, value};
 }
 
 } // namespace sstable
