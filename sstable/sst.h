@@ -109,8 +109,6 @@ private:
 
   std::string filename_;
 
-  // std::unique_ptr<io::ReadOnlyFile> read_file_object_;
-
   std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 
   std::unique_ptr<io::WriteOnlyFile> write_file_object_;
@@ -123,9 +121,6 @@ private:
 
   // Largest key of each block
   std::string block_largest_key_;
-
-  // TODO(namnh) : unique_ptr or shared_ptr?
-  // std::unique_ptr<BaseIterator> iterator_;
 
   uint64_t current_offset_;
 
