@@ -43,9 +43,9 @@ public:
 
   std::string_view GetLargestKey() const;
 
-  const uint64_t GetBlockStartOffset() const;
+  uint64_t GetBlockStartOffset() const;
 
-  const uint64_t GetBlockSize() const;
+  uint64_t GetBlockSize() const;
 
 private:
   std::vector<Byte> buffer_;

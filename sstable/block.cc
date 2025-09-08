@@ -124,7 +124,7 @@ void Block::Reset() {
   data_current_offset_ = 0;
 }
 
-const size_t Block::GetBlockSize() const { return block_size_; }
+size_t Block::GetBlockSize() const { return block_size_; }
 
 std::span<const Byte> Block::GetDataView() { return data_buffer_; }
 

@@ -14,11 +14,9 @@ std::string_view BlockIndex::GetSmallestKey() const { return smallest_key_; }
 
 std::string_view BlockIndex::GetLargestKey() const { return largest_key_; }
 
-const uint64_t BlockIndex::GetBlockStartOffset() const {
-  return block_start_offset_;
-}
+uint64_t BlockIndex::GetBlockStartOffset() const { return block_start_offset_; }
 
-const uint64_t BlockIndex::GetBlockSize() const { return block_size_; }
+uint64_t BlockIndex::GetBlockSize() const { return block_size_; }
 
 } // namespace sstable
 

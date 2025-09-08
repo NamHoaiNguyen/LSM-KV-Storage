@@ -67,7 +67,7 @@ public:
   void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
                 db::ValueType value_type);
 
-  const size_t GetBlockSize() const;
+  size_t GetBlockSize() const;
 
   uint64_t GetNumEntries() const;
 
