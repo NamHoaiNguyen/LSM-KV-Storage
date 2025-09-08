@@ -16,11 +16,11 @@ TEST(ConfigTest, LoadConfigFromPathSuccess) {
   auto config = std::make_unique<db::Config>(true /*is_testing*/);
   config->LoadConfig();
 
-  EXPECT_EQ(config->GetPerMemTableSizeLimit(), 4194304 /*4MB*/);
-  EXPECT_EQ(config->GetMaxImmuMemTablesInMem(), 1);
+  EXPECT_EQ(config->GetPerMemTableSizeLimit(), 33554432 /*4MB*/);
+  EXPECT_EQ(config->GetMaxImmuMemTablesInMem(), 3);
   EXPECT_EQ(config->GetSSTBlockSize(), 4096 /*4KB*/);
   EXPECT_EQ(config->GetSSTNumLvels(), 7);
-  EXPECT_EQ(config->GetLvl0SSTCompactionTrigger(), 2);
+  EXPECT_EQ(config->GetLvl0SSTCompactionTrigger(), 4);
   // EXPECT_EQ(config->GetSavedDataPath(), "/var/lib/lsm-kv-storage/data");
 }
 
@@ -31,10 +31,10 @@ TEST(ConfigTest, UseDefaultConfig) {
 
   config->LoadConfig();
   EXPECT_EQ(config->GetPerMemTableSizeLimit(), 4194304 /*4MB*/);
-  EXPECT_EQ(config->GetMaxImmuMemTablesInMem(), 1);
+  EXPECT_EQ(config->GetMaxImmuMemTablesInMem(), 2);
   EXPECT_EQ(config->GetSSTBlockSize(), 4096 /*4KB*/);
   EXPECT_EQ(config->GetSSTNumLvels(), 7);
-  EXPECT_EQ(config->GetLvl0SSTCompactionTrigger(), 2);
+  EXPECT_EQ(config->GetLvl0SSTCompactionTrigger(), 4);
 
   fs::path exe_dir = fs::current_path();
   fs::path project_dir = exe_dir.parent_path();
