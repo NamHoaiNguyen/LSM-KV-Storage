@@ -45,7 +45,7 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
   uint64_t left = 0;
   uint64_t right = block_num_entries;
 
-  while (left < right) {
+  while (left <= right) {
     uint64_t mid = left + (right - left) / 2;
     uint64_t data_entry_offset =
         GetDataEntryOffset(buffer_view, offset_offset_section, mid);
