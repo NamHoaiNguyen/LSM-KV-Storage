@@ -18,9 +18,7 @@
 
 // libC++
 #include <algorithm>
-#include <cassert>
 #include <cmath>
-#include <iostream>
 #include <numeric>
 #include <ranges>
 
@@ -54,24 +52,37 @@ void DBImpl::LoadDB() {
 }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
-  std::shared_lock rlock(mutex_);
   GetStatus status;
+  {
+    std::shared_lock rlock(mutex_);
 
-  // Find data from Memtable
-  status = memtable_->Get(key, txn_id);
+    // Find data from Memtable
+    status = memtable_->Get(key, txn_id);
+    if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
+      return status.value;
+    }
+
+    // If key is not found, continue finding from immutable memtables
+    for (const auto &immu_memtable :
+         immutable_memtables_ | std::views::reverse) {
+      status = immu_memtable->Get(key, txn_id);
+      if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
+        return status.value;
+      }
+    }
+  }
+
+  // TODO(nanmh) : Does it need to acquire lock when looking up key in SSTs?
+  const Version *version = version_manager_->GetLatestVersion();
+  if (!version) {
+    return std::nullopt;
+  }
+
+  status = version->Get(key, txn_id);
   if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
     return status.value;
   }
 
-  // If key is not found, continue finding from immutable memtables
-  for (const auto &immu_memtable : immutable_memtables_ | std::views::reverse) {
-    status = immu_memtable->Get(key, txn_id);
-    if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-      return status.value;
-    }
-  }
-
-  // TODO(namnh) : Find from sstable
   return std::nullopt;
 }
 

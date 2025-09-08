@@ -6,6 +6,7 @@
 #include "io/linux_file.h"
 #include "sstable/block.h"
 #include "sstable/block_index.h"
+#include "sstable/block_reader.h"
 
 // libC++
 #include <cassert>
@@ -15,10 +16,9 @@ namespace kvs {
 namespace sstable {
 
 Table::Table(std::string &&filename, const db::Config *config)
-    : file_object_(
-          std::make_unique<io::LinuxWriteOnlyFile>(std::move(filename))),
-      block_data_(std::make_unique<Block>()),
-      block_index_(std::make_unique<BlockIndex>()), current_offset_(0),
+    : filename_(std::move(filename)),
+      write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
+      block_data_(std::make_unique<Block>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), config_(config) {}
 
 void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
@@ -47,33 +47,90 @@ void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
 }
 
 void Table::FlushBlock() {
-  assert(file_object_);
+  assert(write_file_object_);
 
   // Starting offset of block
   const uint64_t block_starting_offset = current_offset_;
 
   // Flush data part of data block to disk
   std::span<const Byte> data_buffer = block_data_->GetDataView();
-  file_object_->Append(data_buffer, current_offset_);
+  write_file_object_->Append(data_buffer, current_offset_);
   current_offset_ += data_buffer.size();
 
   // Flush metadata part of data block to disk
   std::span<const Byte> offset_buffer = block_data_->GetOffsetView();
-  file_object_->Append(offset_buffer, current_offset_);
+  write_file_object_->Append(offset_buffer, current_offset_);
   current_offset_ += offset_buffer.size();
+
+  // Flush extra info of data block to disk
+  block_data_->EncodeExtraInfo();
+  std::span<const Byte> extra_buffer = block_data_->GetExtraView();
+  write_file_object_->Append(extra_buffer, current_offset_);
+  current_offset_ += extra_buffer.size();
 
   // Ensure that data is persisted to disk from page cache
   // TODO(namnh, IMPORTANCE) : Do we need to do that right now? it significantly
   // degrades performance
-  // file_object_->Flush();
+  // write_file_object_->Flush();
 
   // Build MetaEntry format (block_meta)
-  block_index_->AddEntry(block_smallest_key_, block_largest_key_,
-                         block_starting_offset,
-                         current_offset_ - block_starting_offset);
+  AddIndexBlockEntry(block_smallest_key_, block_largest_key_,
+                     block_starting_offset,
+                     current_offset_ - block_starting_offset);
+
+  // Cache block index
+  block_index_.emplace_back(block_smallest_key_, block_largest_key_,
+                            block_starting_offset,
+                            current_offset_ - block_starting_offset);
 
   // Reset block data
   block_data_->Reset();
+}
+
+void Table::AddIndexBlockEntry(std::string_view first_key,
+                               std::string_view last_key,
+                               uint64_t block_start_offset,
+                               uint64_t block_length) {
+  // Safe, because we limit length of key is less than 2^32
+  const uint32_t first_key_len = static_cast<uint32_t>(first_key.size());
+  const Byte *const first_key_len_bytes =
+      reinterpret_cast<const Byte *const>(&first_key_len);
+  const Byte *const first_key_buff =
+      reinterpret_cast<const Byte *const>(first_key.data());
+
+  // Safe, because we limit length of key is less than 2^32
+  const uint32_t last_key_len = static_cast<uint32_t>(last_key.size());
+  const Byte *const last_key_len_bytes =
+      reinterpret_cast<const Byte *>(&last_key_len);
+  const Byte *const last_key_buff =
+      reinterpret_cast<const Byte *const>(last_key.data());
+
+  // Convert block_start_offset
+  const Byte *const block_start_offset_buff =
+      reinterpret_cast<const Byte *const>(&block_start_offset);
+
+  // convert block_length
+  const Byte *const block_length_buff =
+      reinterpret_cast<const Byte *const>(&block_length);
+
+  // Insert length of first key(4 Bytes)
+  index_block_buffer_.insert(index_block_buffer_.end(), first_key_len_bytes,
+                             first_key_len_bytes + sizeof(uint32_t));
+  // Insert first key
+  index_block_buffer_.insert(index_block_buffer_.end(), first_key_buff,
+                             first_key_buff + first_key_len);
+  // Insert length of last key(4 Bytes)
+  index_block_buffer_.insert(index_block_buffer_.end(), last_key_len_bytes,
+                             last_key_len_bytes + sizeof(uint32_t));
+  // Insert last key
+  index_block_buffer_.insert(index_block_buffer_.end(), last_key_buff,
+                             last_key_buff + last_key_len);
+  // Insert starting offset of block data
+  index_block_buffer_.insert(index_block_buffer_.end(), block_start_offset_buff,
+                             block_start_offset_buff + sizeof(uint64_t));
+  // Insert length of block data
+  index_block_buffer_.insert(index_block_buffer_.end(), block_length_buff,
+                             block_length_buff + sizeof(uint64_t));
 }
 
 void Table::Finish() {
@@ -81,10 +138,10 @@ void Table::Finish() {
   FlushBlock();
 
   // Write block_index_ to page cache
-  std::span<const Byte> block_index_buffer = block_index_->GetBufferView();
+  std::span<const Byte> block_index_buffer = index_block_buffer_;
   // current_offset now is starting offset of block section
   ssize_t block_index_size =
-      file_object_->Append(block_index_buffer, current_offset_);
+      write_file_object_->Append(block_index_buffer, current_offset_);
   if (block_index_size < 0) {
     throw std::runtime_error("Error when flushing meta section of sstable");
   }
@@ -92,10 +149,17 @@ void Table::Finish() {
   EncodeExtraInfo();
 
   // Ensure that data is persisted to disk from page cache
-  if (file_object_->Flush()) {
+  if (write_file_object_->Flush()) {
     // All data in SST is persisted to disk. Free file object
     // to not allow any writing
-    file_object_.reset();
+    write_file_object_.reset();
+  }
+
+  // Maybe should open file for reading only for using later?
+  if (!read_file_object_) {
+    read_file_object_ = std::make_shared<io::LinuxReadOnlyFile>(filename_);
+    // TODO(namnh) : recheck. It can exhaust file descriptors
+    read_file_object_->Open();
   }
 }
 
@@ -108,7 +172,7 @@ void Table::EncodeExtraInfo() {
 
   // Insert size of meta section
   uint64_t block_index_size_u64 =
-      static_cast<uint64_t>(block_index_->GetBlockIndexSize());
+      static_cast<uint64_t>(index_block_buffer_.size());
   const Byte *const meta_section_len =
       reinterpret_cast<const Byte *const>(&block_index_size_u64);
   extra_buffer_.insert(extra_buffer_.end(), meta_section_len,
@@ -128,20 +192,54 @@ void Table::EncodeExtraInfo() {
 }
 
 bool Table::Open() {
-  if (!file_object_) {
+  if (!write_file_object_) {
     return false;
   }
 
-  return file_object_->Open();
+  return write_file_object_->Open();
 }
+
+void Table::Read() {
+  if (!read_file_object_) {
+    read_file_object_ = std::make_unique<io::LinuxReadOnlyFile>(filename_);
+  }
+}
+
+db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) {
+  // Find the block that have smallest largest key that >= key
+  int left = 0;
+  int right = block_index_.size();
+
+  while (left < right) {
+    int mid = left + (right - left) / 2;
+    if (block_index_[mid].GetLargestKey() >= key) {
+      right = mid;
+    } else {
+      left = mid + 1;
+    }
+  }
+
+  uint64_t block_offset = block_index_[right].GetBlockStartOffset();
+  uint64_t block_size = block_index_[right].GetBlockSize();
+
+  // TODO(namnh) : Should cache this block.
+  auto block_reader =
+      std::make_unique<BlockReader>(filename_, read_file_object_);
+  db::GetStatus status =
+      block_reader->SearchKey(block_offset, block_size, key, txn_id);
+
+  return status;
+}
+
+std::string Table::GetSmallestKey() const { return table_smallest_key_; }
+
+std::string Table::GetLargestKey() const { return table_largest_key_; }
 
 // For testing
 Block *Table::GetBlockData() { return block_data_.get(); };
 
-BlockIndex *Table::GetBlockIndexData() { return block_index_.get(); };
-
 io::WriteOnlyFile *Table::GetWriteOnlyFileObject() {
-  return file_object_.get();
+  return write_file_object_.get();
 }
 
 } // namespace sstable

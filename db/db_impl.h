@@ -123,9 +123,6 @@ private:
 
   std::unique_ptr<VersionManager> version_manager_;
 
-  // To know that a SST belongs to which level
-  std::vector<std::vector<std::unique_ptr<SSTInfo>>> levels_sst_info_;
-
   // Mutex to protect some critical data structures
   // (immutable_memtables_ list, levels_sst_info_)
   // std::shared_mutex immutable_memtables_mutex_;

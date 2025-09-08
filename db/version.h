@@ -35,7 +35,7 @@ public:
   struct SSTInfo {
   public:
     SSTInfo();
-    SSTInfo(std::unique_ptr<sstable::Table> table);
+    SSTInfo(std::shared_ptr<sstable::Table> table);
 
     ~SSTInfo() = default;
 
@@ -74,6 +74,8 @@ public:
   // Move constructor/assignment
   Version(Version &&) = default;
   Version &operator=(Version &&) = default;
+
+  GetStatus Get(std::string_view key, TxnId txn_id) const;
 
   void CreateNewSSTs(
       const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables);

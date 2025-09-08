@@ -1,16 +1,22 @@
-#ifndef SSTABLE_BLOCK_H
-#define SSTABLE_BLOCK_H
+#ifndef SSTABLE_BLOCK_READAER_H
+#define SSTABLE_BLOCK_READAER_H
 
 #include "common/macros.h"
 #include "db/status.h"
 
 // libC++
-#include <optional>
+#include <memory>
 #include <span>
-#include <string>
 #include <string_view>
+#include <vector>
 
 namespace kvs {
+
+namespace io {
+class ReadOnlyFile;
+}
+
+namespace sstable {
 
 /*
 Block data format(unit: Byte)
@@ -40,7 +46,7 @@ Offset entry format(unit: Byte)
 | Starting offset of coresponding data entry(8B) |  Size of data entry(8B)  |
 -----------------------------------------------------------------------------
 
-Extra format(unit: Byte)
+Extra format
 --------------------------------------------------------------------------
 |               Extra              |                                     |
 --------------------------------------------------------------------------
@@ -48,76 +54,49 @@ Extra format(unit: Byte)
 --------------------------------------------------------------------------
 */
 
-namespace sstable {
-
-class Block {
+class BlockReader {
 public:
-  Block();
-
-  ~Block() = default;
+  BlockReader(std::string_view filename,
+              std::shared_ptr<io::ReadOnlyFile> read_file_object);
+  ~BlockReader() = default;
 
   // No copy allowed
-  Block(const Block &) = delete;
-  Block &operator=(Block &) = delete;
+  BlockReader(const BlockReader &) = delete;
+  BlockReader &operator=(BlockReader &) = delete;
 
   // Move constructor/assignment
-  Block(Block &&) = default;
-  Block &operator=(Block &&) = default;
+  BlockReader(BlockReader &&) = default;
+  BlockReader &operator=(BlockReader &&) = default;
 
-  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                db::ValueType value_type);
-
-  size_t GetBlockSize() const;
-
-  uint64_t GetNumEntries() const;
-
-  // ONLY call this method after finish writing all data to block.
-  // Otherwise, it can cause dangling pointer.
-  std::span<const Byte> GetDataView();
-
-  // ONLY call this method after finish writing all data to block.
-  // Otherwise, it can cause dangling pointer.
-  std::span<const Byte> GetOffsetView();
-
-  // ONLY call this method after finish writing all data to block.
-  // Otherwise, it can cause dangling pointer.
-  std::span<const Byte> GetExtraView();
-
-  void EncodeExtraInfo();
-
-  void SearchKey(std::string_view key, TxnId txn_id);
-
-  // Finish building the block
-  void Finish();
-
-  // Clear data of block to reuse
-  void Reset();
+  db::GetStatus SearchKey(uint64_t offset, uint64_t size, std::string_view key,
+                          TxnId txn_id);
 
 private:
-  void EncodeDataEntry(std::string_view key, std::string_view value,
-                       TxnId txn_id, db::ValueType value_type);
+  // Get starting offset of data entry at index entry_index(th) base on
+  // offset_section(starting offset of offset section)
+  // See block data format above
+  uint64_t GetDataEntryOffset(std::span<const Byte> buffer,
+                              const uint64_t offset_section,
+                              const int entry_index);
 
-  void EncodeOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
+  // Get type of key base on data_entry_offset(starting offset of data entry)
+  // See block data format above
+  db::ValueType GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
+                                          uint64_t data_entry_offset);
 
-  bool is_finished_;
+  // Get key and value of data entry that start at data_entry_offset
+  // See block data format above
+  std::pair<std::string_view, std::string_view>
+  GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
+                           uint64_t data_entry_offset);
 
-  size_t block_size_;
+  std::vector<Byte> buffer_;
 
-  uint64_t num_entries_;
-
-  // TODO(namnh) : Is there any way to avoid copying?
-  std::vector<Byte> data_buffer_;
-
-  std::vector<Byte> offset_buffer_;
-
-  std::vector<Byte> extra_buffer_;
-
-  // Track current offset of data section format
-  uint64_t data_current_offset_;
+  std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 };
 
 } // namespace sstable
 
 } // namespace kvs
 
-#endif // SSTABLE_BLOCK_H
+#endif // SSTABLE_BLOCK_READAER_H

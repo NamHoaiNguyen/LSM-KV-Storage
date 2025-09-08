@@ -21,6 +21,7 @@ class Config;
 class SSTTest_BasicEncode_Test;
 
 namespace io {
+class ReadOnlyFile;
 class WriteOnlyFile;
 } // namespace io
 
@@ -54,6 +55,10 @@ namespace sstable {
 class Block;
 class BlockIndex;
 
+// A SST is immutable after be written. More than that, with support of version
+// that work like a snapshot of all SST files at the time an operation is
+// executed, mutex is not needed. Because a SST is only visible after writing to
+// disk finishes and only latest version sees this visibility
 class Table {
 public:
   Table(std::string &&filename, const db::Config *config);
@@ -76,14 +81,21 @@ public:
   // Flush block data to disk
   void FlushBlock();
 
+  // After this method is executed, SST file is immutable
   void Finish();
 
   bool Open();
 
+  void Read();
+
+  db::GetStatus SearchKey(std::string_view key, TxnId txn_id);
+
+  std::string GetSmallestKey() const;
+
+  std::string GetLargestKey() const;
+
   // For testing
   Block *GetBlockData();
-
-  BlockIndex *GetBlockIndexData();
 
   io::WriteOnlyFile *GetWriteOnlyFileObject();
 
@@ -92,7 +104,14 @@ public:
 private:
   void EncodeExtraInfo();
 
-  std::unique_ptr<io::WriteOnlyFile> file_object_;
+  void AddIndexBlockEntry(std::string_view first_key, std::string_view last_key,
+                          uint64_t block_start_offset, uint64_t block_length);
+
+  std::string filename_;
+
+  std::shared_ptr<io::ReadOnlyFile> read_file_object_;
+
+  std::unique_ptr<io::WriteOnlyFile> write_file_object_;
 
   // TODO(namnh) : unique_ptr or shared_ptr?
   std::unique_ptr<Block> block_data_;
@@ -103,13 +122,11 @@ private:
   // Largest key of each block
   std::string block_largest_key_;
 
-  // TODO(namnh) : unique_ptr?
-  std::unique_ptr<BlockIndex> block_index_;
-
-  // TODO(namnh) : unique_ptr or shared_ptr?
-  // std::unique_ptr<BaseIterator> iterator_;
-
   uint64_t current_offset_;
+
+  std::vector<BlockIndex> block_index_;
+
+  std::vector<Byte> index_block_buffer_;
 
   std::vector<Byte> extra_buffer_;
 
