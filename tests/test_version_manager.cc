@@ -30,8 +30,6 @@ TEST(VersionManagerTest, CreateOnlyOneVersion) {
 
   std::string key, value;
   size_t current_size = 0;
-  // Include latest_version
-  int number_version = 1;
   int immutable_memtables_in_mem = 0;
   for (int i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(i);
@@ -45,22 +43,22 @@ TEST(VersionManagerTest, CreateOnlyOneVersion) {
       immutable_memtables_in_mem++;
       if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
         // Stop immediately if flushing is triggered
-        number_version++;
         immutable_memtables_in_mem = 0;
         break;
       }
     }
   }
 
-  // Need time for new SST is persisted to disk
-  // NOTE: It must be long enough for debug build
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+  // // Need time for new SST is persisted to disk
+  // // NOTE: It must be long enough for debug build
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
-  // Creating new SST when memtable is overlow means that new latest version is
-  // created
+  const Version *version = db->GetVersionManager()->GetLatestVersion();
+  EXPECT_EQ(version->Get("key0", 0).value, "value0");
+
+  // Creating new SST when memtable is overlow means that new latest version
+  // is created
   EXPECT_TRUE(db->GetVersionManager()->GetLatestVersion());
-  // Just latest version is created
-  EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 1);
 
   int num_sst_files = 0;
   int num_sst_files_info = 0;
@@ -70,12 +68,6 @@ TEST(VersionManagerTest, CreateOnlyOneVersion) {
       num_sst_files++;
     }
   }
-
-  // Total number of versions = 2.
-  EXPECT_EQ(db->GetVersionManager()->GetVersions().size() + 1
-            /*latest_version*/,
-            number_version);
-  EXPECT_EQ(number_version, 2);
 
   for (const auto &sst_file_info :
        db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
@@ -101,7 +93,6 @@ TEST(VersionManagerTest, CreateMultipleVersions) {
 
   std::string key, value;
   size_t current_size = 0;
-  int number_version = 1;
   int immutable_memtables_in_mem = 0;
   for (int i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(i);
@@ -112,7 +103,6 @@ TEST(VersionManagerTest, CreateMultipleVersions) {
       current_size = 0;
       immutable_memtables_in_mem++;
       if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
-        number_version++;
         immutable_memtables_in_mem = 0;
       }
     }
@@ -121,7 +111,6 @@ TEST(VersionManagerTest, CreateMultipleVersions) {
   }
 
   db->ForceFlushMemTable();
-  number_version++;
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
@@ -134,9 +123,6 @@ TEST(VersionManagerTest, CreateMultipleVersions) {
     }
   }
 
-  EXPECT_EQ(db->GetVersionManager()->GetVersions().size() +
-                1 /*latest_version*/,
-            number_version);
   for (const auto &sst_file_info :
        db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
     num_sst_files_info += sst_file_info.size();
@@ -157,7 +143,6 @@ TEST(VersionManagerTest, Concurrency) {
   db->LoadDB();
   const Config *const config = db->GetConfig();
   const int nums_elem_each_thread = 1000000;
-  int number_version = 1;
   size_t current_size = 0;
   int immutable_memtables_in_mem = 0;
 
@@ -173,9 +158,8 @@ TEST(VersionManagerTest, Concurrency) {
 
   std::latch all_done(num_threads);
 
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
-                 &number_version, &current_size, &immutable_memtables_in_mem,
-                 &mutex, &all_done](int index) {
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &current_size,
+                 &immutable_memtables_in_mem, &mutex, &all_done](int index) {
     std::string key, value;
 
     for (size_t i = 0; i < nums_elem; i++) {
@@ -190,7 +174,6 @@ TEST(VersionManagerTest, Concurrency) {
           immutable_memtables_in_mem++;
           if (immutable_memtables_in_mem >=
               config->GetMaxImmuMemTablesInMem()) {
-            number_version++;
             immutable_memtables_in_mem = 0;
           }
         }
@@ -213,7 +196,6 @@ TEST(VersionManagerTest, Concurrency) {
   }
 
   db->ForceFlushMemTable();
-  number_version++;
 
   int num_sst_files = 0;
   int num_sst_files_info = 0;
@@ -223,9 +205,6 @@ TEST(VersionManagerTest, Concurrency) {
     }
   }
 
-  EXPECT_EQ(db->GetVersionManager()->GetVersions().size() +
-                1 /*latest_version*/,
-            number_version);
   for (const auto &sst_file_info :
        db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
     num_sst_files_info += sst_file_info.size();

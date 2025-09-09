@@ -32,14 +32,20 @@ Version *VersionManager::CreateLatestVersion() {
   std::unique_ptr<Version> tmp_version = std::move(latest_version_);
   latest_version_ = std::make_unique<Version>(db_, config_, thread_pool_);
 
-  // Build info of SST for latest version
+  // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
       &old_version_sst_info = tmp_version->GetImmutableSSTInfo();
+  const std::vector<double> &old_levels_score = tmp_version->GetLevelsScore();
 
   std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
       &latest_version_sst_info = latest_version_->GetSSTInfo();
+  std::vector<double> &latest_levels_score = latest_version_->GetLevelsScore();
 
   for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
+    // Get score ranking from previous version(to know which level should be
+    // compacted)
+    latest_levels_score[level] = old_levels_score[level];
+
     for (const auto &sst_info : old_version_sst_info[level]) {
       if (sst_info->should_be_deleted_) {
         continue;
@@ -53,6 +59,15 @@ Version *VersionManager::CreateLatestVersion() {
   versions_.push_front(std::move(tmp_version));
 
   return latest_version_.get();
+}
+
+bool VersionManager::NeedSSTCompaction() {
+  std::scoped_lock lock(mutex_);
+  if (!latest_version_) {
+    return false;
+  }
+
+  return latest_version_->NeedCompaction();
 }
 
 const std::deque<std::unique_ptr<Version>> &

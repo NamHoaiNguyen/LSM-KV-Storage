@@ -143,6 +143,23 @@ void DBImpl::FlushMemTableJob() {
     immutable_memtables_.clear();
     cv_.notify_all();
   }
+
+  if (version_manager_->NeedSSTCompaction()) {
+    TriggerCompaction();
+  }
+}
+
+void DBImpl::TriggerCompaction() {
+  // Key point: Db DOES NOT need to acquire mutex here. Because
+  // CreateLatestVersion is protected by mutex. So, at a time, there is always 1
+  // thread/process can access. It means that, each latest version returned is
+  // ensured to be race condition free
+  Version *latest_version = version_manager_->CreateLatestVersion();
+  if (!latest_version) {
+    return;
+  }
+
+  thread_pool_->Enqueue(&Version::ExecCompaction, latest_version);
 }
 
 uint64_t DBImpl::GetNextSSTId() {
