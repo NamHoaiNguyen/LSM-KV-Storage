@@ -8,6 +8,7 @@
 #include <deque>
 #include <latch>
 #include <memory>
+#include <ranges>
 #include <vector>
 
 namespace kvs {

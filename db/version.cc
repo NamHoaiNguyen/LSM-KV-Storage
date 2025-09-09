@@ -27,7 +27,8 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
 
   // Search in SSTs lvl0
-  for (const auto &sst : levels_sst_info_[0]) {
+  // for (const auto &sst : levels_sst_info_[0]) {
+  for (const auto& sst: std::views::reverse(levels_sst_info_[0])) {
     if (key < sst->table_->GetSmallestKey() ||
         key > sst->table_->GetLargestKey()) {
       continue;
