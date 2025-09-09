@@ -62,6 +62,9 @@ public:
 
   friend class Compact;
 
+  // For testing
+  const std::vector<std::unique_ptr<BaseMemTable>> &GetImmutableMemTables();
+
 private:
   class SSTInfo {
   public:

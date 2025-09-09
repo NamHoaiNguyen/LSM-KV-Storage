@@ -108,6 +108,7 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   }
 }
 
+// Just for testing
 void DBImpl::ForceFlushMemTable() {
   {
     std::scoped_lock lock(mutex_);
@@ -171,6 +172,11 @@ const Config *const DBImpl::GetConfig() { return config_.get(); }
 
 const VersionManager *DBImpl::GetVersionManager() {
   return version_manager_.get();
+}
+
+const std::vector<std::unique_ptr<BaseMemTable>> &
+DBImpl::GetImmutableMemTables() {
+  return immutable_memtables_;
 }
 
 // SST INFO
