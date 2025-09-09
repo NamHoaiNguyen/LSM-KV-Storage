@@ -58,10 +58,6 @@ public:
     int level_;
 
     std::atomic<bool> should_be_deleted_;
-
-    std::string smallest_key_;
-
-    std::string largest_key_;
   };
 
   Version(DBImpl *db, const Config *config, ThreadPool *thread_pool);
@@ -83,7 +79,7 @@ public:
 
   bool NeedCompaction();
 
-  std::optional<int> GetLevelToCompact();
+  std::optional<int> GetLevelToCompact() const;
 
   void ExecCompaction();
 
@@ -91,13 +87,16 @@ public:
   GetImmutableSSTInfo() const;
   std::vector<std::vector<std::shared_ptr<SSTInfo>>> &GetSSTInfo();
 
+  const std::vector<double> &GetImmutableLevelsScore() const;
+  std::vector<double> &GetLevelsScore();
+
   size_t GetNumberSSTLvl0Files();
 
   friend class Compact;
 
 private:
   void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtables,
-                    std::latch &work_done);
+                    uint64_t sst_id, std::latch &work_done);
 
   // TODO(namnh) : do I need to protect this one ?
   // TODO(namnh) : How to construct this data structure ?

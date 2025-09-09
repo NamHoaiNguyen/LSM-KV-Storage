@@ -61,7 +61,7 @@ class BlockIndex;
 // disk finishes and only latest version sees this visibility
 class Table {
 public:
-  Table(std::string &&filename, const db::Config *config);
+  Table(std::string &&filename, uint64_t table_id, const db::Config *config);
 
   ~Table() = default;
 
@@ -90,16 +90,20 @@ public:
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id);
 
-  std::string GetSmallestKey() const;
+  // Not best practise. But because table is immutable after be written, it is
+  // ok
+  std::string_view GetSmallestKey() const;
 
-  std::string GetLargestKey() const;
+  // Not best practise. But because table is immutable after be written, it is
+  // ok
+  std::string_view GetLargestKey() const;
+
+  uint64_t GetTableId() const;
 
   // For testing
   Block *GetBlockData();
 
   io::WriteOnlyFile *GetWriteOnlyFileObject();
-
-  friend class kvs::db::Compact;
 
 private:
   void EncodeExtraInfo();
@@ -108,6 +112,8 @@ private:
                           uint64_t block_start_offset, uint64_t block_length);
 
   std::string filename_;
+
+  uint64_t table_id_;
 
   std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 

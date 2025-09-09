@@ -42,8 +42,9 @@ private:
 
   // Find starting index of file in level_sst_infos_ that overlaps with
   // the fiels to be compacted from upper level
-  size_t FindNonOverlappingFiles(uint8_t level, std::string_view smallest_key,
-                                 std::string_view largest_key);
+  std::optional<size_t> FindNonOverlappingFiles(int level,
+                                                std::string_view smallest_key,
+                                                std::string_view largest_key);
 
   void DoCompactJob();
 
@@ -53,7 +54,7 @@ private:
   // new version is created when there is a change(create new SST, delete old
   // SST after compaction). So, each version has its own this data structure.
   // Note: These are also files that be deleted after finish compaction
-  std::vector<const Version::SSTInfo *> compact_info_;
+  std::vector<const Version::SSTInfo *> compact_info_[2];
 };
 
 } // namespace db

@@ -70,10 +70,10 @@ TEST(SSTTest, BasicEncode) {
   auto config = std::make_unique<db::Config>(true /*is_testing*/);
   config->LoadConfig();
 
-  std::string filename =
-      "/home/hoainam/self/biggg/lsm-kv-storage/data/000001.sst";
-  auto table =
-      std::make_unique<sstable::Table>(std::move(filename), config.get());
+  std::string filename = "/home/hoainam/self/biggg/lsm-kv-storage/data/1.sst";
+  uint64_t table_id = 1;
+  auto table = std::make_unique<sstable::Table>(std::move(filename), table_id,
+                                                config.get());
   table->GetWriteOnlyFileObject()->Open();
 
   std::string key1 = "apple";

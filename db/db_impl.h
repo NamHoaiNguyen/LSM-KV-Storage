@@ -93,7 +93,8 @@ private:
   };
 
   void FlushMemTableJob();
-  // void FlushMemTableJob(const BaseMemTable *const immutable_memtable);
+
+  void TriggerCompaction();
 
   const std::string dbname_;
 

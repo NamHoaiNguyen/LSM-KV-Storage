@@ -15,8 +15,9 @@ namespace kvs {
 
 namespace sstable {
 
-Table::Table(std::string &&filename, const db::Config *config)
-    : filename_(std::move(filename)),
+Table::Table(std::string &&filename, uint64_t table_id,
+             const db::Config *config)
+    : filename_(std::move(filename)), table_id_(table_id),
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<Block>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), config_(config) {}
@@ -231,9 +232,11 @@ db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) {
   return status;
 }
 
-std::string Table::GetSmallestKey() const { return table_smallest_key_; }
+std::string_view Table::GetSmallestKey() const { return table_smallest_key_; }
 
-std::string Table::GetLargestKey() const { return table_largest_key_; }
+std::string_view Table::GetLargestKey() const { return table_largest_key_; }
+
+uint64_t Table::GetTableId() const { return table_id_; };
 
 // For testing
 Block *Table::GetBlockData() { return block_data_.get(); };

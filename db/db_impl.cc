@@ -162,10 +162,6 @@ void DBImpl::TriggerCompaction() {
   thread_pool_->Enqueue(&Version::ExecCompaction, latest_version);
 }
 
-void DBImpl::MaybeScheduleCompaction() {
-
-}
-
 uint64_t DBImpl::GetNextSSTId() {
   next_sstable_id_.fetch_add(1);
   return next_sstable_id_.load();
