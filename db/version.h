@@ -55,7 +55,7 @@ public:
 
     SSTId table_id_;
 
-    uint8_t level_;
+    int level_;
 
     std::atomic<bool> should_be_deleted_;
 
@@ -81,9 +81,17 @@ public:
   void CreateNewSSTs(
       const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables);
 
+  bool NeedCompaction();
+
+  std::optional<int> GetLevelToCompact();
+
+  void ExecCompaction();
+
   const std::vector<std::vector<std::shared_ptr<SSTInfo>>> &
   GetImmutableSSTInfo() const;
   std::vector<std::vector<std::shared_ptr<SSTInfo>>> &GetSSTInfo();
+
+  size_t GetNumberSSTLvl0Files();
 
   friend class Compact;
 
@@ -101,6 +109,13 @@ private:
   std::vector<std::vector<std::shared_ptr<SSTInfo>>> levels_sst_info_;
 
   std::unique_ptr<Compact> compact_;
+
+  // Level that need to compact
+  uint8_t compaction_level_;
+
+  uint64_t compaction_score_;
+
+  std::vector<double> levels_score_;
 
   // Below are objects that Version does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,

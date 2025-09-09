@@ -34,6 +34,8 @@ public:
   // ALWAYS return latest version
   Version *CreateLatestVersion();
 
+  bool NeedSSTCompaction();
+
   // For testing
   const std::deque<std::unique_ptr<Version>> &GetVersions() const;
 

@@ -15,23 +15,33 @@ namespace db {
 
 Compact::Compact(const Version *version) : version_(version) {}
 
-void Compact::PickCompact(int sst_lvl0_size) {
+void Compact::PickCompact() {
   // TODO(namnh) : Do we need to acquire lock ?
   // What happen if when compact is executing, new SST file appears ?
   if (!version_) {
     return;
   }
 
-  if (version_->levels_sst_info_[0].empty()) {
-    // TODO(namnh) : check that higher level need to merge or not ?
-    // DoFullCompact();
+  // if (version_->levels_sst_info_[0].empty()) {
+  //   // TODO(namnh) : check that higher level need to merge or not ?
+  //   // DoFullCompact();
+  //   return;
+  // }
+
+  if (!version_->GetLevelToCompact()) {
     return;
   }
 
-  DoL0L1LvlCompact();
+  int level_to_compact = version_->GetLevelToCompact().value();
+  if (level_to_compact == 0) {
+    DoL0L1Compact();
+    return;
+  }
+
+  // DoOtherLevelsCompact();
 }
 
-void Compact::DoL0L1LvlCompact() {
+void Compact::DoL0L1Compact() {
   // Get oldest sst level 0(the first lvl 0 file. Because sst files are sorted)
   // TODO(namnh) : Recheck this logic
   // Get overlapping lvl0 sst files
@@ -76,7 +86,7 @@ std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
   return {smallest_key, largest_key};
 }
 
-void Compact::GetOverlappingSSTOtherLvls(uint8_t level,
+void Compact::GetOverlappingSSTOtherLvls(int level,
                                          std::string_view smallest_key,
                                          std::string_view largest_key) {
   if (version_->levels_sst_info_[level].empty()) {

@@ -55,6 +55,15 @@ Version *VersionManager::CreateLatestVersion() {
   return latest_version_.get();
 }
 
+bool VersionManager::NeedSSTCompaction() {
+  std::scoped_lock lock(mutex_);
+  if (!latest_version_) {
+    return false;
+  }
+
+  return latest_version_->NeedCompaction();
+}
+
 const std::deque<std::unique_ptr<Version>> &
 VersionManager::GetVersions() const {
   std::scoped_lock lock(mutex_);
