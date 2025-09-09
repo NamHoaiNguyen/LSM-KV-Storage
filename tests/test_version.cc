@@ -263,110 +263,109 @@ TEST(VersionTest, GetFromVersion) {
   }
 }
 
-// TEST(VersionTest, ConcurrencyPutSingleGet) {
-//   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-//   db->LoadDB();
-//   const Config *const config = db->GetConfig();
-//   const int nums_elem_each_thread = 100000;
-//   size_t current_size = 0;
-//   int immutable_memtables_in_mem = 0;
+TEST(VersionTest, ConcurrencyPutSingleGet) {
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB();
+  const Config *const config = db->GetConfig();
+  const int nums_elem_each_thread = 100000;
+  size_t current_size = 0;
+  int immutable_memtables_in_mem = 0;
 
-//   std::mutex mutex;
+  std::mutex mutex;
 
-//   // unsigned int num_threads = 10;
-//   unsigned int num_threads = std::thread::hardware_concurrency();
-//   if (num_threads == 0) {
-//     // std::thread::hardware_concurrency() might return 0 if sys info not
-//     // available
-//     num_threads = 10;
-//   }
+  // unsigned int num_threads = 10;
+  unsigned int num_threads = std::thread::hardware_concurrency();
+  if (num_threads == 0) {
+    // std::thread::hardware_concurrency() might return 0 if sys info not
+    // available
+    num_threads = 10;
+  }
+  const int total_elems = nums_elem_each_thread * num_threads;
 
-//   std::latch all_done(num_threads);
+  std::latch all_done(num_threads);
 
-//   auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
-//   &current_size,
-//                  &immutable_memtables_in_mem, &mutex, &all_done](int index) {
-//     std::string key, value;
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &current_size,
+                 &immutable_memtables_in_mem, &mutex, &all_done](int index) {
+    std::string key, value;
 
-//     for (size_t i = 0; i < nums_elem; i++) {
-//       key = "key" + std::to_string(nums_elem * index + i);
-//       value = "value" + std::to_string(nums_elem * index + i);
+    for (size_t i = 0; i < nums_elem; i++) {
+      key = "key" + std::to_string(nums_elem * index + i);
+      value = "value" + std::to_string(nums_elem * index + i);
 
-//       {
-//         std::scoped_lock lock(mutex);
-//         current_size += key.size() + value.size();
-//         if (current_size >= config->GetPerMemTableSizeLimit()) {
-//           current_size = 0;
-//           immutable_memtables_in_mem++;
-//           if (immutable_memtables_in_mem >=
-//               config->GetMaxImmuMemTablesInMem()) {
-//             immutable_memtables_in_mem = 0;
-//           }
-//         }
-//       }
-//       db->Put(key, value, 0 /*txn_id*/);
-//     }
-//     all_done.count_down();
-//   };
+      {
+        std::scoped_lock lock(mutex);
+        current_size += key.size() + value.size();
+        if (current_size >= config->GetPerMemTableSizeLimit()) {
+          current_size = 0;
+          immutable_memtables_in_mem++;
+          if (immutable_memtables_in_mem >=
+              config->GetMaxImmuMemTablesInMem()) {
+            immutable_memtables_in_mem = 0;
+          }
+        }
+      }
+      db->Put(key, value, 0 /*txn_id*/);
+    }
+    all_done.count_down();
+  };
 
-//   std::vector<std::thread> threads;
-//   for (int i = 0; i < num_threads; i++) {
-//     threads.emplace_back(put_op, i);
-//   }
+  std::vector<std::thread> threads;
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(put_op, i);
+  }
 
-//   // Wait until all threads finish
-//   all_done.wait();
+  // Wait until all threads finish
+  all_done.wait();
 
-//   for (auto &thread : threads) {
-//     thread.join();
-//   }
+  for (auto &thread : threads) {
+    thread.join();
+  }
 
-//   // Force clearing all immutable memtables
-//   db->ForceFlushMemTable();
+  // Force clearing all immutable memtables
+  db->ForceFlushMemTable();
 
-//   int num_sst_files = 0;
-//   int num_sst_files_info = 0;
-//   for (const auto &entry :
-//   fs::directory_iterator(config->GetSavedDataPath())) {
-//     if (fs::is_regular_file(entry.status())) {
-//       num_sst_files++;
-//     }
-//   }
+  // Sleep to wait all written data is persisted to disk
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-//   for (const auto &sst_file_info :
-//        db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
-//     num_sst_files_info += sst_file_info.size();
-//   }
+  int num_sst_files = 0;
+  int num_sst_files_info = 0;
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      num_sst_files++;
+    }
+  }
 
-//   EXPECT_EQ(num_sst_files, num_sst_files_info);
+  for (const auto &sst_file_info :
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
+    num_sst_files_info += sst_file_info.size();
+  }
 
-//   // Now all immutable memtables are no longer in memory, it means that all
-//   GET
-//   // operation must go to SST to lookup
-//   const Version *version = db->GetVersionManager()->GetLatestVersion();
-//   EXPECT_TRUE(version);
+  EXPECT_EQ(num_sst_files, num_sst_files_info);
 
-//   GetStatus status;
-//   const int total_elems = nums_elem_each_thread * num_threads;
-//   std::string key, value;
+  // Now all immutable memtables are no longer in memory, it means that all
+  // GET operation must go to SST to lookup
+  const Version *version = db->GetVersionManager()->GetLatestVersion();
+  EXPECT_TRUE(version);
 
-//   for (int i = 0; i < total_elems; i++) {
-//     key = "key" + std::to_string(i);
-//     value = "value" + std::to_string(i);
+  GetStatus status;
+  std::string key, value;
 
-//     status = version->Get(key, 0 /*txn_id*/);
-//     EXPECT_TRUE(status.type == db::ValueType::PUT);
-//     EXPECT_EQ(status.value, value);
-//   }
+  for (int i = 0; i < total_elems; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
 
-//   // clear all SST files created for next test
-//   for (const auto &entry :
-//   fs::directory_iterator(config->GetSavedDataPath())) {
-//     if (fs::is_regular_file(entry.status())) {
-//       fs::remove(entry.path());
-//     }
-//   }
-// }
+    status = version->Get(key, 0 /*txn_id*/);
+    EXPECT_TRUE(status.type == db::ValueType::PUT);
+    EXPECT_EQ(status.value, value);
+  }
+
+  // clear all SST files created for next test
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      fs::remove(entry.path());
+    }
+  }
+}
 
 } // namespace db
 
