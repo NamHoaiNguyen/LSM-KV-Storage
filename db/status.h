@@ -28,7 +28,7 @@ struct GetStatus {
     return type == other.type && value == other.value;
   }
 
-  ValueType type;
+  ValueType type{ValueType::NOT_FOUND};
 
   std::optional<std::string> value;
 };
