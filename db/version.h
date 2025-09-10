@@ -32,16 +32,16 @@ class DBImpl;
 // must acquire mutex for lists(or other data structures) which hold infomation
 // of SSTs that needed to be compacted.
 
-//NOTE: A version is IMMUTABLE snapshot after be built. In other worlds, DO NOT 
-// execute methods that changing data of  version
-// TODO(namnh) : have any other designs for this ?
+// NOTE: A version is IMMUTABLE snapshot after be built. In other worlds, DO NOT
+//  execute methods that changing data of  version
+//  TODO(namnh) : have any other designs for this ?
 
 class Version {
 public:
   struct SSTInfo {
   public:
     SSTInfo();
-    SSTInfo(std::shared_ptr<sstable::Table> table);
+    SSTInfo(std::shared_ptr<sstable::Table> table, int level);
 
     ~SSTInfo() = default;
 
@@ -77,9 +77,6 @@ public:
 
   GetStatus Get(std::string_view key, TxnId txn_id) const;
 
-  void CreateNewSSTs(
-      const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables);
-
   bool NeedCompaction() const;
 
   std::optional<int> GetLevelToCompact() const;
@@ -100,9 +97,6 @@ public:
   friend class Compact;
 
 private:
-  void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtables,
-                    uint64_t sst_id, std::latch &work_done);
-
   // TODO(namnh) : do I need to protect this one ?
   // TODO(namnh) : How to construct this data structure ?
   // If using unique_ptr, each version has its own data SST info.

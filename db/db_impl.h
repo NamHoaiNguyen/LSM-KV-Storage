@@ -2,6 +2,7 @@
 #define DB_LSM_H
 
 #include "common/macros.h"
+#include "db/version.h"
 
 #include <condition_variable>
 #include <functional>
@@ -96,13 +97,11 @@ private:
   };
 
   void FlushMemTableJob();
-  
-  void FlushMemTableJobV2();
 
-  void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
-                    uint64_t sst_id,
-                    const std::vector<std::shared_ptr<Version::SSTInfo>>& new_ssts_info,
-                    std::latch &work_done);
+  void
+  CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
+               std::vector<std::shared_ptr<Version::SSTInfo>> &new_ssts_info,
+               std::latch &work_done);
 
   void TriggerCompaction();
 

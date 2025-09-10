@@ -1,9 +1,12 @@
 #ifndef DB_VERSION_MANAGER_H
 #define DB_VERSION_MANAGER_H
 
+#include "db/version.h"
+
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <vector>
 
 namespace kvs {
 
@@ -15,7 +18,6 @@ class BaseMemTable;
 class DBImpl;
 class Compact;
 class Config;
-class Version;
 
 class VersionManager {
 public:
@@ -36,7 +38,7 @@ public:
 
   // Create latest version and apply new SSTs info
   void ApplyNewChanges(
-      std::vector<std::shared_ptr<Version::SSTInfo>>&& new_ssts_info);
+      std::vector<std::shared_ptr<Version::SSTInfo>> &&new_ssts_info);
 
   bool NeedSSTCompaction();
 
