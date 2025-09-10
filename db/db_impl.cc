@@ -142,15 +142,16 @@ void DBImpl::FlushMemTableJob() {
   // Wait until all workers have finished
   all_done.wait();
 
-  // TODO(namnh) : Need to notify after creating new version ?
+  // Not until this point that latest version is visible
+  version_manager_->ApplyNewChanges(std::move(new_ssts_info));
+
+  // Notify to let writing continues.
+  // NOTE: new writes are only allowed after new version is VISIBLE
   {
     std::scoped_lock rwlock(mutex_);
     immutable_memtables_.clear();
     cv_.notify_all();
   }
-
-  // Not until this point that latest version is visible
-  version_manager_->ApplyNewChanges(std::move(new_ssts_info));
 
   if (version_manager_->NeedSSTCompaction()) {
     TriggerCompaction();
