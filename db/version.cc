@@ -46,61 +46,61 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   return status;
 }
 
-void Version::CreateNewSSTs(
-    const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables) {
+// void Version::CreateNewSSTs(
+//     const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables) {
 
-  std::latch all_done(immutable_memtables.size());
+//   std::latch all_done(immutable_memtables.size());
 
-  // TODO(namnh) : Do we need to acquire lock ?
-  for (const auto &immutable_memtable : immutable_memtables) {
-    thread_pool_->Enqueue(&Version::CreateNewSST, this,
-                          std::cref(immutable_memtable), db_->GetNextSSTId(),
-                          std::ref(all_done));
-  }
+//   // TODO(namnh) : Do we need to acquire lock ?
+//   for (const auto &immutable_memtable : immutable_memtables) {
+//     thread_pool_->Enqueue(&Version::CreateNewSST, this,
+//                           std::cref(immutable_memtable), db_->GetNextSSTId(),
+//                           std::ref(all_done));
+//   }
 
-  // Wait until all workers have finished
-  all_done.wait();
-}
+//   // Wait until all workers have finished
+//   all_done.wait();
+// }
 
-void Version::CreateNewSST(
-    const std::unique_ptr<BaseMemTable> &immutable_memtable, uint64_t sst_id,
-    std::latch &work_done) {
-  std::string filename =
-      config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
-  auto new_sst =
-      std::make_shared<sstable::Table>(std::move(filename), sst_id, config_);
-  if (!new_sst->Open()) {
-    work_done.count_down();
-    return;
-  }
+// void Version::CreateNewSST(
+//     const std::unique_ptr<BaseMemTable> &immutable_memtable, uint64_t sst_id,
+//     std::latch &work_done) {
+//   std::string filename =
+//       config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
+//   auto new_sst =
+//       std::make_shared<sstable::Table>(std::move(filename), sst_id, config_);
+//   if (!new_sst->Open()) {
+//     work_done.count_down();
+//     return;
+//   }
 
-  auto iterator = std::make_unique<MemTableIterator>(immutable_memtable.get());
-  // Iterate through all key/value pairs to add them to sst
-  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-    new_sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
-                      iterator->GetTransactionId(), iterator->GetType());
-  }
+//   auto iterator = std::make_unique<MemTableIterator>(immutable_memtable.get());
+//   // Iterate through all key/value pairs to add them to sst
+//   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+//     new_sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
+//                       iterator->GetTransactionId(), iterator->GetType());
+//   }
 
-  // All of key/value pairs had been written to sst. SST should be flushed to
-  // disk
-  new_sst->Finish();
+//   // All of key/value pairs had been written to sst. SST should be flushed to
+//   // disk
+//   new_sst->Finish();
 
-  {
-    std::scoped_lock lock(mutex_);
-    // Update new sst(at level 0) info into this version
-    levels_sst_info_[0].emplace_back(
-        std::make_shared<Version::SSTInfo>(std::move(new_sst)));
-    // Update level 0' score
-    levels_score_[0] =
-        static_cast<double>(levels_sst_info_[0].size()) /
-        static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
-  }
+//   {
+//     std::scoped_lock lock(mutex_);
+//     // Update new sst(at level 0) info into this version
+//     levels_sst_info_[0].emplace_back(
+//         std::make_shared<Version::SSTInfo>(std::move(new_sst)));
+//     // Update level 0' score
+//     levels_score_[0] =
+//         static_cast<double>(levels_sst_info_[0].size()) /
+//         static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
+//   }
 
-  // Signal that this worker is done
-  work_done.count_down();
-}
+//   // Signal that this worker is done
+//   work_done.count_down();
+// }
 
-bool Version::NeedCompaction() {
+bool Version::NeedCompaction() const {
   double score_compact = 1;
   for (int level = 0; level < levels_score_.size(); level++) {
     if (levels_score_[level] >= score_compact) {
@@ -148,7 +148,7 @@ const std::vector<double> &Version::GetImmutableLevelsScore() const {
 
 std::vector<double> &Version::GetLevelsScore() { return levels_score_; }
 
-size_t Version::GetNumberSSTLvl0Files() { return levels_sst_info_[0].size(); }
+size_t Version::GetNumberSSTLvl0Files() const { return levels_sst_info_[0].size(); }
 
 // SST INFO
 Version::SSTInfo::SSTInfo() : should_be_deleted_(false) {}

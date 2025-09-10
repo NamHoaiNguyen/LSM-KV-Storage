@@ -69,7 +69,7 @@ private:
   class SSTInfo {
   public:
     SSTInfo() = default;
-    SSTInfo(std::unique_ptr<sstable::Table> table);
+    SSTInfo(std::unique_ptr<sstable::Table> table, int level);
 
     ~SSTInfo() = default;
 
@@ -88,7 +88,7 @@ private:
 
     SSTId table_id_;
 
-    uint8_t level_;
+    int level_;
 
     std::string smallest_key_;
 
@@ -96,6 +96,13 @@ private:
   };
 
   void FlushMemTableJob();
+  
+  void FlushMemTableJobV2();
+
+  void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
+                    uint64_t sst_id,
+                    const std::vector<std::shared_ptr<Version::SSTInfo>>& new_ssts_info,
+                    std::latch &work_done);
 
   void TriggerCompaction();
 

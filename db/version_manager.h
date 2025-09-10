@@ -34,6 +34,10 @@ public:
   // ALWAYS return latest version
   Version *CreateLatestVersion();
 
+  // Create latest version and apply new SSTs info
+  void ApplyNewChanges(
+      std::vector<std::shared_ptr<Version::SSTInfo>>&& new_ssts_info);
+
   bool NeedSSTCompaction();
 
   // For testing

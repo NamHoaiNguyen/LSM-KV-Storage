@@ -31,6 +31,11 @@ class DBImpl;
 // Each version has it owns compaction. This design avoid compaction process
 // must acquire mutex for lists(or other data structures) which hold infomation
 // of SSTs that needed to be compacted.
+
+//NOTE: A version is IMMUTABLE snapshot after be built. In other worlds, DO NOT 
+// execute methods that changing data of  version
+// TODO(namnh) : have any other designs for this ?
+
 class Version {
 public:
   struct SSTInfo {
@@ -53,11 +58,9 @@ public:
     // std::unique_ptr<sstable::Table> table_;
     std::shared_ptr<sstable::Table> table_;
 
-    SSTId table_id_;
-
     int level_;
 
-    std::atomic<bool> should_be_deleted_;
+    std::atomic<bool> should_be_deleted_{false};
   };
 
   Version(DBImpl *db, const Config *config, ThreadPool *thread_pool);
@@ -77,7 +80,7 @@ public:
   void CreateNewSSTs(
       const std::vector<std::unique_ptr<BaseMemTable>> &immutable_memtables);
 
-  bool NeedCompaction();
+  bool NeedCompaction() const;
 
   std::optional<int> GetLevelToCompact() const;
 
@@ -85,12 +88,14 @@ public:
 
   const std::vector<std::vector<std::shared_ptr<SSTInfo>>> &
   GetImmutableSSTInfo() const;
+  // ALL NON-CONST methods  are only called when building new version
   std::vector<std::vector<std::shared_ptr<SSTInfo>>> &GetSSTInfo();
 
   const std::vector<double> &GetImmutableLevelsScore() const;
+  // ALL NON-CONST methods  are only called when building new version
   std::vector<double> &GetLevelsScore();
 
-  size_t GetNumberSSTLvl0Files();
+  size_t GetNumberSSTLvl0Files() const;
 
   friend class Compact;
 

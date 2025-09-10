@@ -100,7 +100,8 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 
     if (immutable_memtables_.size() >= config_->GetMaxImmuMemTablesInMem()) {
       // Flush thread to flush memtable to disk
-      thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this);
+      // thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this);
+      thread_pool_->Enqueue(&DBImpl::FlushMemTableJobV2, this);
     }
 
     // Create new empty mutable memtable
@@ -121,7 +122,7 @@ void DBImpl::ForceFlushMemTable() {
     memtable_ = std::make_unique<MemTable>();
   }
 
-  return FlushMemTableJob();
+  return FlushMemTableJobV2();
 }
 
 void DBImpl::FlushMemTableJob() {
@@ -148,6 +149,71 @@ void DBImpl::FlushMemTableJob() {
   if (version_manager_->NeedSSTCompaction()) {
     TriggerCompaction();
   }
+}
+
+void DBImpl::FlushMemTableJobV2() {
+  // TODO(namnh) : Need to acquire lock ?
+  // Create new SSTs
+  std::latch all_done(immutable_memtables_.size());
+
+  std::vector<std::shared_ptr<Version::SSTInfo>> new_ssts_info;
+  for (const auto &immutable_memtable : immutable_memtables) {
+    thread_pool_->Enqueue(&Version::CreateNewSST, this,
+                          std::cref(immutable_memtable),
+                          std::cref(new_ssts_info),
+                          std::ref(all_done));
+  }
+
+  // Wait until all workers have finished
+  all_done.wait(); 
+
+  {
+    std::scoped_lock rwlock(mutex_);
+    immutable_memtables_.clear();
+    cv_.notify_all();
+  }
+
+  // Not until this point that latest version is visible
+  version_manager_->ApplyNewChanges(std::move(new_ssts_info));
+
+  if (version_manager_->NeedSSTCompaction()) {
+    TriggerCompaction();
+  }
+}
+
+void DBImpl::CreateNewSST(
+    const std::unique_ptr<BaseMemTable> &immutable_memtable,
+    const std::vector<std::shared_ptr<Version::SSTInfo>>& new_ssts_info,
+    std::latch &work_done) {
+  std::string filename =
+      config_->GetSavedDataPath() + std::to_string(GetNextSSTId()) + ".sst";
+  auto new_sst =
+      std::make_shared<sstable::Table>(std::move(filename), sst_id, config_);
+  if (!new_sst->Open()) {
+    work_done.count_down();
+    return;
+  }
+
+  auto iterator = std::make_unique<MemTableIterator>(immutable_memtable.get());
+  // Iterate through all key/value pairs to add them to sst
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    new_sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
+                      iterator->GetTransactionId(), iterator->GetType());
+  }
+
+  // All of key/value pairs had been written to sst. SST should be flushed to
+  // disk
+  new_sst->Finish();
+
+  {
+    std::scoped_lock lock(mutex_);
+    // Update new sst lvl 0 info
+    new_ssts_info.emplace_back(
+        std::make_shared<Version::SSTInfo>(std::move(new_sst), 0 /*level*/));
+  }
+
+  // Signal that this worker is done
+  work_done.count_down();
 }
 
 void DBImpl::TriggerCompaction() {
@@ -180,8 +246,8 @@ DBImpl::GetImmutableMemTables() {
 }
 
 // SST INFO
-DBImpl::SSTInfo::SSTInfo(std::unique_ptr<sstable::Table> table)
-    : table_(std::move(table)) {}
+DBImpl::SSTInfo::SSTInfo(std::unique_ptr<sstable::Table> table, int level)
+    : table_(std::move(table)), level_(level) {}
 
 } // namespace db
 
