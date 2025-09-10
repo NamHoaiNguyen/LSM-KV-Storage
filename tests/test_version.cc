@@ -89,21 +89,9 @@ TEST(VersionTest, CreateMultipleVersions) {
   const int nums_elem = 10000000;
 
   std::string key, value;
-  size_t current_size = 0;
-  int immutable_memtables_in_mem = 0;
   for (int i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
-
-    current_size += key.size() + value.size();
-    if (current_size >= config->GetPerMemTableSizeLimit()) {
-      current_size = 0;
-      immutable_memtables_in_mem++;
-      if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
-        immutable_memtables_in_mem = 0;
-      }
-    }
-
     db->Put(key, value, 0 /*txn_id*/);
   }
 
@@ -140,12 +128,7 @@ TEST(VersionTest, ConcurrencyPut) {
   db->LoadDB();
   const Config *const config = db->GetConfig();
   const int nums_elem_each_thread = 1000000;
-  size_t current_size = 0;
-  int immutable_memtables_in_mem = 0;
 
-  std::mutex mutex;
-
-  // unsigned int num_threads = 10;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not
@@ -153,28 +136,16 @@ TEST(VersionTest, ConcurrencyPut) {
     num_threads = 10;
   }
 
+  std::mutex mutex;
   std::latch all_done(num_threads);
 
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &current_size,
-                 &immutable_memtables_in_mem, &mutex, &all_done](int index) {
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
+                 &mutex, &all_done](int index) {
     std::string key, value;
 
     for (size_t i = 0; i < nums_elem; i++) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
-
-      {
-        std::scoped_lock lock(mutex);
-        current_size += key.size() + value.size();
-        if (current_size >= config->GetPerMemTableSizeLimit()) {
-          current_size = 0;
-          immutable_memtables_in_mem++;
-          if (immutable_memtables_in_mem >=
-              config->GetMaxImmuMemTablesInMem()) {
-            immutable_memtables_in_mem = 0;
-          }
-        }
-      }
       db->Put(key, value, 0 /*txn_id*/);
     }
     all_done.count_down();
@@ -225,21 +196,9 @@ TEST(VersionTest, GetFromVersion) {
   const int nums_elem = 1000000;
 
   std::string key, value;
-  size_t current_size = 0;
-  int immutable_memtables_in_mem = 0;
   for (int i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
-
-    current_size += key.size() + value.size();
-    if (current_size >= config->GetPerMemTableSizeLimit()) {
-      current_size = 0;
-      immutable_memtables_in_mem++;
-      if (immutable_memtables_in_mem >= config->GetMaxImmuMemTablesInMem()) {
-        immutable_memtables_in_mem = 0;
-      }
-    }
-
     db->Put(key, value, 0 /*txn_id*/);
   }
 
@@ -268,12 +227,7 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
   db->LoadDB();
   const Config *const config = db->GetConfig();
   const int nums_elem_each_thread = 100000;
-  size_t current_size = 0;
-  int immutable_memtables_in_mem = 0;
 
-  std::mutex mutex;
-
-  // unsigned int num_threads = 10;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not
@@ -282,28 +236,16 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
   }
   const int total_elems = nums_elem_each_thread * num_threads;
 
+  std::mutex mutex;
   std::latch all_done(num_threads);
 
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &current_size,
-                 &immutable_memtables_in_mem, &mutex, &all_done](int index) {
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
+                 &mutex, &all_done](int index) {
     std::string key, value;
 
     for (size_t i = 0; i < nums_elem; i++) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
-
-      {
-        std::scoped_lock lock(mutex);
-        current_size += key.size() + value.size();
-        if (current_size >= config->GetPerMemTableSizeLimit()) {
-          current_size = 0;
-          immutable_memtables_in_mem++;
-          if (immutable_memtables_in_mem >=
-              config->GetMaxImmuMemTablesInMem()) {
-            immutable_memtables_in_mem = 0;
-          }
-        }
-      }
       db->Put(key, value, 0 /*txn_id*/);
     }
     all_done.count_down();
