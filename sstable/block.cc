@@ -13,9 +13,7 @@ Block::Block()
 void Block::AddEntry(std::string_view key,
                      std::optional<std::string_view> value, TxnId txn_id,
                      db::ValueType value_type) {
-  if (!key.data()) {
-    return;
-  }
+  assert(key.data());
 
   if (is_finished_) {
     return;
