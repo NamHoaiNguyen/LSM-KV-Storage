@@ -133,22 +133,7 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 bool SkipList::Delete(std::string_view key, TxnId txn_id) {
   // Each element in updates is a pointer pointing node whose key is
   // largest but less than key.
-  std::vector<std::shared_ptr<SkipListNode>> updates(current_level_, nullptr);
-  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
-  if (!current) {
-    return false;
-  }
-
-  if (current->key_ == key) {
-    // If key which is being found exists, just update value type
-    current->value_type_ = ValueType::DELETED;
-    return true;
-  }
-
-  // Key not found
-  return false;
-
-
+  Put_(key, std::nullopt, /*value*/, txn_id, ValueType::DELETED);
 }
 
 void SkipList::Put_(std::string_view key, std:optional<std::string_view> value,
