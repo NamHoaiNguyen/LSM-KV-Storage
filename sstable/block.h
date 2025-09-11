@@ -22,11 +22,20 @@ Block data format(unit: Byte)
 
 
 Data entry format(unit: Byte)
+if ValueType = PUT
 --------------------------------------------------------------------------------
 |                                 Data Entry                                   |
 --------------------------------------------------------------------------------
 | ValueType | key_len (4B) | key | value_len (4B) | value | transaction_id(8B) |
 --------------------------------------------------------------------------------
+
+if ValueType = DELETE
+-------------------------------------------------------
+|                      Data Entry                     |
+-------------------------------------------------------
+| ValueType | key_len (4B) | key | transaction_id(8B) |
+-------------------------------------------------------
+
 (Valuetype(uint8_t) shows that value is deleted or not)
 (0 = PUT = NOT DELETED)
 (1 = DELETE = DELETED)

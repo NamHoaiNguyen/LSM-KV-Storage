@@ -71,6 +71,9 @@ public:
   friend class SkipListIterator;
 
 private:
+  void Put_(std::string_view key, std:optional<std::string_view> value,
+            TxnId txn_id, ValueType value_type);
+
   // Get node at current 0 whose value is less than key.
   // Also, if the operation is PUT or DELETE, each node whose key < key needed
   // to find at each level needed to be found and be added into "updates" list

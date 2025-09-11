@@ -4,10 +4,11 @@ namespace kvs {
 
 namespace db {
 
-SkipListNode::SkipListNode(std::string_view key, std::string_view value,
-                           int num_level)
-    : key_(key), value_(value), num_level_(num_level),
-      forward_(num_level, nullptr), value_type_(ValueType::PUT),
+SkipListNode::SkipListNode(std::string_view key,
+                           std::optional<std::string_view> value,
+                           int num_level, ValueType value_type)
+    : key_(key), value_(value ? std::optional<std::string>(*value) : std::nullopt),
+      num_level_(num_level), forward_(num_level, nullptr), value_type_(value_type),
       backward_(num_level, std::weak_ptr<SkipListNode>()) {}
 
 SkipListNode::~SkipListNode() = default;
