@@ -55,7 +55,10 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
       status.type =
           GetValueTypeFromDataEntry(buffer_view, data_entry_offset,
                                     status.type);
-      status.value = value_in_block;
+      status.value = 
+          (value_in_block.has_value())
+                  ? std::make_optional<std::string>(value_in_block.value())
+                  : std::nullopt;
       return status;
     } else if (key_in_block < key) {
       left = mid + 1;
