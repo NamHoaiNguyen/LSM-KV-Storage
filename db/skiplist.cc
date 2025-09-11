@@ -88,42 +88,45 @@ void SkipList::BatchPut(
 
 // TODO(namnh) : update when transaction is implemented.
 void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
-  std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
-  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
-  if (current && current->key_ == key) {
-    // If key which is being found exists, just update value
-    current_size_ += value.size() - current->value_.value().size();
-    current->value_ = std::make_optional<std::string>(value);
+  // std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
+  // std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
+  // if (current && current->key_ == key) {
+  //   // If key which is being found exists, just update value
+  //   current_size_ += value.size() - current->value_.value().size();
+  //   current->value_ = std::make_optional<std::string>(value);
 
-    return;
-  }
+  //   return;
+  // }
 
-  // Update new size of skiplist
-  current_size_ += key.size() + value.size();
+  // // Update new size of skiplist
+  // current_size_ += key.size() + value.size();
 
-  int new_level = GetRandomLevel();
-  auto new_node = std::make_shared<SkipListNode>(key, value, new_level,
-                                                 ValueType::PUT /*ValueType*/);
-  if (new_level > current_level_) {
-    for (int level = current_level_; level < new_level; ++level) {
-      updates[level] = head_;
-      // We need to rechange size.
-      updates[level]->forward_.resize(new_level, nullptr);
-      updates[level]->backward_.resize(new_level);
-    }
-    current_level_ = new_level;
-  }
+  // int new_level = GetRandomLevel();
+  // auto new_node = std::make_shared<SkipListNode>(key, value, new_level,
+  //                                                ValueType::PUT
+  //                                                /*ValueType*/);
+  // if (new_level > current_level_) {
+  //   for (int level = current_level_; level < new_level; ++level) {
+  //     updates[level] = head_;
+  //     // We need to rechange size.
+  //     updates[level]->forward_.resize(new_level, nullptr);
+  //     updates[level]->backward_.resize(new_level);
+  //   }
+  //   current_level_ = new_level;
+  // }
 
-  // Insert!!!
-  for (int level = 0; level < new_level; ++level) {
-    new_node->forward_[level] = updates[level]->forward_[level];
-    if (new_node->forward_[level]) {
-      new_node->forward_[level]->backward_[level] = new_node;
-    }
+  // // Insert!!!
+  // for (int level = 0; level < new_level; ++level) {
+  //   new_node->forward_[level] = updates[level]->forward_[level];
+  //   if (new_node->forward_[level]) {
+  //     new_node->forward_[level]->backward_[level] = new_node;
+  //   }
 
-    updates[level]->forward_[level] = new_node;
-    new_node->backward_[level] = updates[level];
-  }
+  //   updates[level]->forward_[level] = new_node;
+  //   new_node->backward_[level] = updates[level];
+  // }
+
+  Put_(key, value, txn_id, ValueType::PUT /*ValueType*/);
 }
 
 void SkipList::Delete(std::string_view key, TxnId txn_id) {
@@ -141,8 +144,8 @@ void SkipList::Put_(std::string_view key, std::optional<std::string_view> value,
     if (current && current->key_ == key) {
       // If key which is being found exists, just update value
       current_size_ += value.value().size() - current->value_.value().size();
-      current->value_ = value;
-
+      current->value_ = (value) ? std::make_optional<std::string>(value.value())
+                                : std::nullopt;
       return;
     }
     // Update new size of skiplist
