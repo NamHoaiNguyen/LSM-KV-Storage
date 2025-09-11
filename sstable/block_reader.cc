@@ -104,7 +104,7 @@ BlockReader::GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
   return value_type;
 }
 
-std::pair<std::string_view, std::optional<stdq::string_view>>
+std::pair<std::string_view, std::optional<std::string_view>>
 BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
                                       uint64_t data_entry_offset,
                                       db::ValueType value_type) {
