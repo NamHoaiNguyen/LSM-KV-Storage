@@ -61,7 +61,7 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
       left = mid + 1;
     } else {
       if (mid == 0) {
-        // Special case, because uint64_t always> 0. So 0 -1 will be casted
+        // Special case, because uint64_t always >= 0. So -1 will be casted
         // to 2^64 - 1
         break;
       }
