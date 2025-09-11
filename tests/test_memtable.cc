@@ -62,6 +62,22 @@ TEST(MemTableTest, LargeScalePutAndGet) {
   }
 }
 
+TEST(MemTableTest, LargeScaleOnlyDelete) {
+  auto memtable = std::make_unique<db::MemTable>();
+  const int num_keys = 100000;
+  std::string key{};
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    memtable->Delete(key, 0 /*txn_id*/);
+  }
+
+  for (int i = 0; i < num_keys; i++) {
+    EXPECT_TRUE(memtable->Get(key, 0 /*txn_id*/).type ==
+                db::ValueType::DELETED);
+    EXPECT_TRUE(memtable->Get(key, 0 /*txn_id*/).value == std::nullopt);
+  }
+}
+
 TEST(MemTableTest, LargeScaleDelete) {
   auto memtable = std::make_unique<db::MemTable>();
 

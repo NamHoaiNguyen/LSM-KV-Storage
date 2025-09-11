@@ -161,6 +161,23 @@ TEST(SkipListTest, LargeScalePutAndGet) {
   }
 }
 
+TEST(SkipListTest, LargeScaleOnlyDelete) {
+  auto skip_list = std::make_unique<db::SkipList>();
+
+  const int num_keys = 100000;
+  std::string key{};
+  for (int i = 0; i < num_keys; i++) {
+    key = "key" + std::to_string(i);
+    skip_list->Delete(key, 0 /*txn_id*/);
+  }
+
+  for (int i = 0; i < num_keys; i++) {
+    EXPECT_TRUE(skip_list->Get(key, 0 /*txn_id*/).type ==
+                db::ValueType::DELETED);
+    EXPECT_TRUE(skip_list->Get(key, 0 /*txn_id*/).value == std::nullopt);
+  }
+}
+
 TEST(SkipListTest, LargeScaleDelete) {
   auto skip_list = std::make_unique<db::SkipList>();
 
