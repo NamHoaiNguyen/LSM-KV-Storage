@@ -24,6 +24,8 @@ constexpr size_t kDefaultBufferSize = 8 * 1024; // 8 KB
 
 constexpr size_t kMaxKeySize = 4 * 1024; // 4 KB
 
+constexpr TxnId INVALID_TXN_ID = -1;
+
 } // namespace kvs
 
 #endif // COMMON_MACROS

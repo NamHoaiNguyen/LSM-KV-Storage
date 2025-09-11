@@ -35,10 +35,9 @@ public:
 
   std::unique_ptr<BaseIterator> CreateNewIterator();
 
-  std::vector<std::pair<std::string, bool>>
-  BatchDelete(std::span<std::string_view> keys, TxnId txn_id) override;
+  void BatchDelete(std::span<std::string_view> keys, TxnId txn_id) override;
 
-  bool Delete(std::string_view key, TxnId txn_id) override;
+  void Delete(std::string_view key, TxnId txn_id) override;
 
   virtual std::vector<std::pair<std::string, GetStatus>>
   BatchGet(std::span<std::string_view> keys, TxnId txn_id) override;

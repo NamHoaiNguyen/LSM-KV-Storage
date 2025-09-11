@@ -12,13 +12,36 @@ SkipListIterator::SkipListIterator(const SkipList *skiplist)
 
 SkipListIterator::~SkipListIterator() = default;
 
-std::string_view SkipListIterator::GetKey() { return node_->key_; }
+std::string_view SkipListIterator::GetKey() {
+  if (!node_) {
+    return std::string_view{};
+  }
 
-std::string_view SkipListIterator::GetValue() { return node_->value_; }
+  return node_->key_;
+}
 
-ValueType SkipListIterator::GetType() { return node_->value_type_; }
+std::optional<std::string_view> SkipListIterator::GetValue() {
+  if (!node_ || !node_->value_) {
+    return std::nullopt;
+  }
 
-TxnId SkipListIterator::GetTransactionId() { return node_->txn_id_; }
+  return std::string_view(node_->value_.value());
+}
+
+ValueType SkipListIterator::GetType() {
+  if (!node_) {
+    return ValueType::INVALID;
+  }
+  return node_->value_type_;
+}
+
+TxnId SkipListIterator::GetTransactionId() {
+  if (!node_) {
+    return INVALID_TXN_ID;
+  }
+
+  return node_->txn_id_;
+}
 
 bool SkipListIterator::IsValid() { return node_ != nullptr; }
 

@@ -5,6 +5,7 @@
 #include "common/macros.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -23,7 +24,7 @@ public:
 
   std::string_view GetKey() override;
 
-  std::string_view GetValue() override;
+  std::optional<std::string_view> GetValue() override;
 
   ValueType GetType() override;
 

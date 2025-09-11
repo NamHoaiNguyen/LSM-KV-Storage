@@ -5,6 +5,7 @@
 #include "db/status.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -15,7 +16,8 @@ namespace db {
 
 class SkipListNode : public std::enable_shared_from_this<SkipListNode> {
 public:
-  SkipListNode(std::string_view key, std::string_view value, int num_level);
+  SkipListNode(std::string_view key, std::optional<std::string_view> value,
+               int num_level, ValueType value_type);
 
   ~SkipListNode();
 
@@ -27,7 +29,7 @@ public:
 private:
   std::string key_;
 
-  std::string value_;
+  std::optional<std::string> value_;
 
   // TODO(namnh) : recheck
   TxnId txn_id_;

@@ -11,23 +11,22 @@ MemTable::MemTable() : table_(std::make_unique<SkipList>()) {}
 
 MemTable::~MemTable() = default;
 
-std::vector<std::pair<std::string, bool>>
-MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
+void MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
   std::vector<std::pair<std::string, bool>> result;
 
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }
 
-  return table_->BatchDelete(keys, txn_id);
+  table_->BatchDelete(keys, txn_id);
 }
 
-bool MemTable::Delete(std::string_view key, TxnId txn_id) {
+void MemTable::Delete(std::string_view key, TxnId txn_id) {
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }
 
-  return table_->Delete(key, txn_id);
+  table_->Delete(key, txn_id);
 }
 
 std::vector<std::pair<std::string, GetStatus>>

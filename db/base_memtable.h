@@ -19,10 +19,9 @@ class BaseMemTable {
 public:
   virtual ~BaseMemTable() = default;
 
-  virtual std::vector<std::pair<std::string, bool>>
-  BatchDelete(std::span<std::string_view>, TxnId txn_id) = 0;
+  virtual void BatchDelete(std::span<std::string_view>, TxnId txn_id) = 0;
 
-  virtual bool Delete(std::string_view key, TxnId txn_id) = 0;
+  virtual void Delete(std::string_view key, TxnId txn_id) = 0;
 
   virtual std::vector<std::pair<std::string, GetStatus>>
   BatchGet(std::span<std::string_view>, TxnId txn_id) = 0;

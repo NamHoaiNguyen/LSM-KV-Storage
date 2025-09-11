@@ -10,8 +10,8 @@ SkipList::SkipList(int max_level)
     : current_level_(1), max_level_(max_level),
       gen_(std::mt19937(std::random_device()())), current_size_(0),
       dist_level_(std::uniform_int_distribution<>(0, 1)),
-      head_(std::make_shared<SkipListNode>("" /*key*/, "" /*value*/,
-                                           current_level_)) {}
+      head_(std::make_shared<SkipListNode>(
+          "" /*key*/, "" /*value*/, current_level_, ValueType::NOT_FOUND)) {}
 
 SkipList::~SkipList() = default;
 
@@ -26,33 +26,10 @@ int SkipList::GetRandomLevel() {
   return level;
 }
 
-std::vector<std::pair<std::string, bool>>
-SkipList::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
-  std::vector<std::pair<std::string, bool>> res;
+void SkipList::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
   for (std::string_view key : keys) {
-    res.push_back({std::string(key), Delete(key, txn_id)});
+    Delete(key, txn_id);
   }
-
-  return res;
-}
-
-bool SkipList::Delete(std::string_view key, TxnId txn_id) {
-  // Each element in updates is a pointer pointing node whose key is
-  // largest but less than key.
-  std::vector<std::shared_ptr<SkipListNode>> updates(current_level_, nullptr);
-  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
-  if (!current) {
-    return false;
-  }
-
-  if (current->key_ == key) {
-    // If key which is being found exists, just update value type
-    current->value_type_ = ValueType::DELETED;
-    return true;
-  }
-
-  // Key not found
-  return false;
 }
 
 std::vector<std::pair<std::string, GetStatus>>
@@ -82,15 +59,14 @@ GetStatus SkipList::Get(std::string_view key, TxnId txn_id) {
   }
 
   status.type = current->value_type_;
-  status.value = (current->value_type_ == ValueType::PUT)
-                     ? std::make_optional<std::string>(current->value_)
-                     : std::nullopt;
+  status.value = (current->value_type_ == ValueType::PUT) ? (current->value_)
+                                                          : std::nullopt;
   return status;
 }
 
-std::vector<std::string> SkipList::GetAllPrefixes(std::string_view key,
-                                                  TxnId txn_id) {
-  std::vector<std::string> values;
+std::vector<std::optional<std::string>>
+SkipList::GetAllPrefixes(std::string_view key, TxnId txn_id) {
+  std::vector<std::optional<std::string>> values;
   std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key);
 
   // Traverse while key starts with prefix
@@ -116,8 +92,8 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
   if (current && current->key_ == key) {
     // If key which is being found exists, just update value
-    current_size_ += value.size() - current->value_.size();
-    current->value_ = value;
+    current_size_ += value.size() - current->value_.value().size();
+    current->value_ = std::make_optional<std::string>(value);
 
     return;
   }
@@ -126,7 +102,59 @@ void SkipList::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   current_size_ += key.size() + value.size();
 
   int new_level = GetRandomLevel();
-  auto new_node = std::make_shared<SkipListNode>(key, value, new_level);
+  auto new_node = std::make_shared<SkipListNode>(key, value, new_level,
+                                                 ValueType::PUT /*ValueType*/);
+  if (new_level > current_level_) {
+    for (int level = current_level_; level < new_level; ++level) {
+      updates[level] = head_;
+      // We need to rechange size.
+      updates[level]->forward_.resize(new_level, nullptr);
+      updates[level]->backward_.resize(new_level);
+    }
+    current_level_ = new_level;
+  }
+
+  // Insert!!!
+  for (int level = 0; level < new_level; ++level) {
+    new_node->forward_[level] = updates[level]->forward_[level];
+    if (new_node->forward_[level]) {
+      new_node->forward_[level]->backward_[level] = new_node;
+    }
+
+    updates[level]->forward_[level] = new_node;
+    new_node->backward_[level] = updates[level];
+  }
+}
+
+void SkipList::Delete(std::string_view key, TxnId txn_id) {
+  // Each element in updates is a pointer pointing node whose key is
+  // largest but less than key.
+  Put_(key, std::nullopt /*value*/, txn_id, ValueType::DELETED);
+}
+
+void SkipList::Put_(std::string_view key, std::optional<std::string_view> value,
+                    TxnId txn_id, ValueType value_type) {
+  std::vector<std::shared_ptr<SkipListNode>> updates(max_level_, nullptr);
+  std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
+
+  if (value_type == ValueType::PUT) {
+    if (current && current->key_ == key) {
+      // If key which is being found exists, just update value
+      current_size_ += value.value().size() - current->value_.value().size();
+      current->value_ = value;
+
+      return;
+    }
+    // Update new size of skiplist
+    current_size_ += key.size() + value.value().size();
+  } else if (value_type == ValueType::DELETED) {
+    // Delete operatios is "put" op without value
+    current_size_ += key.size();
+  }
+
+  int new_level = GetRandomLevel();
+  auto new_node =
+      std::make_shared<SkipListNode>(key, value, new_level, value_type);
   if (new_level > current_level_) {
     for (int level = current_level_; level < new_level; ++level) {
       updates[level] = head_;
@@ -175,7 +203,13 @@ void SkipList::PrintSkipList() {
     std::cout << "Level " << level << ": ";
     std::shared_ptr<SkipListNode> current = head_->forward_[level];
     while (current) {
-      std::cout << "(" << current->key_ << "," << current->value_ << ")";
+      if (current->value_) {
+        std::cout << "( " << static_cast<int>(current->value_type_) << " "
+                  << current->key_ << "," << (current->value_).value() << " )";
+      } else {
+        std::cout << "( " << static_cast<int>(current->value_type_) << " "
+                  << current->key_ << " )";
+      }
       current = current->forward_[level];
       if (current) {
         std::cout << " -> ";

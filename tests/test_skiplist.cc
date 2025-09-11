@@ -25,15 +25,15 @@ TEST(SkipListTest, BasicOperations) {
   EXPECT_TRUE(skip_list->Get("k2", 0).type == db::ValueType::PUT);
   EXPECT_EQ(skip_list->Get("k2", 0).value, "v2");
 
-  EXPECT_TRUE(skip_list->Delete("k2", 0));
+  skip_list->Delete("k2", 0);
   EXPECT_TRUE(skip_list->Get("k2", 0).type == db::ValueType::DELETED);
   EXPECT_TRUE(skip_list->Get("k2", 0).value == std::nullopt);
 
-  EXPECT_TRUE(skip_list->Delete("k1", 0));
+  skip_list->Delete("k1", 0);
   EXPECT_TRUE(skip_list->Get("k1", 0).type == db::ValueType::DELETED);
   EXPECT_TRUE(skip_list->Get("k1", 0).value == std::nullopt);
 
-  EXPECT_TRUE(skip_list->Delete("k3", 0));
+  skip_list->Delete("k3", 0);
   EXPECT_TRUE(skip_list->Get("k1", 0).type == db::ValueType::DELETED);
   EXPECT_TRUE(skip_list->Get("k1", 0).value == std::nullopt);
 }
@@ -83,11 +83,7 @@ TEST(SkipListTest, BatchOperations) {
     EXPECT_EQ(pairs[i].second, get_res[i].second.value);
   }
 
-  std::vector<std::pair<std::string, bool>> del_res;
-  del_res = skip_list->BatchDelete(keys_view, 0 /*txn_id*/);
-  for (const auto &elem : del_res) {
-    EXPECT_TRUE(elem.second);
-  }
+  skip_list->BatchDelete(keys_view, 0 /*txn_id*/);
 
   // Skiplist should be empty now
   get_res.clear();
@@ -112,12 +108,12 @@ TEST(SkipListTest, GetAllPrefixes) {
     skip_list->Put(pair.first, pair.second, 0);
   }
 
-  std::vector<std::string> values;
+  std::vector<std::optional<std::string>> values;
   values = skip_list->GetAllPrefixes("ap", 0);
   EXPECT_EQ(values.size(), 2);
   for (int i = 0; i < values.size(); i++) {
     EXPECT_EQ(skip_list->Get(pairs[i].first, 0).type, db::ValueType::PUT);
-    EXPECT_EQ(skip_list->Get(pairs[i].first, 0).value, values[i]);
+    EXPECT_EQ(skip_list->Get(pairs[i].first, 0).value.value(), values[i]);
   }
 
   values.clear();
@@ -180,7 +176,7 @@ TEST(SkipListTest, LargeScaleDelete) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    EXPECT_TRUE(skip_list->Delete(key, 0));
+    skip_list->Delete(key, 0);
   }
 
   for (int i = 0; i < num_keys; i++) {
