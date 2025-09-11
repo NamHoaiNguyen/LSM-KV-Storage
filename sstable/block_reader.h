@@ -28,11 +28,19 @@ Block data format(unit: Byte)
 
 
 Data entry format(unit: Byte)
+if ValueType = PUT
 --------------------------------------------------------------------------------
 |                                 Data Entry                                   |
 --------------------------------------------------------------------------------
 | ValueType | key_len (4B) | key | value_len (4B) | value | transaction_id(8B) |
 --------------------------------------------------------------------------------
+
+if ValueType = DELETE
+-------------------------------------------------------
+|                      Data Entry                     |
+-------------------------------------------------------
+| ValueType | key_len (4B) | key | transaction_id(8B) |
+-------------------------------------------------------
 (Valuetype(uint8_t) shows that value is deleted or not)
 (0 = PUT = NOT DELETED)
 (1 = DELETE = DELETED)
@@ -86,9 +94,10 @@ private:
 
   // Get key and value of data entry that start at data_entry_offset
   // See block data format above
-  std::pair<std::string_view, std::string_view>
+  std::pair<std::string_view, std::optional<std::string_view>>
   GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
-                           uint64_t data_entry_offset);
+                           uint64_t data_entry_offset,
+                           db::ValueType value_type);
 
   std::vector<Byte> buffer_;
 

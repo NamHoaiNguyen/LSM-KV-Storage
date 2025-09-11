@@ -52,10 +52,10 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
     auto [key_in_block, value_in_block] =
         GetKeyValueFromDataEntry(buffer_view, data_entry_offset);
     if (key_in_block == key) {
-      status.type = GetValueTypeFromDataEntry(buffer_view, data_entry_offset);
-      status.value = (status.type == db::ValueType::PUT)
-                         ? std::make_optional<std::string>(value_in_block)
-                         : std::nullopt;
+      status.type =
+          GetValueTypeFromDataEntry(buffer_view, data_entry_offset,
+                                    status.type);
+      status.value = value_in_block;
       return status;
     } else if (key_in_block < key) {
       left = mid + 1;
@@ -95,9 +95,12 @@ BlockReader::GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
   return value_type;
 }
 
-std::pair<std::string_view, std::string_view>
+std::pair<std::string_view, std::optional<std::string_view>>
 BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
-                                      uint64_t data_entry_offset) {
+                                      uint64_t data_entry_offset,
+                                      db::ValueType value_type) {
+  assert(value_type == db::ValueType::PUT || value == db::ValueType::DELETED);
+
   const uint32_t key_len = *reinterpret_cast<const uint32_t *>(
       &buffer_view[data_entry_offset + sizeof(uint8_t)]);
 
@@ -106,6 +109,10 @@ BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
 
   std::string_view key(
       reinterpret_cast<const char *>(&buffer_view[start_offset_key]), key_len);
+
+  if (value_type == db::ValueType::DELETED) {
+    return {key, std::nullopt};
+  }
 
   uint64_t start_offset_value_len = start_offset_key + key.size();
   const uint32_t value_len =
