@@ -10,8 +10,9 @@ Block::Block()
     : is_finished_(false), block_size_(0), num_entries_(0),
       data_current_offset_(0) {}
 
-void Block::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                     db::ValueType value_type) {
+void Block::AddEntry(std::string_view key,
+                     std::optional<std::string_view> value,
+                     TxnId txn_id, db::ValueType value_type) {
   if (is_finished_) {
     return;
   }
@@ -19,8 +20,9 @@ void Block::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
   // Add entry into data entry section
   EncodeDataEntry(key, value, txn_id, value_type);
 
-  size_t data_entry_size = sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
-                           sizeof(uint32_t) + value.size() + sizeof(TxnId);
+  size_t data_entry_size =
+      sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
+      sizeof(uint32_t) + (value ? value.value().size() : 0) + sizeof(TxnId);
 
   // Add offset info of this entry into offset section
   EncodeOffsetEntry(data_current_offset_, data_entry_size);
@@ -35,7 +37,8 @@ void Block::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
   block_size_ += data_entry_size + 2 * sizeof(uint64_t);
 }
 
-void Block::EncodeDataEntry(std::string_view key, std::string_view value,
+void Block::EncodeDataEntry(std::string_view key,
+                            std::optional<std::string_view> value,
                             TxnId txn_id, db::ValueType value_type) {
   assert(key.size() <= kMaxKeySize);
 
@@ -55,19 +58,20 @@ void Block::EncodeDataEntry(std::string_view key, std::string_view value,
   const Byte *const key_bytes = reinterpret_cast<const Byte *const>(key.data());
   data_buffer_.insert(data_buffer_.end(), key_bytes, key_bytes + key_len);
 
-  // Insert length of value(4 bytes)
-  // Safe, because we limit length of key is less than 2^32
-  const uint32_t value_len = static_cast<uint32_t>(value.size());
-  const Byte *const value_len_bytes =
-      reinterpret_cast<const Byte *>(&value_len);
-  data_buffer_.insert(data_buffer_.end(), value_len_bytes,
-                      value_len_bytes + sizeof(uint32_t));
+  if (value.has_value()) {
+    // Insert length of value(4 bytes)
+    // Safe, because we limit length of key is less than 2^32
+    const uint32_t value_len = static_cast<uint32_t>(value.size());
+    const Byte *const value_len_bytes =
+        reinterpret_cast<const Byte *>(&value_len);
+    data_buffer_.insert(data_buffer_.end(), value_len_bytes,
+                        value_len_bytes + sizeof(uint32_t));
 
-  // Insert value
-  const Byte *const value_bytes =
-      reinterpret_cast<const Byte *const>(value.data());
-  data_buffer_.insert(data_buffer_.end(), value_bytes, value_bytes + value_len);
-
+    // Insert value
+    const Byte *const value_bytes =
+        reinterpret_cast<const Byte *const>(value.data());
+    data_buffer_.insert(data_buffer_.end(), value_bytes, value_bytes + value_len);
+  }
   // Insert transaction id
   const Byte *const transaction_id_bytes =
       reinterpret_cast<const Byte *const>(&txn_id);

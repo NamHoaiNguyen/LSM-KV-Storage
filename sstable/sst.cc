@@ -22,8 +22,8 @@ Table::Table(std::string &&filename, uint64_t table_id,
       block_data_(std::make_unique<Block>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), config_(config) {}
 
-void Table::AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                     db::ValueType value_type) {
+void Table::AddEntry(std::string_view key, std::optional<std::string_view> value,
+                     TxnId txn_id, db::ValueType value_type) {
   if (table_smallest_key_.empty()) {
     table_smallest_key_ = std::string(key);
   }

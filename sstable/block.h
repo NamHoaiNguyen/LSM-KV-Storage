@@ -73,8 +73,8 @@ public:
   Block(Block &&) = default;
   Block &operator=(Block &&) = default;
 
-  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
-                db::ValueType value_type);
+  void AddEntry(std::string_view key, std::optional<std::string_view> value,
+                TxnId txn_id, db::ValueType value_type);
 
   size_t GetBlockSize() const;
 
@@ -103,7 +103,8 @@ public:
   void Reset();
 
 private:
-  void EncodeDataEntry(std::string_view key, std::string_view value,
+  void EncodeDataEntry(std::string_view key,
+                       std::optional<std::string_view> value,
                        TxnId txn_id, db::ValueType value_type);
 
   void EncodeOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
