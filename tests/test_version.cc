@@ -139,8 +139,8 @@ TEST(VersionTest, ConcurrencyPut) {
   std::mutex mutex;
   std::latch all_done(num_threads);
 
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
-                 &mutex, &all_done](int index) {
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
+                 &all_done](int index) {
     std::string key, value;
 
     for (size_t i = 0; i < nums_elem; i++) {
@@ -239,8 +239,8 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
   std::mutex mutex;
   std::latch all_done(num_threads);
 
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
-                 &mutex, &all_done](int index) {
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
+                 &all_done](int index) {
     std::string key, value;
 
     for (size_t i = 0; i < nums_elem; i++) {
@@ -298,7 +298,8 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
 
     status = version->Get(key, 0 /*txn_id*/);
     EXPECT_TRUE(status.type == db::ValueType::PUT);
-    EXPECT_EQ(status.value, value);
+    EXPECT_TRUE(status.value != std::nullopt);
+    EXPECT_EQ(status.value.value(), value);
   }
 
   // clear all SST files created for next test

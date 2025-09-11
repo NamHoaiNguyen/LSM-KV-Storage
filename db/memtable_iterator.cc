@@ -15,7 +15,9 @@ MemTableIterator::~MemTableIterator() = default;
 
 std::string_view MemTableIterator::GetKey() { return iterator_->GetKey(); }
 
-std::string_view MemTableIterator::GetValue() { return iterator_->GetValue(); }
+std::optional<std::string_view> MemTableIterator::GetValue() {
+  return iterator_->GetValue();
+}
 
 ValueType MemTableIterator::GetType() { return iterator_->GetType(); }
 

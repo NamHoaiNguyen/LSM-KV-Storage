@@ -36,13 +36,9 @@ public:
   SkipList(SkipList &&) = default;
   SkipList &operator=(SkipList &&) = default;
 
-  // Create SkipList iterator
-  void CreateSkipListIterator();
+  void BatchDelete(std::span<std::string_view> keys, TxnId txn_id);
 
-  std::vector<std::pair<std::string, bool>>
-  BatchDelete(std::span<std::string_view> keys, TxnId txn_id);
-
-  bool Delete(std::string_view key, TxnId txn_id);
+  void Delete(std::string_view key, TxnId txn_id);
 
   // TODO(namnh) : shoud we use std::string?
   std::vector<std::pair<std::string, GetStatus>>
@@ -50,7 +46,8 @@ public:
 
   GetStatus Get(std::string_view key, TxnId txn_id);
 
-  std::vector<std::string> GetAllPrefixes(std::string_view key, TxnId txn_id);
+  std::vector<std::optional<std::string>> GetAllPrefixes(std::string_view key,
+                                                         TxnId txn_id);
 
   void BatchPut(std::span<std::pair<std::string_view, std::string_view>> pairs,
                 TxnId txn_id);
@@ -71,7 +68,7 @@ public:
   friend class SkipListIterator;
 
 private:
-  void Put_(std::string_view key, std:optional<std::string_view> value,
+  void Put_(std::string_view key, std::optional<std::string_view> value,
             TxnId txn_id, ValueType value_type);
 
   // Get node at current 0 whose value is less than key.

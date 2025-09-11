@@ -11,8 +11,12 @@ Block::Block()
       data_current_offset_(0) {}
 
 void Block::AddEntry(std::string_view key,
-                     std::optional<std::string_view> value,
-                     TxnId txn_id, db::ValueType value_type) {
+                     std::optional<std::string_view> value, TxnId txn_id,
+                     db::ValueType value_type) {
+  if (!key.data()) {
+    return;
+  }
+
   if (is_finished_) {
     return;
   }
@@ -20,9 +24,9 @@ void Block::AddEntry(std::string_view key,
   // Add entry into data entry section
   EncodeDataEntry(key, value, txn_id, value_type);
 
-  size_t data_entry_size =
-      sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
-      sizeof(uint32_t) + (value ? value.value().size() : 0) + sizeof(TxnId);
+  size_t data_entry_size = sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
+                           sizeof(uint32_t) +
+                           (value ? value.value().size() : 0) + sizeof(TxnId);
 
   // Add offset info of this entry into offset section
   EncodeOffsetEntry(data_current_offset_, data_entry_size);
@@ -38,8 +42,8 @@ void Block::AddEntry(std::string_view key,
 }
 
 void Block::EncodeDataEntry(std::string_view key,
-                            std::optional<std::string_view> value,
-                            TxnId txn_id, db::ValueType value_type) {
+                            std::optional<std::string_view> value, TxnId txn_id,
+                            db::ValueType value_type) {
   assert(key.size() <= kMaxKeySize);
 
   // Insert value type
@@ -61,7 +65,7 @@ void Block::EncodeDataEntry(std::string_view key,
   if (value.has_value()) {
     // Insert length of value(4 bytes)
     // Safe, because we limit length of key is less than 2^32
-    const uint32_t value_len = static_cast<uint32_t>(value.size());
+    const uint32_t value_len = static_cast<uint32_t>(value.value().size());
     const Byte *const value_len_bytes =
         reinterpret_cast<const Byte *>(&value_len);
     data_buffer_.insert(data_buffer_.end(), value_len_bytes,
@@ -69,8 +73,9 @@ void Block::EncodeDataEntry(std::string_view key,
 
     // Insert value
     const Byte *const value_bytes =
-        reinterpret_cast<const Byte *const>(value.data());
-    data_buffer_.insert(data_buffer_.end(), value_bytes, value_bytes + value_len);
+        reinterpret_cast<const Byte *const>(value.value().data());
+    data_buffer_.insert(data_buffer_.end(), value_bytes,
+                        value_bytes + value_len);
   }
   // Insert transaction id
   const Byte *const transaction_id_bytes =

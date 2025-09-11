@@ -3,7 +3,7 @@
 #include "io/buffer.h"
 #include "io/linux_file.h"
 
-#include <iostream>
+#include <cassert>
 
 namespace kvs {
 
@@ -45,20 +45,26 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
   uint64_t left = 0;
   uint64_t right = block_num_entries;
 
+  // std::pair<std::string_view, std::optional<std::string_view>> test;
+
   while (left <= right) {
     uint64_t mid = left + (right - left) / 2;
+
+    // Get value type of data entry
     uint64_t data_entry_offset =
         GetDataEntryOffset(buffer_view, offset_offset_section, mid);
+    db::ValueType value_type =
+        GetValueTypeFromDataEntry(buffer_view, data_entry_offset);
+
+    // Get key and(or) value of data entry
     auto [key_in_block, value_in_block] =
-        GetKeyValueFromDataEntry(buffer_view, data_entry_offset);
+        GetKeyValueFromDataEntry(buffer_view, data_entry_offset, value_type);
     if (key_in_block == key) {
-      status.type =
-          GetValueTypeFromDataEntry(buffer_view, data_entry_offset,
-                                    status.type);
-      status.value = 
+      status.type = value_type;
+      status.value =
           (value_in_block.has_value())
-                  ? std::make_optional<std::string>(value_in_block.value())
-                  : std::nullopt;
+              ? std::make_optional<std::string>(value_in_block.value())
+              : std::nullopt;
       return status;
     } else if (key_in_block < key) {
       left = mid + 1;
@@ -102,7 +108,7 @@ std::pair<std::string_view, std::optional<std::string_view>>
 BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
                                       uint64_t data_entry_offset,
                                       db::ValueType value_type) {
-  assert(value_type == db::ValueType::PUT || value == db::ValueType::DELETED);
+  assert(value_type != db::ValueType::INVALID);
 
   const uint32_t key_len = *reinterpret_cast<const uint32_t *>(
       &buffer_view[data_entry_offset + sizeof(uint8_t)]);

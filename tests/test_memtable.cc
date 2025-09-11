@@ -22,7 +22,9 @@ TEST(MemTableTest, BasicOperations) {
   EXPECT_EQ(memtable->Get("k1", 0).value, "v2");
 
   // delete
-  EXPECT_TRUE(memtable->Delete("k1", 0));
+  memtable->Delete("k1", 0);
+  EXPECT_TRUE(memtable->Get("k1", 0).type == db::ValueType::DELETED);
+  EXPECT_TRUE(memtable->Get("k1", 0).value == std::nullopt);
 }
 
 TEST(MemTableTest, LargeScalePutAndGet) {
@@ -75,7 +77,7 @@ TEST(MemTableTest, LargeScaleDelete) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    EXPECT_TRUE(memtable->Delete(key, 0));
+    memtable->Delete(key, 0);
   }
 
   for (int i = 0; i < num_keys; i++) {

@@ -14,6 +14,8 @@ enum class ValueType : uint8_t {
   DELETED = 1,
 
   NOT_FOUND = 2,
+
+  INVALID = 3,
 };
 
 struct GetStatus {
