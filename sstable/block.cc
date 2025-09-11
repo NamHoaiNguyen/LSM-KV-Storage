@@ -62,7 +62,7 @@ void Block::EncodeDataEntry(std::string_view key,
   const Byte *const key_bytes = reinterpret_cast<const Byte *const>(key.data());
   data_buffer_.insert(data_buffer_.end(), key_bytes, key_bytes + key_len);
 
-  if (value.has_value()) {
+  if (value) {
     // Insert length of value(4 bytes)
     // Safe, because we limit length of key is less than 2^32
     const uint32_t value_len = static_cast<uint32_t>(value.value().size());

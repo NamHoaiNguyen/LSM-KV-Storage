@@ -62,7 +62,7 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
     if (key_in_block == key) {
       status.type = value_type;
       status.value =
-          (value_in_block.has_value())
+          (value_in_block)
               ? std::make_optional<std::string>(value_in_block.value())
               : std::nullopt;
       return status;
@@ -104,7 +104,7 @@ BlockReader::GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
   return value_type;
 }
 
-std::pair<std::string_view, std::optional<std::string_view>>
+std::pair<std::string_view, std::optional<stdq::string_view>>
 BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
                                       uint64_t data_entry_offset,
                                       db::ValueType value_type) {

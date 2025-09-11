@@ -203,7 +203,7 @@ void SkipList::PrintSkipList() {
     std::cout << "Level " << level << ": ";
     std::shared_ptr<SkipListNode> current = head_->forward_[level];
     while (current) {
-      if (current->value_.has_value()) {
+      if (current->value_) {
         std::cout << "( " << static_cast<int>(current->value_type_) << " "
                   << current->key_ << "," << (current->value_).value() << " )";
       } else {
