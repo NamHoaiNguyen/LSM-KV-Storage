@@ -12,6 +12,9 @@
 #include "sstable/block_index.h"
 #include "sstable/table.h"
 
+// libC++
+#include <cassert>
+
 namespace kvs {
 
 namespace db {
@@ -20,63 +23,37 @@ VersionManager::VersionManager(DBImpl *db, const Config *config,
                                ThreadPool *thread_pool)
     : db_(db), config_(config), thread_pool_(thread_pool) {}
 
-Version *VersionManager::CreateLatestVersion() {
-  std::scoped_lock lock(mutex_);
-
-  // First time loading db
+void VersionManager::CreateLatestVersion() {
   if (!latest_version_) {
     latest_version_ = std::make_unique<Version>(db_, config_, thread_pool_);
-    return latest_version_.get();
   }
-
-  std::unique_ptr<Version> tmp_version = std::move(latest_version_);
-  latest_version_ = std::make_unique<Version>(db_, config_, thread_pool_);
-
-  // Get info of SST from previous version
-  const std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
-      &old_version_sst_info = tmp_version->GetImmutableSSTInfo();
-  const std::vector<double> &old_levels_score = tmp_version->GetLevelsScore();
-
-  std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
-      &latest_version_sst_info = latest_version_->GetSSTInfo();
-  std::vector<double> &latest_levels_score = latest_version_->GetLevelsScore();
-
-  for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
-    // Get score ranking from previous version(to know which level should be
-    // compacted)
-    latest_levels_score[level] = old_levels_score[level];
-
-    for (const auto &sst_info : old_version_sst_info[level]) {
-      if (sst_info->should_be_deleted_) {
-        continue;
-      }
-
-      latest_version_sst_info[level].push_back(sst_info);
-    }
-  }
-
-  // Add tmp_version(which is the previous version of the latest one) to dequeue
-  versions_.push_front(std::move(tmp_version));
-
-  return latest_version_.get();
 }
 
 void VersionManager::ApplyNewChanges(
-    std::vector<std::shared_ptr<Version::SSTInfo>> &&new_ssts_info) {
+    std::unique_ptr<VersionEdit> version_edit) {
+  assert(version_edit);
+  assert(latest_version_);
+
   auto latest_tmp_version =
       std::make_unique<Version>(db_, config_, thread_pool_);
 
   // Get info of SST from previous version
-  const std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
-      &old_version_sst_info = latest_version_->GetImmutableSSTInfo();
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
+      &old_version_sst_info = latest_version_->GetImmutableSSTMetadata();
 
-  std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>>
-      &latest_version_sst_info = latest_tmp_version->GetSSTInfo();
+  std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
+      &latest_version_sst_info = latest_tmp_version->GetSSTMetadata();
+
+  // Get info of deleted files
+  const std::set<std::pair<SSTId, int>> &deleted_files =
+      version_edit->GetImmutableDeletedFiles();
 
   // Apply all ssts info of previous version
   for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
     for (const auto &sst_info : old_version_sst_info[level]) {
-      if (sst_info->should_be_deleted_) {
+      // If file are in list of should be deleted file, skip
+      if (deleted_files.find({sst_info->table_->GetTableId(),
+                              sst_info->level}) != deleted_files.end()) {
         continue;
       }
 
@@ -84,10 +61,11 @@ void VersionManager::ApplyNewChanges(
     }
   }
 
-  // Add new SSTs info to latest version
-  for (const auto &new_sst_info : new_ssts_info) {
-    int level = new_sst_info->level_;
-    latest_version_sst_info[level].push_back(std::move(new_sst_info));
+  // Apply new SST files that are created for new verison
+  const std::vector<std::shared_ptr<SSTMetadata>> &added_files =
+      version_edit->GetImmutableNewFiles();
+  for (const auto &file : added_files) {
+    latest_version_sst_info[file->level].push_back(file);
   }
 
   // Create new latest version

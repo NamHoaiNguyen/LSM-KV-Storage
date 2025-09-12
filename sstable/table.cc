@@ -25,8 +25,8 @@ Table::Table(std::string &&filename, uint64_t table_id,
 void Table::AddEntry(std::string_view key,
                      std::optional<std::string_view> value, TxnId txn_id,
                      db::ValueType value_type) {
-  assert(!key.data() || value_type == db::ValueType::INVALID ||
-         txn_id == INVALID_TXN_ID);
+  assert(key.data() && value_type != db::ValueType::INVALID ||
+         txn_id != INVALID_TXN_ID);
 
   if (table_smallest_key_.empty()) {
     table_smallest_key_ = std::string(key);

@@ -3,6 +3,7 @@
 
 #include "common/macros.h"
 #include "db/version.h"
+#include "db/version_edit.h"
 
 #include <condition_variable>
 #include <functional>
@@ -67,41 +68,11 @@ public:
   const std::vector<std::unique_ptr<BaseMemTable>> &GetImmutableMemTables();
 
 private:
-  class SSTInfo {
-  public:
-    SSTInfo() = default;
-    SSTInfo(std::unique_ptr<sstable::Table> table, int level);
-
-    ~SSTInfo() = default;
-
-    // No copy allowed
-    SSTInfo(const SSTInfo &) = delete;
-    SSTInfo &operator=(SSTInfo &) = delete;
-
-    SSTInfo(SSTInfo &&) = default;
-    SSTInfo &operator=(SSTInfo &&) = default;
-
-    friend class DBImpl;
-    friend class Compact;
-
-  private:
-    std::unique_ptr<sstable::Table> table_;
-
-    SSTId table_id_;
-
-    int level_;
-
-    std::string smallest_key_;
-
-    std::string largest_key_;
-  };
-
   void FlushMemTableJob();
 
-  void
-  CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
-               std::vector<std::shared_ptr<Version::SSTInfo>> &new_ssts_info,
-               std::latch &work_done);
+  void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
+                    std::unique_ptr<VersionEdit> &version_edit,
+                    std::latch &work_done);
 
   void TriggerCompaction();
 
