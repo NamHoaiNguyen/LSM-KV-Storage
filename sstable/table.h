@@ -53,7 +53,7 @@ Extra format(in order from top to bottom, left to right)
 
 namespace sstable {
 
-class Block;
+class BlockBuilder;
 class BlockIndex;
 
 // A SST is immutable after be written. More than that, with support of version
@@ -102,7 +102,7 @@ public:
   uint64_t GetTableId() const;
 
   // For testing
-  Block *GetBlockData();
+  BlockBuilder *GetBlockData();
 
   io::WriteOnlyFile *GetWriteOnlyFileObject();
 
@@ -121,7 +121,7 @@ private:
   std::unique_ptr<io::WriteOnlyFile> write_file_object_;
 
   // TODO(namnh) : unique_ptr or shared_ptr?
-  std::unique_ptr<Block> block_data_;
+  std::unique_ptr<BlockBuilder> block_data_;
 
   // Smallest key of each block
   std::string block_smallest_key_;

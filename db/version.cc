@@ -10,7 +10,7 @@
 #include "db/version.h"
 #include "db/version_manager.h"
 #include "io/base_file.h"
-#include "sstable/block.h"
+#include "sstable/block_builder.h"
 #include "sstable/block_index.h"
 #include "sstable/table.h"
 

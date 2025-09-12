@@ -1,4 +1,4 @@
-#include <sstable/block.h>
+#include <sstable/block_builder.h>
 
 #include <cassert>
 
@@ -6,18 +6,13 @@ namespace kvs {
 
 namespace sstable {
 
-Block::Block()
-    : is_finished_(false), block_size_(0), num_entries_(0),
-      data_current_offset_(0) {}
+BlockBuilder::BlockBuilder()
+    : block_size_(0), num_entries_(0), data_current_offset_(0) {}
 
-void Block::AddEntry(std::string_view key,
-                     std::optional<std::string_view> value, TxnId txn_id,
-                     db::ValueType value_type) {
+void BlockBuilder::AddEntry(std::string_view key,
+                            std::optional<std::string_view> value, TxnId txn_id,
+                            db::ValueType value_type) {
   assert(key.data());
-
-  if (is_finished_) {
-    return;
-  }
 
   // Add entry into data entry section
   EncodeDataEntry(key, value, txn_id, value_type);
@@ -39,9 +34,9 @@ void Block::AddEntry(std::string_view key,
   block_size_ += data_entry_size + 2 * sizeof(uint64_t);
 }
 
-void Block::EncodeDataEntry(std::string_view key,
-                            std::optional<std::string_view> value, TxnId txn_id,
-                            db::ValueType value_type) {
+void BlockBuilder::EncodeDataEntry(std::string_view key,
+                                   std::optional<std::string_view> value,
+                                   TxnId txn_id, db::ValueType value_type) {
   assert(key.size() <= kMaxKeySize);
 
   // Insert value type
@@ -82,8 +77,8 @@ void Block::EncodeDataEntry(std::string_view key,
                       transaction_id_bytes + sizeof(TxnId));
 }
 
-void Block::EncodeOffsetEntry(size_t start_entry_offset,
-                              size_t data_entry_size) {
+void BlockBuilder::EncodeOffsetEntry(size_t start_entry_offset,
+                                     size_t data_entry_size) {
   const Byte *const start_entry_offset_buff =
       reinterpret_cast<const Byte *const>(&start_entry_offset);
   uint64_t data_entry_size_bytes = static_cast<uint64_t>(data_entry_size);
@@ -98,7 +93,7 @@ void Block::EncodeOffsetEntry(size_t start_entry_offset,
                         data_entry_size_buff + sizeof(uint64_t));
 }
 
-void Block::EncodeExtraInfo() {
+void BlockBuilder::EncodeExtraInfo() {
   uint64_t start_offset_offset_section = data_current_offset_;
 
   const Byte *const num_entries_buff =
@@ -114,15 +109,7 @@ void Block::EncodeExtraInfo() {
                        start_offset_offset_section_buff + sizeof(uint64_t));
 }
 
-void Block::Finish() {
-  is_finished_ = true;
-
-  // Insert total number entries of data block
-  // TODO(namnh) : Do we need this info?
-}
-
-void Block::Reset() {
-  is_finished_ = false;
+void BlockBuilder::Reset() {
   block_size_ = 0;
   num_entries_ = 0;
   data_buffer_.clear();
@@ -131,15 +118,15 @@ void Block::Reset() {
   data_current_offset_ = 0;
 }
 
-size_t Block::GetBlockSize() const { return block_size_; }
+size_t BlockBuilder::GetBlockSize() const { return block_size_; }
 
-std::span<const Byte> Block::GetDataView() { return data_buffer_; }
+std::span<const Byte> BlockBuilder::GetDataView() { return data_buffer_; }
 
-std::span<const Byte> Block::GetOffsetView() { return offset_buffer_; }
+std::span<const Byte> BlockBuilder::GetOffsetView() { return offset_buffer_; }
 
-std::span<const Byte> Block::GetExtraView() { return extra_buffer_; }
+std::span<const Byte> BlockBuilder::GetExtraView() { return extra_buffer_; }
 
-uint64_t Block::GetNumEntries() const { return num_entries_; }
+uint64_t BlockBuilder::GetNumEntries() const { return num_entries_; }
 
 } // namespace sstable
 

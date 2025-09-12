@@ -3,7 +3,7 @@
 #include "common/macros.h"
 #include "db/status.h"
 #include "io/linux_file.h"
-#include "sstable/block.h"
+#include "sstable/block_builder.h"
 #include "sstable/block_index.h"
 #include "sstable/table.h"
 
@@ -71,7 +71,7 @@ TEST(BlockTest, BasicEncode) {
       0,
   };
 
-  auto block = std::make_unique<sstable::Block>();
+  auto block = std::make_unique<sstable::BlockBuilder>();
 
   std::string key1 = "apple";
   std::string value1 = "value1";
@@ -133,7 +133,7 @@ TEST(BlockTest, EdgeCasesEncode) {
       0,
   };
 
-  auto block = std::make_unique<sstable::Block>();
+  auto block = std::make_unique<sstable::BlockBuilder>();
 
   block->AddEntry("", "", 10, db::ValueType::PUT);
 

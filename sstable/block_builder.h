@@ -1,5 +1,5 @@
-#ifndef SSTABLE_BLOCK_H
-#define SSTABLE_BLOCK_H
+#ifndef SSTABLE_BLOCK_BUILDER_H
+#define SSTABLE_BLOCK_BUILDER_H
 
 #include "common/macros.h"
 #include "db/status.h"
@@ -59,19 +59,19 @@ Extra format(unit: Byte)
 
 namespace sstable {
 
-class Block {
+class BlockBuilder {
 public:
-  Block();
+  BlockBuilder();
 
-  ~Block() = default;
+  ~BlockBuilder() = default;
 
   // No copy allowed
-  Block(const Block &) = delete;
-  Block &operator=(Block &) = delete;
+  BlockBuilder(const BlockBuilder &) = delete;
+  BlockBuilder &operator=(BlockBuilder &) = delete;
 
   // Move constructor/assignment
-  Block(Block &&) = default;
-  Block &operator=(Block &&) = default;
+  BlockBuilder(BlockBuilder &&) = default;
+  BlockBuilder &operator=(BlockBuilder &&) = default;
 
   void AddEntry(std::string_view key, std::optional<std::string_view> value,
                 TxnId txn_id, db::ValueType value_type);
@@ -96,20 +96,15 @@ public:
 
   void SearchKey(std::string_view key, TxnId txn_id);
 
-  // Finish building the block
-  void Finish();
-
   // Clear data of block to reuse
   void Reset();
 
 private:
   void EncodeDataEntry(std::string_view key,
-                       std::optional<std::string_view> value,
-                       TxnId txn_id, db::ValueType value_type);
+                       std::optional<std::string_view> value, TxnId txn_id,
+                       db::ValueType value_type);
 
   void EncodeOffsetEntry(size_t start_entry_offset, size_t data_entry_size);
-
-  bool is_finished_;
 
   size_t block_size_;
 
@@ -130,4 +125,4 @@ private:
 
 } // namespace kvs
 
-#endif // SSTABLE_BLOCK_H
+#endif // SSTABLE_BLOCK_BUILDER_H

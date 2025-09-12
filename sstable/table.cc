@@ -4,7 +4,7 @@
 #include "db/memtable_iterator.h"
 #include "io/base_file.h"
 #include "io/linux_file.h"
-#include "sstable/block.h"
+#include "sstable/block_builder.h"
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
 
@@ -19,7 +19,7 @@ Table::Table(std::string &&filename, uint64_t table_id,
              const db::Config *config)
     : filename_(std::move(filename)), table_id_(table_id),
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
-      block_data_(std::make_unique<Block>()), current_offset_(0),
+      block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), config_(config) {}
 
 void Table::AddEntry(std::string_view key,
@@ -243,7 +243,7 @@ std::string_view Table::GetLargestKey() const { return table_largest_key_; }
 uint64_t Table::GetTableId() const { return table_id_; };
 
 // For testing
-Block *Table::GetBlockData() { return block_data_.get(); };
+BlockBuilder *Table::GetBlockData() { return block_data_.get(); };
 
 io::WriteOnlyFile *Table::GetWriteOnlyFileObject() {
   return write_file_object_.get();

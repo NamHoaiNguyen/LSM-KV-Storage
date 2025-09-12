@@ -14,7 +14,7 @@
 #include "io/base_file.h"
 #include "mvcc/transaction.h"
 #include "mvcc/transaction_manager.h"
-#include "sstable/block.h"
+#include "sstable/block_builder.h"
 #include "sstable/block_index.h"
 #include "sstable/table.h"
 
