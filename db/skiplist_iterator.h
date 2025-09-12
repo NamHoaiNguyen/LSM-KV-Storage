@@ -15,7 +15,7 @@ namespace db {
 class SkipList;
 class SkipListNode;
 
-class SkipListIterator : public BaseIterator {
+class SkipListIterator : public kvs::BaseIterator {
 public:
   explicit SkipListIterator(const SkipList *skiplist);
 

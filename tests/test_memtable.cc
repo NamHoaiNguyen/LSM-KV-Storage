@@ -3,6 +3,7 @@
 #include "db/memtable.h"
 #include "db/memtable_iterator.h"
 #include "db/skiplist.h"
+#include "db/skiplist_iterator.h"
 #include "db/status.h"
 
 #include <memory>

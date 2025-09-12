@@ -19,7 +19,7 @@ public:
   SkipListNode(std::string_view key, std::optional<std::string_view> value,
                int num_level, ValueType value_type);
 
-  ~SkipListNode();
+  ~SkipListNode() = default;
 
   bool operator==(const SkipListNode &other);
 

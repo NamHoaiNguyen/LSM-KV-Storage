@@ -20,7 +20,7 @@ class MemTableIterator : public kvs::BaseIterator {
 public:
   explicit MemTableIterator(const BaseMemTable *const memtable);
 
-  ~MemTableIterator() override;
+  ~MemTableIterator() override = default;
 
   std::string_view GetKey() override;
 

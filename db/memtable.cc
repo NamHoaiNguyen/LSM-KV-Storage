@@ -9,8 +9,6 @@ namespace db {
 
 MemTable::MemTable() : table_(std::make_unique<SkipList>()) {}
 
-MemTable::~MemTable() = default;
-
 void MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
   std::vector<std::pair<std::string, bool>> result;
 

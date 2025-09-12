@@ -13,8 +13,6 @@ SkipList::SkipList(int max_level)
       head_(std::make_shared<SkipListNode>(
           "" /*key*/, "" /*value*/, current_level_, ValueType::NOT_FOUND)) {}
 
-SkipList::~SkipList() = default;
-
 // Return random number of levels that a node is inserted
 int SkipList::GetRandomLevel() {
   int level = 1;

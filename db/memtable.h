@@ -23,7 +23,7 @@ class MemTable : public BaseMemTable {
 public:
   MemTable();
 
-  ~MemTable() override;
+  ~MemTable() override = default;
 
   // Copy constructor/assignment
   MemTable(const MemTable &) = delete;

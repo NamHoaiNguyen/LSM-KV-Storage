@@ -13,8 +13,6 @@ SkipListNode::SkipListNode(std::string_view key,
       value_type_(value_type),
       backward_(num_level, std::weak_ptr<SkipListNode>()) {}
 
-SkipListNode::~SkipListNode() = default;
-
 bool SkipListNode::operator==(const SkipListNode &other) {
   // TODO(namnh) : implement
   return false;

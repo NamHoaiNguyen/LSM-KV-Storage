@@ -11,8 +11,6 @@ namespace db {
 MemTableIterator::MemTableIterator(const BaseMemTable *const memtable)
     : iterator_(std::make_unique<SkipListIterator>(memtable->GetMemTable())) {}
 
-MemTableIterator::~MemTableIterator() = default;
-
 std::string_view MemTableIterator::GetKey() { return iterator_->GetKey(); }
 
 std::optional<std::string_view> MemTableIterator::GetValue() {
