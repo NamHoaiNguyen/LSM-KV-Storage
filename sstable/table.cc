@@ -1,4 +1,4 @@
-#include "sstable/sst.h"
+#include "sstable/table.h"
 
 #include "db/config.h"
 #include "db/memtable_iterator.h"

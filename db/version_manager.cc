@@ -10,7 +10,7 @@
 #include "io/base_file.h"
 #include "sstable/block.h"
 #include "sstable/block_index.h"
-#include "sstable/sst.h"
+#include "sstable/table.h"
 
 namespace kvs {
 

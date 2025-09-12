@@ -14,7 +14,7 @@
 #include "mvcc/transaction_manager.h"
 #include "sstable/block.h"
 #include "sstable/block_index.h"
-#include "sstable/sst.h"
+#include "sstable/table.h"
 
 // libC++
 #include <algorithm>

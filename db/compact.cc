@@ -3,7 +3,7 @@
 #include "common/macros.h"
 #include "db/db_impl.h"
 #include "db/version.h"
-#include "sstable/sst.h"
+#include "sstable/table.h"
 
 // libC++
 #include <cassert>

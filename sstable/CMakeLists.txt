@@ -9,8 +9,8 @@ add_library(sstable
   block.h
   # table_builder.cc
   # table_builder.h
-  sst.cc
-  sst.h
+  table.cc
+  table.h
 )
 
 target_include_directories(sstable PUBLIC ${CMAKE_SOURCE_DIR})
