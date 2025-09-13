@@ -113,16 +113,14 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
 void DBImpl::ForceFlushMemTable() {
   {
     std::scoped_lock lock(mutex_);
-    if (memtable_->GetMemTableSize() == 0) {
-      return;
+    if (memtable_->GetMemTableSize() != 0) {
+      immutable_memtables_.push_back(std::move(memtable_));
+      // Create new empty mutable memtable
+      memtable_ = std::make_unique<MemTable>();
     }
-
-    immutable_memtables_.push_back(std::move(memtable_));
-    // Create new empty mutable memtable
-    memtable_ = std::make_unique<MemTable>();
   }
 
-  return FlushMemTableJob();
+  FlushMemTableJob();
 }
 
 void DBImpl::FlushMemTableJob() {
@@ -212,6 +210,8 @@ const Config *const DBImpl::GetConfig() { return config_.get(); }
 const VersionManager *DBImpl::GetVersionManager() {
   return version_manager_.get();
 }
+
+const BaseMemTable *DBImpl::GetCurrentMemtable() { return memtable_.get(); }
 
 const std::vector<std::unique_ptr<BaseMemTable>> &
 DBImpl::GetImmutableMemTables() {

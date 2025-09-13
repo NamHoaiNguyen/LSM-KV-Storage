@@ -65,6 +65,8 @@ public:
   friend class Compact;
 
   // For testing
+  const BaseMemTable *GetCurrentMemtable();
+
   const std::vector<std::unique_ptr<BaseMemTable>> &GetImmutableMemTables();
 
 private:

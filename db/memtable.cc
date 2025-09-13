@@ -80,7 +80,7 @@ void MemTable::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   table_->Put(key, value, txn_id);
 }
 
-size_t MemTable::GetMemTableSize() {
+size_t MemTable::GetMemTableSize() const {
   if (!table_) {
     std::exit(EXIT_FAILURE);
   }

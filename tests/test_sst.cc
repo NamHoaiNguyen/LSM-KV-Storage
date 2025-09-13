@@ -1,18 +1,24 @@
 #include <gtest/gtest.h>
 
 #include "common/macros.h"
-#include "common/thread_pool.h"
+#include "db/base_memtable.h"
 #include "db/config.h"
+#include "db/db_impl.h"
 #include "db/status.h"
+#include "db/version.h"
+#include "db/version_manager.h"
 #include "io/linux_file.h"
 #include "sstable/block_builder.h"
 #include "sstable/block_index.h"
+#include "sstable/block_reader.h"
 #include "sstable/table.h"
 
 #include <cmath>
 #include <memory>
 
 namespace kvs {
+
+namespace sstable {
 
 std::vector<Byte> data_encoded = {
     // Data section
@@ -66,7 +72,7 @@ std::vector<Byte> block_index_buffer_encoded = {
     0x86, 0,   0,   0,   0,   0,   0,   0,   // block size(8B) (data + metadata)
 };
 
-TEST(SSTTest, BasicEncode) {
+TEST(TableTest, BasicEncode) {
   auto config = std::make_unique<db::Config>(true /*is_testing*/);
   config->LoadConfig();
 
@@ -99,5 +105,48 @@ TEST(SSTTest, BasicEncode) {
 
   table->Finish();
 }
+
+TEST(TableTest, CreateTable) {
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB();
+  const db::Config *const config = db->GetConfig();
+  const int nums_elems = 10000000;
+
+  size_t memtable_size = 0;
+  std::string key, value, smallest_key, largest_key;
+  for (int i = 0; i < nums_elems; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+
+    if (smallest_key.empty()) {
+      smallest_key = key;
+    }
+    if (key > largest_key) {
+      largest_key = key;
+    }
+
+    db->Put(key, value, 0 /*txn_id*/);
+    memtable_size += key.size() + value.size();
+    if (memtable_size >= config->GetPerMemTableSizeLimit()) {
+      break;
+    }
+  }
+
+  // Force creating a new sst
+  db->ForceFlushMemTable();
+
+  const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
+      &level_sst_info =
+          db->GetVersionManager()->GetLatestVersion()->GetSstMetadata();
+  EXPECT_EQ(level_sst_info[0].size(), 1);
+
+  EXPECT_EQ(level_sst_info[0][0]->smallest_key, smallest_key);
+  EXPECT_EQ(level_sst_info[0][0]->largest_key, largest_key);
+  EXPECT_EQ(level_sst_info[0][0]->sst_id, 1);
+  EXPECT_EQ(level_sst_info[0][0]->level, 0);
+  EXPECT_TRUE(level_sst_info[0][0]->table_->GetBlockIndex().size() != 0);
+}
+
+} // namespace sstable
 
 } // namespace kvs

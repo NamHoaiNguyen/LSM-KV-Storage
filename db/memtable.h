@@ -49,7 +49,7 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id) override;
 
-  size_t GetMemTableSize() override;
+  size_t GetMemTableSize() const override;
 
   const SkipList *GetMemTable() const override;
 

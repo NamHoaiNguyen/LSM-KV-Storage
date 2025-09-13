@@ -249,6 +249,8 @@ io::WriteOnlyFile *Table::GetWriteOnlyFileObject() {
   return write_file_object_.get();
 }
 
+const std::vector<BlockIndex> &Table::GetBlockIndex() { return block_index_; }
+
 } // namespace sstable
 
 } // namespace kvs

@@ -106,6 +106,8 @@ public:
 
   io::WriteOnlyFile *GetWriteOnlyFileObject();
 
+  const std::vector<BlockIndex> &GetBlockIndex();
+
 private:
   void EncodeExtraInfo();
 

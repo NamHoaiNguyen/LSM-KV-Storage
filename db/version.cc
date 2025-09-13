@@ -112,6 +112,12 @@ size_t Version::GetNumberSSTLvl0Files() const {
 
 const uint64_t Version::GetVersionId() const { return version_id_; }
 
+// For testing
+const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
+Version::GetSstMetadata() {
+  return levels_sst_info_;
+}
+
 } // namespace db
 
 } // namespace kvs

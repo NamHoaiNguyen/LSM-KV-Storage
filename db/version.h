@@ -84,6 +84,10 @@ public:
 
   friend class Compact;
 
+  // For testing
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
+  GetSstMetadata();
+
 private:
   const uint64_t version_id_;
 
