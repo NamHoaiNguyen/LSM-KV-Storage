@@ -4,6 +4,7 @@
 #include "io/linux_file.h"
 
 #include <cassert>
+#include <iostream>
 
 namespace kvs {
 
@@ -14,7 +15,7 @@ BlockReader::BlockReader(std::string_view filename,
     : read_file_object_(read_file_object) {}
 
 db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
-                                     std::string_view key, TxnId txn_id) {
+                                     std::string_view key, TxnId txn_id) const {
   db::GetStatus status;
 
   if (offset < 0 || size < 0) {
@@ -84,19 +85,23 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
 
 uint64_t BlockReader::GetDataEntryOffset(std::span<const Byte> buffer,
                                          const uint64_t offset_section,
-                                         const int entry_index) {
+                                         const int entry_index) const {
   // Starting offset of offset entry at index (entry_index) (th)
   uint64_t offset_entry = offset_section + entry_index * 2 * sizeof(uint64_t);
 
   const uint64_t data_entry_offset =
       *reinterpret_cast<const uint64_t *>(&buffer[offset_entry]);
 
+  if (data_entry_offset > 10000) {
+    std::cout << "namnh debug  " << std::endl;
+  }
+
   return data_entry_offset;
 }
 
 db::ValueType
 BlockReader::GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
-                                       uint64_t data_entry_offset) {
+                                       uint64_t data_entry_offset) const {
   Byte value_type_byte = buffer_view[data_entry_offset];
   db::ValueType value_type =
       *reinterpret_cast<const db::ValueType *>(&value_type_byte);
@@ -107,7 +112,7 @@ BlockReader::GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
 std::pair<std::string_view, std::optional<std::string_view>>
 BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
                                       uint64_t data_entry_offset,
-                                      db::ValueType value_type) {
+                                      db::ValueType value_type) const {
   assert(value_type != db::ValueType::INVALID);
 
   const uint32_t key_len = *reinterpret_cast<const uint32_t *>(

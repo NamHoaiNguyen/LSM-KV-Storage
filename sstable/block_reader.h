@@ -77,7 +77,7 @@ public:
   BlockReader &operator=(BlockReader &&) = default;
 
   db::GetStatus SearchKey(uint64_t offset, uint64_t size, std::string_view key,
-                          TxnId txn_id);
+                          TxnId txn_id) const;
 
 private:
   // Get starting offset of data entry at index entry_index(th) base on
@@ -85,19 +85,19 @@ private:
   // See block data format above
   uint64_t GetDataEntryOffset(std::span<const Byte> buffer,
                               const uint64_t offset_section,
-                              const int entry_index);
+                              const int entry_index) const;
 
   // Get type of key base on data_entry_offset(starting offset of data entry)
   // See block data format above
   db::ValueType GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
-                                          uint64_t data_entry_offset);
+                                          uint64_t data_entry_offset) const;
 
   // Get key and value of data entry that start at data_entry_offset
   // See block data format above
   std::pair<std::string_view, std::optional<std::string_view>>
   GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
                            uint64_t data_entry_offset,
-                           db::ValueType value_type);
+                           db::ValueType value_type) const;
 
   std::vector<Byte> buffer_;
 

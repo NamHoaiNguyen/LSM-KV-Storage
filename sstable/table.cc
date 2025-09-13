@@ -210,7 +210,7 @@ void Table::Read() {
   }
 }
 
-db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) {
+db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) const {
   // Find the block that have smallest largest key that >= key
   int left = 0;
   int right = block_index_.size();

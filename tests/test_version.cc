@@ -17,6 +17,40 @@ namespace kvs {
 
 namespace db {
 
+bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
+  int num_sst_files = 0;
+  int num_sst_files_info = 0;
+
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      num_sst_files++;
+    }
+  }
+
+  for (const auto &sst_file_info :
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
+    num_sst_files_info += sst_file_info.size();
+  }
+
+  // clear all SST files created for next test
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      fs::remove(entry.path());
+    }
+  }
+
+  return (num_sst_files == num_sst_files_info) ? true : false;
+}
+
+void ClearAllSstFiles(const Config *config) {
+  // clear all SST files created for next test
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      fs::remove(entry.path());
+    }
+  }
+}
+
 TEST(VersionTest, CreateOnlyOneVersion) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
@@ -56,29 +90,9 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   // Creating new SST when memtable is overlow means that new latest version
   // is created
   EXPECT_TRUE(db->GetVersionManager()->GetLatestVersion());
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  int num_sst_files = 0;
-  int num_sst_files_info = 0;
-
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      num_sst_files++;
-    }
-  }
-
-  for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
-    num_sst_files_info += sst_file_info.size();
-  }
-
-  EXPECT_EQ(num_sst_files, num_sst_files_info);
-
-  // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      fs::remove(entry.path());
-    }
-  }
+  ClearAllSstFiles(config);
 }
 
 TEST(VersionTest, CreateMultipleVersions) {
@@ -95,32 +109,12 @@ TEST(VersionTest, CreateMultipleVersions) {
     db->Put(key, value, 0 /*txn_id*/);
   }
 
+  // Force flush remaining memtable datas to SST
   db->ForceFlushMemTable();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  int num_sst_files = 0;
-  int num_sst_files_info = 0;
-
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      num_sst_files++;
-    }
-  }
-
-  for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
-    num_sst_files_info += sst_file_info.size();
-  }
-
-  EXPECT_EQ(num_sst_files, num_sst_files_info);
-
-  // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      fs::remove(entry.path());
-    }
-  }
+  ClearAllSstFiles(config);
 }
 
 TEST(VersionTest, ConcurrencyPut) {
@@ -165,27 +159,9 @@ TEST(VersionTest, ConcurrencyPut) {
 
   db->ForceFlushMemTable();
 
-  int num_sst_files = 0;
-  int num_sst_files_info = 0;
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      num_sst_files++;
-    }
-  }
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
-    num_sst_files_info += sst_file_info.size();
-  }
-
-  EXPECT_EQ(num_sst_files, num_sst_files_info);
-
-  // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      fs::remove(entry.path());
-    }
-  }
+  ClearAllSstFiles(config);
 }
 
 TEST(VersionTest, GetFromSST) {
@@ -220,9 +196,13 @@ TEST(VersionTest, GetFromSST) {
     EXPECT_TRUE(status.type == db::ValueType::PUT);
     EXPECT_EQ(status.value, value);
   }
+
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+
+  ClearAllSstFiles(config);
 }
 
-TEST(VersionTest, ConcurrencyPutAndGet) {
+TEST(VersionTest, ConcurrencyPutSingleGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
@@ -270,52 +250,27 @@ TEST(VersionTest, ConcurrencyPutAndGet) {
   // Sleep to wait all written data is persisted to disk
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-  int num_sst_files = 0;
-  int num_sst_files_info = 0;
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      num_sst_files++;
-    }
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+
+  // Now all immutable memtables are no longer in memory, it means that all
+  // GET operation must go to SST to lookup
+  const Version *version = db->GetVersionManager()->GetLatestVersion();
+  EXPECT_TRUE(version);
+
+  GetStatus status;
+  std::string key, value;
+
+  for (int i = 0; i < total_elems; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+
+    status = version->Get(key, 0 /*txn_id*/);
+    EXPECT_TRUE(status.type == db::ValueType::PUT);
+    EXPECT_TRUE(status.value != std::nullopt);
+    EXPECT_EQ(status.value.value(), value);
   }
 
-  for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
-    num_sst_files_info += sst_file_info.size();
-  }
-
-  EXPECT_EQ(num_sst_files, num_sst_files_info);
-
-  auto get_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
-                 &all_done](int index) {
-    std::string key, value;
-    std::optional<std::string> value_found;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      value_found = db->Get(key, 0 /*txn_id*/);
-      EXPECT_TRUE(value_found.has_value());
-      EXPECT_EQ(value_found.value(), value);
-    }
-    all_done.count_down();
-  };
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(get_op, i);
-  }
-
-  // Wait until all read threads finish
-  all_done.wait();
-
-  for (auto &thread : threads) {
-    thread.join();
-  }
-
-  // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      fs::remove(entry.path());
-    }
-  }
+  ClearAllSstFiles(config);
 }
 
 TEST(VersionTest, FreeObsoleteVersions) {
@@ -379,30 +334,11 @@ TEST(VersionTest, FreeObsoleteVersions) {
   // Sleep to wait all older versions is not referenced anymore
   std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
-  int num_sst_files = 0;
-  int num_sst_files_info = 0;
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      num_sst_files++;
-    }
-  }
-
-  for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
-    num_sst_files_info += sst_file_info.size();
-  }
-
-  EXPECT_EQ(num_sst_files, num_sst_files_info);
-
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
   // All older versions that aren't refered to anymore should be cleared
   EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 0);
 
-  // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      fs::remove(entry.path());
-    }
-  }
+  ClearAllSstFiles(config);
 }
 
 } // namespace db
