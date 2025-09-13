@@ -29,7 +29,7 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
 
   // Search in SSTs lvl0
-  // for (const auto &sst : levels_sst_info_[0]) {
+  // Files are saved from oldest-to-newest
   for (const auto &sst : std::views::reverse(levels_sst_info_[0])) {
     if (key < sst->table_->GetSmallestKey() ||
         key > sst->table_->GetLargestKey()) {
@@ -78,13 +78,13 @@ void Version::ExecCompaction() {
   // TODO(namnh) : caculate score from level 1 - n after compaction
 }
 
-const std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>> &
-Version::GetImmutableSSTInfo() const {
+const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
+Version::GetImmutableSSTMetadata() const {
   return levels_sst_info_;
 }
 
-std::vector<std::vector<std::shared_ptr<Version::SSTInfo>>> &
-Version::GetSSTInfo() {
+std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
+Version::GetSSTMetadata() {
   return levels_sst_info_;
 }
 
@@ -97,12 +97,6 @@ std::vector<double> &Version::GetLevelsScore() { return levels_score_; }
 size_t Version::GetNumberSSTLvl0Files() const {
   return levels_sst_info_[0].size();
 }
-
-// SST INFO
-Version::SSTInfo::SSTInfo() : should_be_deleted_(false) {}
-
-Version::SSTInfo::SSTInfo(std::shared_ptr<sstable::Table> table, int level)
-    : table_(std::move(table)), level_(level), should_be_deleted_(false) {}
 
 } // namespace db
 

@@ -2,6 +2,7 @@
 #define DB_VERSION_MANAGER_H
 
 #include "db/version.h"
+#include "db/version_edit.h"
 
 #include <deque>
 #include <memory>
@@ -33,14 +34,13 @@ public:
   VersionManager(VersionManager &&) = default;
   VersionManager &operator=(VersionManager &&) = default;
 
-  // ALWAYS return latest version
-  Version *CreateLatestVersion();
-
-  // Create latest version and apply new SSTs info
-  void ApplyNewChanges(
-      std::vector<std::shared_ptr<Version::SSTInfo>> &&new_ssts_info);
+  // Create latest version and apply new SSTs metadata
+  void ApplyNewChanges(std::unique_ptr<VersionEdit> version_edit);
 
   bool NeedSSTCompaction();
+
+  // TODO(namnh) : Remove this after implementing starting DB flow
+  void CreateLatestVersion();
 
   // For testing
   const std::deque<std::unique_ptr<Version>> &GetVersions() const;
@@ -52,27 +52,6 @@ public:
   const DBImpl *const GetDB();
 
 private:
-  class VersionBuilder {
-  public:
-    VersionBuilder() = default;
-
-    ~VersionBuilder() = default;
-
-    // No copy allowed
-    VersionBuilder(const VersionBuilder &) = delete;
-    VersionBuilder &operator=(VersionBuilder &) = delete;
-
-    // Move constructor/assignment
-    VersionBuilder(VersionBuilder &&) = default;
-    VersionBuilder &operator=(VersionBuilder &&) = default;
-
-    bool CreateNewSST(const BaseMemTable *const immutable_memtable);
-
-    friend class Compact;
-
-  private:
-  };
-
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
   // referenced to anymore
   std::deque<std::unique_ptr<Version>> versions_;

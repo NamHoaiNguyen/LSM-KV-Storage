@@ -2,6 +2,7 @@
 #define DB_COMPACT_H
 
 #include "version.h"
+#include "version_edit.h"
 
 #include <cstdint>
 #include <string_view>
@@ -54,7 +55,7 @@ private:
   // new version is created when there is a change(create new SST, delete old
   // SST after compaction). So, each version has its own this data structure.
   // Note: These are also files that be deleted after finish compaction
-  std::vector<const Version::SSTInfo *> compact_info_[2];
+  std::vector<const SSTMetadata *> compact_info_[2];
 };
 
 } // namespace db

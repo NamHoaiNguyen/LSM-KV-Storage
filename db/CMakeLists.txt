@@ -17,6 +17,8 @@ add_library(db
   skiplist.cc
   skiplist.h
   status.h
+  version_edit.h
+  version_edit.cc
   version_manager.cc
   version_manager.h
   version.cc

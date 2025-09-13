@@ -3,6 +3,7 @@
 
 #include "common/macros.h"
 #include "db/status.h"
+#include "db/version_edit.h"
 
 #include <atomic>
 #include <deque>
@@ -38,31 +39,6 @@ class DBImpl;
 
 class Version {
 public:
-  struct SSTInfo {
-  public:
-    SSTInfo();
-    SSTInfo(std::shared_ptr<sstable::Table> table, int level);
-
-    ~SSTInfo() = default;
-
-    // No copy allowed
-    SSTInfo(const SSTInfo &) = delete;
-    SSTInfo &operator=(SSTInfo &) = delete;
-
-    SSTInfo(SSTInfo &&) = default;
-    SSTInfo &operator=(SSTInfo &&) = default;
-
-    friend class Compact;
-
-    // private:
-    // std::unique_ptr<sstable::Table> table_;
-    std::shared_ptr<sstable::Table> table_;
-
-    int level_;
-
-    std::atomic<bool> should_be_deleted_{false};
-  };
-
   Version(DBImpl *db, const Config *config, ThreadPool *thread_pool);
 
   ~Version() = default;
@@ -83,12 +59,14 @@ public:
 
   void ExecCompaction();
 
-  const std::vector<std::vector<std::shared_ptr<SSTInfo>>> &
-  GetImmutableSSTInfo() const;
-  // ALL NON-CONST methods  are only called when building new version
-  std::vector<std::vector<std::shared_ptr<SSTInfo>>> &GetSSTInfo();
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
+  GetImmutableSSTMetadata() const;
+
+  // ALL NON-CONST methods are only called when building new version
+  std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &GetSSTMetadata();
 
   const std::vector<double> &GetImmutableLevelsScore() const;
+
   // ALL NON-CONST methods  are only called when building new version
   std::vector<double> &GetLevelsScore();
 
@@ -102,9 +80,9 @@ private:
   // If using unique_ptr, each version has its own data SST info.
   // In other words, SST info of each version is immutable for other versions.
   // Whereas, if using shared_ptr, there MUST be a lock mechanism to protect
-  // SSTinfo data structure
-  // std::vector<std::vector<std::unique_ptr<SSTInfo>>> levels_sst_info_;
-  std::vector<std::vector<std::shared_ptr<SSTInfo>>> levels_sst_info_;
+  // SSTMetadata data structure
+  // std::vector<std::vector<std::unique_ptr<SSTMetadata>>> levels_sst_info_;
+  std::vector<std::vector<std::shared_ptr<SSTMetadata>>> levels_sst_info_;
 
   std::unique_ptr<Compact> compact_;
 

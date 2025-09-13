@@ -67,7 +67,7 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   }
 
   for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
     num_sst_files_info += sst_file_info.size();
   }
 
@@ -109,7 +109,7 @@ TEST(VersionTest, CreateMultipleVersions) {
   }
 
   for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
     num_sst_files_info += sst_file_info.size();
   }
 
@@ -174,7 +174,7 @@ TEST(VersionTest, ConcurrencyPut) {
   }
 
   for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
     num_sst_files_info += sst_file_info.size();
   }
 
@@ -278,7 +278,7 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
   }
 
   for (const auto &sst_file_info :
-       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTInfo()) {
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
     num_sst_files_info += sst_file_info.size();
   }
 
