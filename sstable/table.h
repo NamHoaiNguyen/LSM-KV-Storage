@@ -89,7 +89,7 @@ public:
 
   void Read();
 
-  db::GetStatus SearchKey(std::string_view key, TxnId txn_id);
+  db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
   // Not best practise. But because table is immutable after be written, it is
   // ok

@@ -72,15 +72,17 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
   }
 
   // TODO(nanmh) : Does it need to acquire lock when looking up key in SSTs?
-  const Version *version = version_manager_->GetLatestVersion();
+  Version *version = version_manager_->GetLatestVersion();
   if (!version) {
     return std::nullopt;
   }
 
+  version->IncreaseRefCount();
   status = version->Get(key, txn_id);
   if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
     return status.value;
   }
+  version->DecreaseRefCount();
 
   return std::nullopt;
 }

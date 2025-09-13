@@ -17,9 +17,9 @@ void BlockBuilder::AddEntry(std::string_view key,
   // Add entry into data entry section
   EncodeDataEntry(key, value, txn_id, value_type);
 
-  size_t data_entry_size = sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
-                           sizeof(uint32_t) +
-                           (value ? value.value().size() : 0) + sizeof(TxnId);
+  size_t data_entry_size =
+      sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
+      (value ? sizeof(uint32_t) + value.value().size() : 0) + sizeof(TxnId);
 
   // Add offset info of this entry into offset section
   EncodeOffsetEntry(data_current_offset_, data_entry_size);
@@ -56,6 +56,7 @@ void BlockBuilder::EncodeDataEntry(std::string_view key,
   data_buffer_.insert(data_buffer_.end(), key_bytes, key_bytes + key_len);
 
   if (value) {
+    assert(value_type == db::ValueType::PUT);
     // Insert length of value(4 bytes)
     // Safe, because we limit length of key is less than 2^32
     const uint32_t value_len = static_cast<uint32_t>(value.value().size());

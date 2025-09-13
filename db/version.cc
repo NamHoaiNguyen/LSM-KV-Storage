@@ -4,7 +4,6 @@
 #include "db/base_memtable.h"
 #include "db/compact.h"
 #include "db/config.h"
-#include "db/db_impl.h"
 #include "db/memtable.h"
 #include "db/memtable_iterator.h"
 #include "db/version.h"
@@ -18,12 +17,25 @@ namespace kvs {
 
 namespace db {
 
-Version::Version(DBImpl *db, const Config *config, ThreadPool *thread_pool)
-    : levels_sst_info_(config->GetSSTNumLvels()),
+Version::Version(uint64_t version_id, const Config *config,
+                 kvs::ThreadPool *thread_pool, VersionManager *version_manager)
+    : version_id_(version_id), levels_sst_info_(config->GetSSTNumLvels()),
       // compact_(std::make_unique<Compact>(this)),
       compaction_level_(0), compaction_score_(0),
-      levels_score_(config->GetSSTNumLvels(), 0), db_(db), config_(config),
-      thread_pool_(thread_pool) {}
+      levels_score_(config->GetSSTNumLvels(), 0), config_(config),
+      thread_pool_(thread_pool), version_manager_(version_manager) {
+  assert(config_ && thread_pool_ && version_manager_);
+}
+
+void Version::IncreaseRefCount() { ref_count_++; }
+
+void Version::DecreaseRefCount() {
+  ref_count_--;
+  if (ref_count_ == 0) {
+    thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
+                          version_manager_, version_id_);
+  }
+}
 
 GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
@@ -97,6 +109,8 @@ std::vector<double> &Version::GetLevelsScore() { return levels_score_; }
 size_t Version::GetNumberSSTLvl0Files() const {
   return levels_sst_info_[0].size();
 }
+
+const uint64_t Version::GetVersionId() const { return version_id_; }
 
 } // namespace db
 
