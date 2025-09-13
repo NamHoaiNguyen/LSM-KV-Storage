@@ -17,9 +17,9 @@ void BlockBuilder::AddEntry(std::string_view key,
   // Add entry into data entry section
   EncodeDataEntry(key, value, txn_id, value_type);
 
-  size_t data_entry_size = sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
-                           (value ? sizeof(uint32_t) : 0) +
-                           (value ? value.value().size() : 0) + sizeof(TxnId);
+  size_t data_entry_size =
+      sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
+      (value ? sizeof(uint32_t) + value.value().size() : 0) + sizeof(TxnId);
 
   // Add offset info of this entry into offset section
   EncodeOffsetEntry(data_current_offset_, data_entry_size);

@@ -24,7 +24,6 @@ VersionManager::VersionManager(DBImpl *db, const Config *config,
                                kvs::ThreadPool *thread_pool)
     : db_(db), config_(config), thread_pool_(thread_pool) {}
 
-// NOT THREAD-SAFE
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
   versions_.erase(std::remove_if(versions_.begin(), versions_.end(),
@@ -94,8 +93,10 @@ void VersionManager::ApplyNewChanges(
   {
     std::scoped_lock lock(mutex_);
     versions_.push_front(std::move(latest_version_));
+    // Decreate ref count of old version
     versions_.front()->DecreaseRefCount();
     latest_version_ = std::move(latest_tmp_version);
+    // Each new version created has its refcount = 1
     latest_version_->IncreaseRefCount();
   }
 }

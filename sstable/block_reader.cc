@@ -4,7 +4,6 @@
 #include "io/linux_file.h"
 
 #include <cassert>
-#include <iostream>
 
 namespace kvs {
 
@@ -91,10 +90,6 @@ uint64_t BlockReader::GetDataEntryOffset(std::span<const Byte> buffer,
 
   const uint64_t data_entry_offset =
       *reinterpret_cast<const uint64_t *>(&buffer[offset_entry]);
-
-  if (data_entry_offset > 10000) {
-    std::cout << "namnh debug  " << std::endl;
-  }
 
   return data_entry_offset;
 }
