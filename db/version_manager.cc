@@ -40,9 +40,14 @@ void VersionManager::ApplyNewChanges(
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
       &old_version_sst_info = latest_version_->GetImmutableSSTMetadata();
+  const std::vector<double> &old_levels_score =
+      latest_version_->GetLevelsScore();
 
+  // Prepare for latest version
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
       &latest_version_sst_info = latest_tmp_version->GetSSTMetadata();
+  std::vector<double> &latest_levels_score =
+      latest_tmp_version->GetLevelsScore();
 
   // Get info of deleted files
   const std::set<std::pair<SSTId, int>> &deleted_files =
@@ -51,6 +56,10 @@ void VersionManager::ApplyNewChanges(
   // Apply all ssts info of previous version
   for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
     for (const auto &sst_info : old_version_sst_info[level]) {
+      // Get score ranking from previous version(to know which level should be
+      // compacted)
+      latest_levels_score[level] = old_levels_score[level];
+
       // If file are in list of should be deleted file, skip
       if (deleted_files.find({sst_info->table_->GetTableId(),
                               sst_info->level}) != deleted_files.end()) {
