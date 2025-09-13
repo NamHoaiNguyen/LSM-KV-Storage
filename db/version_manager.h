@@ -22,7 +22,8 @@ class Config;
 
 class VersionManager {
 public:
-  VersionManager(DBImpl *db, const Config *config, ThreadPool *thread_pool);
+  VersionManager(DBImpl *db, const Config *config,
+                 kvs::ThreadPool *thread_pool);
 
   ~VersionManager() = default;
 
@@ -34,18 +35,20 @@ public:
   VersionManager(VersionManager &&) = default;
   VersionManager &operator=(VersionManager &&) = default;
 
+  void RemoveObsoleteVersion(uint64_t version_id);
+
+  // TODO(namnh) : Remove this after implementing starting DB flow
+  void CreateLatestVersion();
+
   // Create latest version and apply new SSTs metadata
   void ApplyNewChanges(std::unique_ptr<VersionEdit> version_edit);
 
   bool NeedSSTCompaction();
 
-  // TODO(namnh) : Remove this after implementing starting DB flow
-  void CreateLatestVersion();
-
   // For testing
   const std::deque<std::unique_ptr<Version>> &GetVersions() const;
 
-  const Version *GetLatestVersion() const;
+  Version *GetLatestVersion() const;
 
   const Config *const GetConfig();
 
@@ -54,6 +57,8 @@ public:
 private:
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
   // referenced to anymore
+  std::atomic<uint64_t> next_version_id_;
+
   std::deque<std::unique_ptr<Version>> versions_;
 
   std::unique_ptr<Version> latest_version_;

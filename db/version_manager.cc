@@ -13,6 +13,7 @@
 #include "sstable/table.h"
 
 // libC++
+#include <algorithm>
 #include <cassert>
 
 namespace kvs {
@@ -20,12 +21,24 @@ namespace kvs {
 namespace db {
 
 VersionManager::VersionManager(DBImpl *db, const Config *config,
-                               ThreadPool *thread_pool)
+                               kvs::ThreadPool *thread_pool)
     : db_(db), config_(config), thread_pool_(thread_pool) {}
+
+// NOT THREAD-SAFE
+void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
+  std::scoped_lock lock(mutex_);
+  versions_.erase(std::remove_if(versions_.begin(), versions_.end(),
+                                 [version_id](const auto &version) {
+                                   return version->GetVersionId() == version_id;
+                                 }),
+                  versions_.end());
+}
 
 void VersionManager::CreateLatestVersion() {
   if (!latest_version_) {
-    latest_version_ = std::make_unique<Version>(db_, config_, thread_pool_);
+    latest_version_ = std::make_unique<Version>(++next_version_id_, config_,
+                                                thread_pool_, this);
+    latest_version_->IncreaseRefCount();
   }
 }
 
@@ -34,8 +47,8 @@ void VersionManager::ApplyNewChanges(
   assert(version_edit);
   assert(latest_version_);
 
-  auto latest_tmp_version =
-      std::make_unique<Version>(db_, config_, thread_pool_);
+  auto latest_tmp_version = std::make_unique<Version>(
+      ++next_version_id_, config_, thread_pool_, this);
 
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
@@ -81,7 +94,9 @@ void VersionManager::ApplyNewChanges(
   {
     std::scoped_lock lock(mutex_);
     versions_.push_front(std::move(latest_version_));
+    versions_.front()->DecreaseRefCount();
     latest_version_ = std::move(latest_tmp_version);
+    latest_version_->IncreaseRefCount();
   }
 }
 
@@ -100,7 +115,7 @@ VersionManager::GetVersions() const {
   return versions_;
 }
 
-const Version *VersionManager::GetLatestVersion() const {
+Version *VersionManager::GetLatestVersion() const {
   std::scoped_lock lock(mutex_);
   return latest_version_.get();
 }

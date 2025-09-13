@@ -6,6 +6,7 @@
 #include "db/version_edit.h"
 
 #include <atomic>
+#include <cassert>
 #include <deque>
 #include <latch>
 #include <memory>
@@ -26,6 +27,8 @@ class BaseMemTable;
 class Compact;
 class Config;
 class DBImpl;
+class ThreadPool;
+class VersionManager;
 
 // Version is a snapshot holding info of all SST files at the specific
 // moment.
@@ -39,7 +42,8 @@ class DBImpl;
 
 class Version {
 public:
-  Version(DBImpl *db, const Config *config, ThreadPool *thread_pool);
+  Version(uint64_t version_id, const Config *config,
+          kvs::ThreadPool *thread_pool, VersionManager *version_manager);
 
   ~Version() = default;
 
@@ -50,6 +54,10 @@ public:
   // Move constructor/assignment
   Version(Version &&) = default;
   Version &operator=(Version &&) = default;
+
+  void IncreaseRefCount();
+
+  void DecreaseRefCount();
 
   GetStatus Get(std::string_view key, TxnId txn_id) const;
 
@@ -72,11 +80,14 @@ public:
 
   size_t GetNumberSSTLvl0Files() const;
 
+  const uint64_t GetVersionId() const;
+
   friend class Compact;
 
 private:
+  const uint64_t version_id_;
+
   // TODO(namnh) : do I need to protect this one ?
-  // TODO(namnh) : How to construct this data structure ?
   // If using unique_ptr, each version has its own data SST info.
   // In other words, SST info of each version is immutable for other versions.
   // Whereas, if using shared_ptr, there MUST be a lock mechanism to protect
@@ -93,14 +104,16 @@ private:
 
   std::vector<double> levels_score_;
 
+  std::atomic<uint64_t> ref_count_;
+
   // Below are objects that Version does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
   // allocate/deallocate, etc... these objects.
   const Config *config_;
 
-  DBImpl *db_;
-
   kvs::ThreadPool *thread_pool_;
+
+  VersionManager *version_manager_;
 
   std::mutex mutex_;
 };
