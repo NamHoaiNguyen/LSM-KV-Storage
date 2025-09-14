@@ -46,8 +46,8 @@ void VersionManager::ApplyNewChanges(
   assert(version_edit);
   assert(latest_version_);
 
-  auto latest_tmp_version = std::make_unique<Version>(
-      ++next_version_id_, config_, thread_pool_, this);
+  auto new_version = std::make_unique<Version>(++next_version_id_, config_,
+                                               thread_pool_, this);
 
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
@@ -57,9 +57,8 @@ void VersionManager::ApplyNewChanges(
 
   // Prepare for latest version
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
-      &latest_version_sst_info = latest_tmp_version->GetSSTMetadata();
-  std::vector<double> &latest_levels_score =
-      latest_tmp_version->GetLevelsScore();
+      &latest_version_sst_info = new_version->GetSSTMetadata();
+  std::vector<double> &latest_levels_score = new_version->GetLevelsScore();
 
   // Get info of deleted files
   const std::set<std::pair<SSTId, int>> &deleted_files =
@@ -89,13 +88,18 @@ void VersionManager::ApplyNewChanges(
     latest_version_sst_info[file->level].push_back(file);
   }
 
-  // Create new latest version
+  // Update level 0' score
+  latest_levels_score[0] =
+      static_cast<double>(latest_version_sst_info[0].size()) /
+      static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
+
+  // new version becomes latest version
   {
     std::scoped_lock lock(mutex_);
     versions_.push_front(std::move(latest_version_));
     // Decreate ref count of old version
     versions_.front()->DecreaseRefCount();
-    latest_version_ = std::move(latest_tmp_version);
+    latest_version_ = std::move(new_version);
     // Each new version created has its refcount = 1
     latest_version_->IncreaseRefCount();
   }

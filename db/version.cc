@@ -106,8 +106,9 @@ const std::vector<double> &Version::GetImmutableLevelsScore() const {
 
 std::vector<double> &Version::GetLevelsScore() { return levels_score_; }
 
-size_t Version::GetNumberSSTLvl0Files() const {
-  return levels_sst_info_[0].size();
+size_t Version::GetNumberSSTFilesAtLevel(int level) const {
+  assert(level < levels_sst_info_.size());
+  return levels_sst_info_[level].size();
 }
 
 const uint64_t Version::GetVersionId() const { return version_id_; }

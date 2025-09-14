@@ -78,7 +78,7 @@ public:
   // ALL NON-CONST methods  are only called when building new version
   std::vector<double> &GetLevelsScore();
 
-  size_t GetNumberSSTLvl0Files() const;
+  size_t GetNumberSSTFilesAtLevel(int level) const;
 
   const uint64_t GetVersionId() const;
 
