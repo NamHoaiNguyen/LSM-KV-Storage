@@ -12,6 +12,7 @@ namespace sstable {
 BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
                          size_t size)
     : read_file_object_(read_file_object) {
+  assert(size > 0);
   buffer_.resize(size);
 }
 
