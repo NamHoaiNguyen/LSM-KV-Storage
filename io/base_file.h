@@ -41,9 +41,7 @@ public:
 
   virtual bool Open() = 0;
 
-  virtual ssize_t RandomRead(uint64_t offset, size_t size) = 0;
-
-  virtual Buffer *GetBuffer() = 0;
+  virtual ssize_t RandomRead(std::span<Byte> buffer, uint64_t offset) = 0;
 };
 
 } // namespace io

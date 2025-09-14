@@ -229,9 +229,8 @@ db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) const {
 
   // TODO(namnh) : Should cache this block.
   auto block_reader =
-      std::make_unique<BlockReader>(filename_, read_file_object_);
-  db::GetStatus status =
-      block_reader->SearchKey(block_offset, block_size, key, txn_id);
+      std::make_unique<BlockReader>(read_file_object_, block_size);
+  db::GetStatus status = block_reader->SearchKey(block_offset, key, txn_id);
 
   return status;
 }

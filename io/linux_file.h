@@ -60,17 +60,12 @@ public:
 
   bool Close() override;
 
-  ssize_t RandomRead(uint64_t offset,
-                     size_t size = kDefaultBufferSize) override;
-
-  Buffer *GetBuffer() override;
+  ssize_t RandomRead(std::span<Byte> buffer, uint64_t offset) override;
 
 private:
   std::string filename_;
 
   Fd fd_;
-
-  std::unique_ptr<Buffer> buffer_;
 };
 
 } // namespace io

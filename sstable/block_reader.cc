@@ -9,37 +9,40 @@ namespace kvs {
 
 namespace sstable {
 
-BlockReader::BlockReader(std::string_view filename,
-                         std::shared_ptr<io::ReadOnlyFile> read_file_object)
-    : read_file_object_(read_file_object) {}
+// TODO(namnh, CRITICAL) : Bug!!!
+// All blockreader(BR) share 1 fd and ONE BUFFER. So getting span from buffer of
+// each buffer can cause undefined behavior. For example, if BR1 read data into
+// buffer and get std::span from its. At the same time, BR2 also executes the
+// same thing. Now, when BR1 access span, it can be seg fault because span is
+// just a view of vector.
+BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
+                         size_t size)
+    : read_file_object_(read_file_object) {
+  buffer_.resize(size);
+}
 
-db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
-                                     std::string_view key, TxnId txn_id) const {
+db::GetStatus BlockReader::SearchKey(uint64_t offset, std::string_view key,
+                                     TxnId txn_id) {
   db::GetStatus status;
 
-  if (offset < 0 || size < 0) {
+  if (offset < 0) {
     return status;
   }
 
-  ssize_t bytes_read = read_file_object_->RandomRead(offset, size);
+  ssize_t bytes_read = read_file_object_->RandomRead(buffer_, offset);
   if (bytes_read < 0) {
     return status;
   }
 
-  io::Buffer *buffer = read_file_object_->GetBuffer();
-  if (!buffer) {
-    return status;
-  }
+  // std::span<const Byte> buffer_view = buffer_;
 
-  std::span<const Byte> buffer_view = buffer->GetImmutableBufferView();
-
-  int64_t last_block_offset = size - 1;
+  int64_t last_block_offset = buffer_.size() - 1;
   // 16 last bytes of lock contain metadata info(num entries + starting offset
   // of offset section)
   const uint64_t block_num_entries =
-      *reinterpret_cast<const uint64_t *>(&buffer_view[last_block_offset - 15]);
+      *reinterpret_cast<const uint64_t *>(&buffer_[last_block_offset - 15]);
   const uint64_t offset_offset_section =
-      *reinterpret_cast<const uint64_t *>(&buffer_view[last_block_offset - 7]);
+      *reinterpret_cast<const uint64_t *>(&buffer_[last_block_offset - 7]);
 
   // Binary search key in block based on offset
   uint64_t left = 0;
@@ -52,13 +55,13 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, uint64_t size,
 
     // Get value type of data entry
     uint64_t data_entry_offset =
-        GetDataEntryOffset(buffer_view, offset_offset_section, mid);
+        GetDataEntryOffset(buffer_, offset_offset_section, mid);
     db::ValueType value_type =
-        GetValueTypeFromDataEntry(buffer_view, data_entry_offset);
+        GetValueTypeFromDataEntry(buffer_, data_entry_offset);
 
     // Get key and(or) value of data entry
     auto [key_in_block, value_in_block] =
-        GetKeyValueFromDataEntry(buffer_view, data_entry_offset, value_type);
+        GetKeyValueFromDataEntry(buffer_, data_entry_offset, value_type);
     if (key_in_block == key) {
       status.type = value_type;
       status.value =

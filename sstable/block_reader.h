@@ -64,8 +64,7 @@ Extra format
 
 class BlockReader {
 public:
-  BlockReader(std::string_view filename,
-              std::shared_ptr<io::ReadOnlyFile> read_file_object);
+  BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object, size_t size);
   ~BlockReader() = default;
 
   // No copy allowed
@@ -76,8 +75,7 @@ public:
   BlockReader(BlockReader &&) = default;
   BlockReader &operator=(BlockReader &&) = default;
 
-  db::GetStatus SearchKey(uint64_t offset, uint64_t size, std::string_view key,
-                          TxnId txn_id) const;
+  db::GetStatus SearchKey(uint64_t offset, std::string_view key, TxnId txn_id);
 
 private:
   // Get starting offset of data entry at index entry_index(th) base on

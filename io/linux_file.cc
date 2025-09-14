@@ -91,7 +91,7 @@ ssize_t LinuxWriteOnlyFile::Append_(const uint8_t *buffer, size_t size,
 // ===========================Start LinuxReadOnlyFile===========================
 
 LinuxReadOnlyFile::LinuxReadOnlyFile(std::string_view filename)
-    : filename_(std::move(filename)), buffer_(std::make_unique<Buffer>()) {}
+    : filename_(std::move(filename)) {}
 
 LinuxReadOnlyFile::~LinuxReadOnlyFile() { Close(); }
 
@@ -113,19 +113,15 @@ bool LinuxReadOnlyFile::Close() {
   return true;
 }
 
-ssize_t LinuxReadOnlyFile::RandomRead(uint64_t offset, size_t size) {
-  size = std::min(size, kDefaultBufferSize);
-
-  ssize_t read_bytes = ::pread(fd_, buffer_->GetBuffer().data(), size,
-                               static_cast<off64_t>(offset));
+ssize_t LinuxReadOnlyFile::RandomRead(std::span<Byte> buffer, uint64_t offset) {
+  ssize_t read_bytes =
+      ::pread(fd_, buffer.data(), buffer.size(), static_cast<off64_t>(offset));
   if (read_bytes < 0) {
     return -1;
   }
 
   return read_bytes;
 }
-
-Buffer *LinuxReadOnlyFile::GetBuffer() { return buffer_.get(); }
 
 // ===========================End LinuxReadOnlyFile===========================
 
