@@ -65,7 +65,7 @@ public:
 
   std::optional<int> GetLevelToCompact() const;
 
-  void ExecCompaction();
+  void ExecuteCompaction();
 
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
   GetImmutableSSTMetadata() const;

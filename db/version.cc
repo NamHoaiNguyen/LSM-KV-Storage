@@ -83,7 +83,7 @@ std::optional<int> Version::GetLevelToCompact() const {
   return level_to_compact;
 }
 
-void Version::ExecCompaction() {
+void Version::ExecuteCompaction() {
   compact_ = std::make_unique<Compact>(this);
   compact_->PickCompact();
 

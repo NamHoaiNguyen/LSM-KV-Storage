@@ -76,7 +76,9 @@ private:
                     std::unique_ptr<VersionEdit> &version_edit,
                     std::latch &work_done);
 
-  void TriggerCompaction();
+  void MaybeScheduleCompaction();
+
+  void ExecuteBackgroundCompaction();
 
   const std::string dbname_;
 
@@ -98,11 +100,13 @@ private:
 
   std::unique_ptr<mvcc::TransactionManager> txn_manager_;
 
+  std::unique_ptr<Config> config_;
+
+  std::atomic<bool> background_compaction_scheduled_;
+
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
   kvs::ThreadPool *thread_pool_;
-
-  std::unique_ptr<Config> config_;
 
   std::unique_ptr<VersionManager> version_manager_;
 

@@ -34,6 +34,7 @@ DBImpl::DBImpl(bool is_testing)
     : next_sstable_id_(0), memtable_(std::make_unique<MemTable>()),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
       config_(std::make_unique<Config>(is_testing)),
+      background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
       version_manager_(std::make_unique<VersionManager>(this, config_.get(),
                                                         thread_pool_)) {}
@@ -153,9 +154,7 @@ void DBImpl::FlushMemTableJob() {
     cv_.notify_all();
   }
 
-  if (version_manager_->NeedSSTCompaction()) {
-    TriggerCompaction();
-  }
+  MaybeScheduleCompaction();
 }
 
 void DBImpl::CreateNewSST(
@@ -198,7 +197,25 @@ void DBImpl::CreateNewSST(
   work_done.count_down();
 }
 
-void DBImpl::TriggerCompaction() {}
+void DBImpl::MaybeScheduleCompaction() {
+  if (background_compaction_scheduled_) {
+    // only 1 compaction happens at a moment. This condition is highest
+    // privilege
+    return;
+  }
+
+  if (!version_manager_->NeedSSTCompaction()) {
+    return;
+  }
+
+  background_compaction_scheduled_ = true;
+  thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
+}
+
+void DBImpl::ExecuteBackgroundCompaction() {
+  // Maybe we still need to compact another round
+  MaybeScheduleCompaction();
+}
 
 uint64_t DBImpl::GetNextSSTId() {
   next_sstable_id_.fetch_add(1);
