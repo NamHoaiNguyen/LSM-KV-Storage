@@ -9,12 +9,6 @@ namespace kvs {
 
 namespace sstable {
 
-// TODO(namnh, CRITICAL) : Bug!!!
-// All blockreader(BR) share 1 fd and ONE BUFFER. So getting span from buffer of
-// each buffer can cause undefined behavior. For example, if BR1 read data into
-// buffer and get std::span from its. At the same time, BR2 also executes the
-// same thing. Now, when BR1 access span, it can be seg fault because span is
-// just a view of vector.
 BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
                          size_t size)
     : read_file_object_(read_file_object) {
@@ -34,8 +28,6 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, std::string_view key,
     return status;
   }
 
-  // std::span<const Byte> buffer_view = buffer_;
-
   int64_t last_block_offset = buffer_.size() - 1;
   // 16 last bytes of lock contain metadata info(num entries + starting offset
   // of offset section)
@@ -47,8 +39,6 @@ db::GetStatus BlockReader::SearchKey(uint64_t offset, std::string_view key,
   // Binary search key in block based on offset
   uint64_t left = 0;
   uint64_t right = block_num_entries;
-
-  // std::pair<std::string_view, std::optional<std::string_view>> test;
 
   while (left <= right) {
     uint64_t mid = left + (right - left) / 2;
