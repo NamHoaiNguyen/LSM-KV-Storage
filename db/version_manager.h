@@ -43,7 +43,7 @@ public:
   // Create latest version and apply new SSTs metadata
   void ApplyNewChanges(std::unique_ptr<VersionEdit> version_edit);
 
-  bool NeedSSTCompaction();
+  bool NeedSSTCompaction() const;
 
   // For testing
   const std::deque<std::unique_ptr<Version>> &GetVersions() const;

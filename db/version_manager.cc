@@ -105,7 +105,7 @@ void VersionManager::ApplyNewChanges(
   latest_version_->IncreaseRefCount();
 }
 
-bool VersionManager::NeedSSTCompaction() {
+bool VersionManager::NeedSSTCompaction() const {
   std::scoped_lock lock(mutex_);
   if (!latest_version_) {
     return false;
