@@ -120,7 +120,7 @@ VersionManager::GetVersions() const {
   return versions_;
 }
 
-Version *VersionManager::GetLatestVersion() const {
+const Version *VersionManager::GetLatestVersion() const {
   std::scoped_lock lock(mutex_);
   return latest_version_.get();
 }

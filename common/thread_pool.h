@@ -48,7 +48,7 @@ private:
 };
 
 ThreadPool::ThreadPool() : shutdown_(false) {
-  unsigned int num_threads_ = std::thread::hardware_concurrency();
+  num_threads_ = std::thread::hardware_concurrency();
   if (num_threads_ == 0) {
     num_threads_ = kDefaultNumThreadsInThreadPool;
   }

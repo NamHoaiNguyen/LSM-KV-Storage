@@ -55,9 +55,9 @@ public:
   Version(Version &&) = default;
   Version &operator=(Version &&) = default;
 
-  void IncreaseRefCount();
+  void IncreaseRefCount() const;
 
-  void DecreaseRefCount();
+  void DecreaseRefCount() const;
 
   GetStatus Get(std::string_view key, TxnId txn_id) const;
 
@@ -86,7 +86,7 @@ public:
 
   // For testing
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-  GetSstMetadata();
+  GetSstMetadata() const;
 
 private:
   const uint64_t version_id_;
@@ -106,7 +106,7 @@ private:
 
   std::vector<double> levels_score_;
 
-  std::atomic<uint64_t> ref_count_;
+  mutable std::atomic<uint64_t> ref_count_;
 
   // Below are objects that Version does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
@@ -118,7 +118,7 @@ private:
   VersionManager *version_manager_;
 
   // Mutex to protect ref_count_
-  std::mutex ref_count_mutex_;
+  mutable std::mutex ref_count_mutex_;
 };
 
 } // namespace db

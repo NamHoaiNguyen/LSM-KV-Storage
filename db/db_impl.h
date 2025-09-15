@@ -58,7 +58,7 @@ public:
 
   const Config *const GetConfig();
 
-  const VersionManager *GetVersionManager();
+  const VersionManager *GetVersionManager() const;
 
   void ForceFlushMemTable();
 
@@ -73,8 +73,7 @@ private:
   void FlushMemTableJob();
 
   void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
-                    VersionEdit* version_edit,
-                    std::latch &work_done);
+                    VersionEdit *version_edit, std::latch &work_done);
 
   void MaybeScheduleCompaction();
 

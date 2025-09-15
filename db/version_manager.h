@@ -48,7 +48,7 @@ public:
   // For testing
   const std::deque<std::unique_ptr<Version>> &GetVersions() const;
 
-  Version *GetLatestVersion() const;
+  const Version *GetLatestVersion() const;
 
   const Config *const GetConfig();
 

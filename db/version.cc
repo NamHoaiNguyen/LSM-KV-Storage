@@ -27,12 +27,12 @@ Version::Version(uint64_t version_id, const Config *config,
   assert(config_ && thread_pool_ && version_manager_);
 }
 
-void Version::IncreaseRefCount() {
+void Version::IncreaseRefCount() const {
   std::scoped_lock lock(ref_count_mutex_);
   ref_count_++;
 }
 
-void Version::DecreaseRefCount() {
+void Version::DecreaseRefCount() const {
   std::scoped_lock lock(ref_count_mutex_);
   ref_count_--;
   if (ref_count_ == 0) {
@@ -119,7 +119,7 @@ uint64_t Version::GetRefCount() const {
 
 // For testing
 const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-Version::GetSstMetadata() {
+Version::GetSstMetadata() const {
   return levels_sst_info_;
 }
 

@@ -74,7 +74,7 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
   }
 
   // TODO(nanmh) : Does it need to acquire lock when looking up key in SSTs?
-  Version *version = version_manager_->GetLatestVersion();
+  const Version *version = version_manager_->GetLatestVersion();
   if (!version) {
     return std::nullopt;
   }
@@ -92,7 +92,7 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::unique_lock rwlock(mutex_);
   // Stop writing when numbers of immutable memtable reach to threshold
-  //TODO(namnh): Write Stop problem. Improve in future
+  // TODO(namnh): Write Stop problem. Improve in future
   cv_.wait(rwlock, [this]() {
     return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
   });
@@ -137,8 +137,8 @@ void DBImpl::FlushMemTableJob() {
     std::scoped_lock rwlock(mutex_);
     for (const auto &immutable_memtable : immutable_memtables_) {
       thread_pool_->Enqueue(&DBImpl::CreateNewSST, this,
-                            std::cref(immutable_memtable),
-                            version_edit.get(), std::ref(all_done));
+                            std::cref(immutable_memtable), version_edit.get(),
+                            std::ref(all_done));
     }
   }
 
@@ -161,7 +161,7 @@ void DBImpl::FlushMemTableJob() {
 
 void DBImpl::CreateNewSST(
     const std::unique_ptr<BaseMemTable> &immutable_memtable,
-    VersionEdit* version_edit, std::latch &work_done) {
+    VersionEdit *version_edit, std::latch &work_done) {
   assert(version_edit);
 
   uint64_t sst_id = GetNextSSTId();
@@ -215,14 +215,14 @@ void DBImpl::MaybeScheduleCompaction() {
 }
 
 void DBImpl::ExecuteBackgroundCompaction() {
-  Version *latest_version = version_manager_->GetLatestVersion();
-  if (!latest_version) {
+  const Version *version = version_manager_->GetLatestVersion();
+  if (!version) {
     return;
   }
 
   version->IncreaseRefCount();
   auto version_edit = std::make_unique<VersionEdit>();
-  auto compact = std::make_unique<Compact>(latest_version, version_edit.get());
+  auto compact = std::make_unique<Compact>(version, version_edit.get());
   compact->PickCompact();
   version->DecreaseRefCount();
 
@@ -240,7 +240,7 @@ uint64_t DBImpl::GetNextSSTId() {
 
 const Config *const DBImpl::GetConfig() { return config_.get(); }
 
-const VersionManager *DBImpl::GetVersionManager() {
+const VersionManager *DBImpl::GetVersionManager() const {
   return version_manager_.get();
 }
 
