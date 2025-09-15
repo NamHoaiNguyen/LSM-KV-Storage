@@ -1,5 +1,5 @@
-#ifndef SSTABLE_TABLE_H
-#define SSTABLE_TABLE_H
+#ifndef SSTABLE_TABLE_BUILDER_H
+#define SSTABLE_TABLE_BUILDER_H
 
 #include "common/macros.h"
 #include "db/status.h"
@@ -60,19 +60,20 @@ class BlockIndex;
 // that work like a snapshot of all SST files at the time an operation is
 // executed, mutex is not needed. Because a SST is only visible after writing to
 // disk finishes and only latest version sees this visibility
-class Table {
+class TableBuilder {
 public:
-  Table(std::string &&filename, uint64_t table_id, const db::Config *config);
+  TableBuilder(std::string &&filename, uint64_t table_id,
+               const db::Config *config);
 
-  ~Table() = default;
+  ~TableBuilder() = default;
 
   // Copy constructor/assignment
-  Table(const Table &) = default;
-  Table &operator=(Table &) = default;
+  TableBuilder(const TableBuilder &) = default;
+  TableBuilder &operator=(TableBuilder &) = default;
 
   // Move constructor/assignment
-  Table(Table &&) = default;
-  Table &operator=(Table &&) = default;
+  TableBuilder(TableBuilder &&) = default;
+  TableBuilder &operator=(TableBuilder &&) = default;
 
   // Add new key/value pairs to SST
   // Entries MUST be sorted in ascending order before be added
@@ -158,4 +159,4 @@ private:
 
 } // namespace kvs
 
-#endif // SSTABLE_TABLE_H
+#endif // SSTABLE_TABLE_BUILDER_H

@@ -12,7 +12,7 @@
 namespace kvs {
 
 namespace sstable {
-class Table;
+class TableBuilder;
 }
 
 namespace db {
@@ -28,7 +28,7 @@ struct SSTMetadata {
 
   std::string largest_key;
 
-  std::shared_ptr<sstable::Table> table_;
+  std::shared_ptr<sstable::TableBuilder> table_;
 };
 
 class VersionEdit {
@@ -47,7 +47,7 @@ public:
 
   void AddNewFiles(SSTId sst_id, int level, std::string_view smallest_key,
                    std::string_view laragest_key,
-                   std::shared_ptr<sstable::Table> table);
+                   std::shared_ptr<sstable::TableBuilder> table);
 
   // Add files that need to be deleted in new version
   void RemoveFiles(int level, SSTId sst_id);

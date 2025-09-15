@@ -5,10 +5,8 @@ add_library(sstable
   block_index.h
   block_reader.cc
   block_reader.h
-  # table_builder.cc
-  # table_builder.h
-  table.cc
-  table.h
+  table_builder.cc
+  table_builder.h
 )
 
 target_include_directories(sstable PUBLIC ${CMAKE_SOURCE_DIR})

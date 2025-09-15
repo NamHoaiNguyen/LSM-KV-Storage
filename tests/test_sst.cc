@@ -11,7 +11,7 @@
 #include "sstable/block_builder.h"
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
-#include "sstable/table.h"
+#include "sstable/table_builder.h"
 
 #include <cmath>
 #include <memory>
@@ -78,8 +78,8 @@ TEST(TableTest, BasicEncode) {
 
   std::string filename = "/home/hoainam/self/biggg/lsm-kv-storage/data/1.sst";
   uint64_t table_id = 1;
-  auto table = std::make_unique<sstable::Table>(std::move(filename), table_id,
-                                                config.get());
+  auto table = std::make_unique<sstable::TableBuilder>(std::move(filename),
+                                                       table_id, config.get());
   table->GetWriteOnlyFileObject()->Open();
 
   std::string key1 = "apple";

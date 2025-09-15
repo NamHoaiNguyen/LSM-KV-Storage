@@ -17,7 +17,7 @@
 #include "mvcc/transaction_manager.h"
 #include "sstable/block_builder.h"
 #include "sstable/block_index.h"
-#include "sstable/table.h"
+#include "sstable/table_builder.h"
 
 // libC++
 #include <algorithm>
@@ -168,8 +168,8 @@ void DBImpl::CreateNewSST(
 
   std::string filename =
       config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
-  auto new_sst = std::make_shared<sstable::Table>(std::move(filename), sst_id,
-                                                  config_.get());
+  auto new_sst = std::make_shared<sstable::TableBuilder>(std::move(filename),
+                                                         sst_id, config_.get());
   if (!new_sst->Open()) {
     work_done.count_down();
     return;

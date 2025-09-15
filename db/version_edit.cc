@@ -1,6 +1,6 @@
 #include "db/version_edit.h"
 
-#include "sstable/table.h"
+#include "sstable/table_builder.h"
 
 namespace kvs {
 
@@ -8,7 +8,7 @@ namespace db {
 void VersionEdit::AddNewFiles(SSTId sst_id, int level,
                               std::string_view smallest_key,
                               std::string_view laragest_key,
-                              std::shared_ptr<sstable::Table> table) {
+                              std::shared_ptr<sstable::TableBuilder> table) {
   auto sst_metadata = std::make_shared<SSTMetadata>();
   sst_metadata->sst_id = sst_id;
   sst_metadata->level = level;

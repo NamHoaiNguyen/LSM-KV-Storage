@@ -3,7 +3,7 @@
 #include "common/macros.h"
 #include "db/db_impl.h"
 #include "db/version.h"
-#include "sstable/table.h"
+#include "sstable/table_builder.h"
 
 // libC++
 #include <cassert>
@@ -13,7 +13,7 @@ namespace kvs {
 
 namespace db {
 
-Compact::Compact(const Version *version, VersionEdit* version_edit)
+Compact::Compact(const Version *version, VersionEdit *version_edit)
     : version_(version), version_edit_(version_edit) {}
 
 void Compact::PickCompact() {
@@ -84,7 +84,8 @@ std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
         largest_key >=
             version_->levels_sst_info_[0][i]->table_->GetLargestKey()) {
       // If overllaping, this file should also be added to compact list
-      files_need_compaction_[0].push_back(version_->levels_sst_info_[0][i].get());
+      files_need_compaction_[0].push_back(
+          version_->levels_sst_info_[0][i].get());
 
       if (version_->levels_sst_info_[0][i]->table_->GetSmallestKey() <
           smallest_key) {
@@ -124,7 +125,8 @@ void Compact::GetOverlappingSSTOtherLvls(int level,
             version_->levels_sst_info_[level][i]->table_->GetLargestKey() &&
         largest_key >=
             version_->levels_sst_info_[level][i]->table_->GetSmallestKey()) {
-      files_need_compaction_[1].push_back(version_->levels_sst_info_[level][i].get());
+      files_need_compaction_[1].push_back(
+          version_->levels_sst_info_[level][i].get());
     } else {
       // Because at these levels, files are not overllaping with each other.
       // Because 'i.smallest_key' > 'i - 1.largest_key' then if file at "i"

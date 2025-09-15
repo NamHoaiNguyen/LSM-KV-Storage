@@ -1,4 +1,4 @@
-#include "sstable/table.h"
+#include "sstable/table_builder.h"
 
 #include "db/config.h"
 #include "db/memtable_iterator.h"
@@ -15,16 +15,16 @@ namespace kvs {
 
 namespace sstable {
 
-Table::Table(std::string &&filename, uint64_t table_id,
-             const db::Config *config)
+TableBuilder::TableBuilder(std::string &&filename, uint64_t table_id,
+                           const db::Config *config)
     : filename_(std::move(filename)), table_id_(table_id),
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), config_(config) {}
 
-void Table::AddEntry(std::string_view key,
-                     std::optional<std::string_view> value, TxnId txn_id,
-                     db::ValueType value_type) {
+void TableBuilder::AddEntry(std::string_view key,
+                            std::optional<std::string_view> value, TxnId txn_id,
+                            db::ValueType value_type) {
   assert(key.data() && value_type != db::ValueType::INVALID ||
          txn_id != INVALID_TXN_ID);
 
@@ -51,7 +51,7 @@ void Table::AddEntry(std::string_view key,
   }
 }
 
-void Table::FlushBlock() {
+void TableBuilder::FlushBlock() {
   assert(write_file_object_);
 
   // Starting offset of block
@@ -92,10 +92,10 @@ void Table::FlushBlock() {
   block_data_->Reset();
 }
 
-void Table::AddIndexBlockEntry(std::string_view first_key,
-                               std::string_view last_key,
-                               uint64_t block_start_offset,
-                               uint64_t block_length) {
+void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
+                                      std::string_view last_key,
+                                      uint64_t block_start_offset,
+                                      uint64_t block_length) {
   // Safe, because we limit length of key is less than 2^32
   const uint32_t first_key_len = static_cast<uint32_t>(first_key.size());
   const Byte *const first_key_len_bytes =
@@ -138,7 +138,7 @@ void Table::AddIndexBlockEntry(std::string_view first_key,
                              block_length_buff + sizeof(uint64_t));
 }
 
-void Table::Finish() {
+void TableBuilder::Finish() {
   // Flush remaining data to
   FlushBlock();
 
@@ -168,7 +168,7 @@ void Table::Finish() {
   }
 }
 
-void Table::EncodeExtraInfo() {
+void TableBuilder::EncodeExtraInfo() {
   const Byte *const meta_section_offset_bytes =
       reinterpret_cast<const Byte *const>(&current_offset_);
   // Insert starting offset of meta section
@@ -196,7 +196,7 @@ void Table::EncodeExtraInfo() {
                        max_txnid_bytes + sizeof(uint64_t));
 }
 
-bool Table::Open() {
+bool TableBuilder::Open() {
   if (!write_file_object_) {
     return false;
   }
@@ -204,13 +204,14 @@ bool Table::Open() {
   return write_file_object_->Open();
 }
 
-void Table::Read() {
+void TableBuilder::Read() {
   if (!read_file_object_) {
     read_file_object_ = std::make_unique<io::LinuxReadOnlyFile>(filename_);
   }
 }
 
-db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) const {
+db::GetStatus TableBuilder::SearchKey(std::string_view key,
+                                      TxnId txn_id) const {
   // Find the block that have smallest largest key that >= key
   int left = 0;
   int right = block_index_.size();
@@ -235,20 +236,26 @@ db::GetStatus Table::SearchKey(std::string_view key, TxnId txn_id) const {
   return status;
 }
 
-std::string_view Table::GetSmallestKey() const { return table_smallest_key_; }
+std::string_view TableBuilder::GetSmallestKey() const {
+  return table_smallest_key_;
+}
 
-std::string_view Table::GetLargestKey() const { return table_largest_key_; }
+std::string_view TableBuilder::GetLargestKey() const {
+  return table_largest_key_;
+}
 
-uint64_t Table::GetTableId() const { return table_id_; };
+uint64_t TableBuilder::GetTableId() const { return table_id_; };
 
 // For testing
-BlockBuilder *Table::GetBlockData() { return block_data_.get(); };
+BlockBuilder *TableBuilder::GetBlockData() { return block_data_.get(); };
 
-io::WriteOnlyFile *Table::GetWriteOnlyFileObject() {
+io::WriteOnlyFile *TableBuilder::GetWriteOnlyFileObject() {
   return write_file_object_.get();
 }
 
-const std::vector<BlockIndex> &Table::GetBlockIndex() { return block_index_; }
+const std::vector<BlockIndex> &TableBuilder::GetBlockIndex() {
+  return block_index_;
+}
 
 } // namespace sstable
 

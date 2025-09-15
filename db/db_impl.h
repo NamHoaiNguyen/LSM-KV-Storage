@@ -24,7 +24,7 @@ class TransactionManager;
 } // namespace mvcc
 
 namespace sstable {
-class Table;
+class TableBuilder;
 } // namespace sstable
 
 namespace db {

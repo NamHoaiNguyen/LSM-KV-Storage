@@ -11,7 +11,7 @@
 #include "io/base_file.h"
 #include "sstable/block_builder.h"
 #include "sstable/block_index.h"
-#include "sstable/table.h"
+#include "sstable/table_builder.h"
 
 namespace kvs {
 
