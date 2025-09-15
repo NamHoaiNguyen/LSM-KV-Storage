@@ -73,7 +73,7 @@ private:
   void FlushMemTableJob();
 
   void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
-                    std::unique_ptr<VersionEdit> &version_edit,
+                    VersionEdit* version_edit,
                     std::latch &work_done);
 
   void MaybeScheduleCompaction();
@@ -99,6 +99,8 @@ private:
   std::vector<const BaseMemTable *> flushing_memtables_;
 
   std::unique_ptr<mvcc::TransactionManager> txn_manager_;
+
+  std::vector<std::string> compact_pointer_;
 
   std::unique_ptr<Config> config_;
 

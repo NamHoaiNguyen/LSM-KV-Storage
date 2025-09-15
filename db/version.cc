@@ -27,9 +27,13 @@ Version::Version(uint64_t version_id, const Config *config,
   assert(config_ && thread_pool_ && version_manager_);
 }
 
-void Version::IncreaseRefCount() { ref_count_++; }
+void Version::IncreaseRefCount() {
+  std::scoped_lock lock(ref_count_mutex_);
+  ref_count_++;
+}
 
 void Version::DecreaseRefCount() {
+  std::scoped_lock lock(ref_count_mutex_);
   ref_count_--;
   if (ref_count_ == 0) {
     thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
@@ -83,18 +87,12 @@ std::optional<int> Version::GetLevelToCompact() const {
   return level_to_compact;
 }
 
-void Version::ExecuteCompaction() {
-  compact_ = std::make_unique<Compact>(this);
-  compact_->PickCompact();
-
-  // TODO(namnh) : caculate score from level 1 - n after compaction
-}
-
 const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
 Version::GetImmutableSSTMetadata() const {
   return levels_sst_info_;
 }
 
+// This methos is ONLY called when building data for new version
 std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
 Version::GetSSTMetadata() {
   return levels_sst_info_;
@@ -104,6 +102,7 @@ const std::vector<double> &Version::GetImmutableLevelsScore() const {
   return levels_score_;
 }
 
+// This methos is ONLY called when building data for new version
 std::vector<double> &Version::GetLevelsScore() { return levels_score_; }
 
 size_t Version::GetNumberSSTFilesAtLevel(int level) const {
@@ -111,7 +110,12 @@ size_t Version::GetNumberSSTFilesAtLevel(int level) const {
   return levels_sst_info_[level].size();
 }
 
-const uint64_t Version::GetVersionId() const { return version_id_; }
+uint64_t Version::GetVersionId() const { return version_id_; }
+
+uint64_t Version::GetRefCount() const {
+  std::scoped_lock lock(ref_count_mutex_);
+  return ref_count_;
+}
 
 // For testing
 const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &

@@ -65,8 +65,6 @@ public:
 
   std::optional<int> GetLevelToCompact() const;
 
-  void ExecuteCompaction();
-
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
   GetImmutableSSTMetadata() const;
 
@@ -80,7 +78,9 @@ public:
 
   size_t GetNumberSSTFilesAtLevel(int level) const;
 
-  const uint64_t GetVersionId() const;
+  uint64_t GetVersionId() const;
+
+  uint64_t GetRefCount() const;
 
   friend class Compact;
 
@@ -98,8 +98,6 @@ private:
   // SSTMetadata data structure
   // std::vector<std::vector<std::unique_ptr<SSTMetadata>>> levels_sst_info_;
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>> levels_sst_info_;
-
-  std::unique_ptr<Compact> compact_;
 
   // Level that need to compact
   uint8_t compaction_level_;
@@ -119,7 +117,8 @@ private:
 
   VersionManager *version_manager_;
 
-  std::mutex mutex_;
+  // Mutex to protect ref_count_
+  std::mutex ref_count_mutex_;
 };
 
 } // namespace db

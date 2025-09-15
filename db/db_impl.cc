@@ -47,6 +47,7 @@ DBImpl::~DBImpl() {
 void DBImpl::LoadDB() {
   config_->LoadConfig();
   // TODO(namnh) : remove after finish recovering flow
+  compact_pointer_.resize(config_->GetSSTNumLvels());
   version_manager_->CreateLatestVersion();
   // TODO(namnh) : Read ALL of SST files and init there info
 }
@@ -90,7 +91,8 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::unique_lock rwlock(mutex_);
-  // TODO(namnh): Write Stop problem. Improve in future
+  // Stop writing when numbers of immutable memtable reach to threshold
+  //TODO(namnh): Write Stop problem. Improve in future
   cv_.wait(rwlock, [this]() {
     return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
   });
@@ -136,7 +138,7 @@ void DBImpl::FlushMemTableJob() {
     for (const auto &immutable_memtable : immutable_memtables_) {
       thread_pool_->Enqueue(&DBImpl::CreateNewSST, this,
                             std::cref(immutable_memtable),
-                            std::ref(version_edit), std::ref(all_done));
+                            version_edit.get(), std::ref(all_done));
     }
   }
 
@@ -159,7 +161,7 @@ void DBImpl::FlushMemTableJob() {
 
 void DBImpl::CreateNewSST(
     const std::unique_ptr<BaseMemTable> &immutable_memtable,
-    std::unique_ptr<VersionEdit> &version_edit, std::latch &work_done) {
+    VersionEdit* version_edit, std::latch &work_done) {
   assert(version_edit);
 
   uint64_t sst_id = GetNextSSTId();
@@ -213,7 +215,21 @@ void DBImpl::MaybeScheduleCompaction() {
 }
 
 void DBImpl::ExecuteBackgroundCompaction() {
-  // Maybe we still need to compact another round
+  Version *latest_version = version_manager_->GetLatestVersion();
+  if (!latest_version) {
+    return;
+  }
+
+  version->IncreaseRefCount();
+  auto version_edit = std::make_unique<VersionEdit>();
+  auto compact = std::make_unique<Compact>(latest_version, version_edit.get());
+  compact->PickCompact();
+  version->DecreaseRefCount();
+
+  // Apply compact version edit(changes) to create new version
+  version_manager_->ApplyNewChanges(std::move(version_edit));
+
+  // Compaction can create many files, so maybe we need another compaction round
   MaybeScheduleCompaction();
 }
 

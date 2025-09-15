@@ -98,6 +98,7 @@ void VersionManager::ApplyNewChanges(
   // new version becomes latest version
   versions_.push_front(std::move(latest_version_));
   // Decreate ref count of old version
+  assert(versions_.front()->GetRefCount() > 0);
   versions_.front()->DecreaseRefCount();
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
