@@ -8,11 +8,17 @@
 #include <queue>
 #include <vector>
 
+namespace {
+
+constexpr unsigned int kDefaultNumThreadsInThreadPool = 8;
+
+} // namespace
+
 namespace kvs {
 
 class ThreadPool {
 public:
-  inline ThreadPool(int num_threads = 8);
+  inline ThreadPool();
 
   inline ~ThreadPool();
 
@@ -32,7 +38,7 @@ private:
 
   std::mutex mutex_;
 
-  int num_threads_;
+  unsigned int num_threads_;
 
   std::atomic<bool> shutdown_;
 
@@ -41,8 +47,12 @@ private:
   std::vector<std::thread> workers_;
 };
 
-ThreadPool::ThreadPool(int num_thread)
-    : num_threads_(num_thread), shutdown_(false) {
+ThreadPool::ThreadPool() : shutdown_(false) {
+  num_threads_ = std::thread::hardware_concurrency();
+  if (num_threads_ == 0) {
+    num_threads_ = kDefaultNumThreadsInThreadPool;
+  }
+
   for (int i = 0; i < num_threads_; i++) {
     workers_.emplace_back([this]() {
       while (!shutdown_) {

@@ -55,17 +55,15 @@ public:
   Version(Version &&) = default;
   Version &operator=(Version &&) = default;
 
-  void IncreaseRefCount();
+  void IncreaseRefCount() const;
 
-  void DecreaseRefCount();
+  void DecreaseRefCount() const;
 
   GetStatus Get(std::string_view key, TxnId txn_id) const;
 
   bool NeedCompaction() const;
 
   std::optional<int> GetLevelToCompact() const;
-
-  void ExecCompaction();
 
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
   GetImmutableSSTMetadata() const;
@@ -80,13 +78,15 @@ public:
 
   size_t GetNumberSSTFilesAtLevel(int level) const;
 
-  const uint64_t GetVersionId() const;
+  uint64_t GetVersionId() const;
+
+  uint64_t GetRefCount() const;
 
   friend class Compact;
 
   // For testing
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-  GetSstMetadata();
+  GetSstMetadata() const;
 
 private:
   const uint64_t version_id_;
@@ -99,8 +99,6 @@ private:
   // std::vector<std::vector<std::unique_ptr<SSTMetadata>>> levels_sst_info_;
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>> levels_sst_info_;
 
-  std::unique_ptr<Compact> compact_;
-
   // Level that need to compact
   uint8_t compaction_level_;
 
@@ -108,7 +106,7 @@ private:
 
   std::vector<double> levels_score_;
 
-  std::atomic<uint64_t> ref_count_;
+  mutable std::atomic<uint64_t> ref_count_;
 
   // Below are objects that Version does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
@@ -119,7 +117,8 @@ private:
 
   VersionManager *version_manager_;
 
-  std::mutex mutex_;
+  // Mutex to protect ref_count_
+  mutable std::mutex ref_count_mutex_;
 };
 
 } // namespace db

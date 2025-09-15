@@ -34,6 +34,7 @@ DBImpl::DBImpl(bool is_testing)
     : next_sstable_id_(0), memtable_(std::make_unique<MemTable>()),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
       config_(std::make_unique<Config>(is_testing)),
+      background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
       version_manager_(std::make_unique<VersionManager>(this, config_.get(),
                                                         thread_pool_)) {}
@@ -46,6 +47,7 @@ DBImpl::~DBImpl() {
 void DBImpl::LoadDB() {
   config_->LoadConfig();
   // TODO(namnh) : remove after finish recovering flow
+  compact_pointer_.resize(config_->GetSSTNumLvels());
   version_manager_->CreateLatestVersion();
   // TODO(namnh) : Read ALL of SST files and init there info
 }
@@ -72,7 +74,7 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
   }
 
   // TODO(nanmh) : Does it need to acquire lock when looking up key in SSTs?
-  Version *version = version_manager_->GetLatestVersion();
+  const Version *version = version_manager_->GetLatestVersion();
   if (!version) {
     return std::nullopt;
   }
@@ -89,6 +91,7 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   std::unique_lock rwlock(mutex_);
+  // Stop writing when numbers of immutable memtable reach to threshold
   // TODO(namnh): Write Stop problem. Improve in future
   cv_.wait(rwlock, [this]() {
     return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
@@ -134,8 +137,8 @@ void DBImpl::FlushMemTableJob() {
     std::scoped_lock rwlock(mutex_);
     for (const auto &immutable_memtable : immutable_memtables_) {
       thread_pool_->Enqueue(&DBImpl::CreateNewSST, this,
-                            std::cref(immutable_memtable),
-                            std::ref(version_edit), std::ref(all_done));
+                            std::cref(immutable_memtable), version_edit.get(),
+                            std::ref(all_done));
     }
   }
 
@@ -153,14 +156,12 @@ void DBImpl::FlushMemTableJob() {
     cv_.notify_all();
   }
 
-  if (version_manager_->NeedSSTCompaction()) {
-    TriggerCompaction();
-  }
+  MaybeScheduleCompaction();
 }
 
 void DBImpl::CreateNewSST(
     const std::unique_ptr<BaseMemTable> &immutable_memtable,
-    std::unique_ptr<VersionEdit> &version_edit, std::latch &work_done) {
+    VersionEdit *version_edit, std::latch &work_done) {
   assert(version_edit);
 
   uint64_t sst_id = GetNextSSTId();
@@ -198,7 +199,39 @@ void DBImpl::CreateNewSST(
   work_done.count_down();
 }
 
-void DBImpl::TriggerCompaction() {}
+void DBImpl::MaybeScheduleCompaction() {
+  if (background_compaction_scheduled_) {
+    // only 1 compaction happens at a moment. This condition is highest
+    // privilege
+    return;
+  }
+
+  if (!version_manager_->NeedSSTCompaction()) {
+    return;
+  }
+
+  background_compaction_scheduled_ = true;
+  thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
+}
+
+void DBImpl::ExecuteBackgroundCompaction() {
+  const Version *version = version_manager_->GetLatestVersion();
+  if (!version) {
+    return;
+  }
+
+  version->IncreaseRefCount();
+  auto version_edit = std::make_unique<VersionEdit>();
+  auto compact = std::make_unique<Compact>(version, version_edit.get());
+  compact->PickCompact();
+  version->DecreaseRefCount();
+
+  // Apply compact version edit(changes) to create new version
+  version_manager_->ApplyNewChanges(std::move(version_edit));
+
+  // Compaction can create many files, so maybe we need another compaction round
+  MaybeScheduleCompaction();
+}
 
 uint64_t DBImpl::GetNextSSTId() {
   next_sstable_id_.fetch_add(1);
@@ -207,7 +240,7 @@ uint64_t DBImpl::GetNextSSTId() {
 
 const Config *const DBImpl::GetConfig() { return config_.get(); }
 
-const VersionManager *DBImpl::GetVersionManager() {
+const VersionManager *DBImpl::GetVersionManager() const {
   return version_manager_.get();
 }
 

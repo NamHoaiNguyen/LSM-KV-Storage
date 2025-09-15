@@ -15,8 +15,7 @@ namespace db {
 // KEY RULE: Compact is only triggerd by LATEST version
 class Compact {
 public:
-  Compact() = default;
-  explicit Compact(const Version *version);
+  Compact(const Version *version, VersionEdit* version_edit);
 
   ~Compact() = default;
 
@@ -47,15 +46,18 @@ private:
                                                 std::string_view smallest_key,
                                                 std::string_view largest_key);
 
+  // Execute compaction based on compact info
   void DoCompactJob();
 
   const Version *version_;
+
+  VersionEdit* version_edit_;
 
   // NO need to acquire lock to protect this data structure. Because
   // new version is created when there is a change(create new SST, delete old
   // SST after compaction). So, each version has its own this data structure.
   // Note: These are also files that be deleted after finish compaction
-  std::vector<const SSTMetadata *> compact_info_[2];
+  std::vector<const SSTMetadata *> files_need_compaction_[2];
 };
 
 } // namespace db
