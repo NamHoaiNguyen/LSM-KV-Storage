@@ -43,6 +43,8 @@ void VersionManager::CreateLatestVersion() {
 
 void VersionManager::ApplyNewChanges(
     std::unique_ptr<VersionEdit> version_edit) {
+  std::scoped_lock lock(mutex_);
+
   assert(version_edit);
   assert(latest_version_);
 
@@ -94,15 +96,12 @@ void VersionManager::ApplyNewChanges(
       static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
 
   // new version becomes latest version
-  {
-    std::scoped_lock lock(mutex_);
-    versions_.push_front(std::move(latest_version_));
-    // Decreate ref count of old version
-    versions_.front()->DecreaseRefCount();
-    latest_version_ = std::move(new_version);
-    // Each new version created has its refcount = 1
-    latest_version_->IncreaseRefCount();
-  }
+  versions_.push_front(std::move(latest_version_));
+  // Decreate ref count of old version
+  versions_.front()->DecreaseRefCount();
+  latest_version_ = std::move(new_version);
+  // Each new version created has its refcount = 1
+  latest_version_->IncreaseRefCount();
 }
 
 bool VersionManager::NeedSSTCompaction() {
