@@ -39,10 +39,10 @@ MetaEntry format(block_meta)(in order from top to bottom, left to right)
 -----------------------------------------------------------------------------
 
 Extra format(in order from top to bottom, left to right)
------------------------------------------------------
-| Meta section offset(8B) | Meta section length(8B) |
-|  Min TransactionId(8B)  |  Max TransactionId(8B)  |
------------------------------------------------------
+-------------------------------------------------------------------------------
+| Total block entries(8B) | Meta section offset(8B) | Meta section length(8B) |
+|  Min TransactionId(8B)  |  Max TransactionId(8B)  |                         |
+-------------------------------------------------------------------------------
 */
 
 class TableReader {
