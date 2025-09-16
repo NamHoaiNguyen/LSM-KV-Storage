@@ -12,13 +12,48 @@
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
 #include "sstable/table_builder.h"
+#include "sstable/table_reader.h"
 
+#include <algorithm>
 #include <cmath>
+#include <filesystem>
 #include <memory>
+#include <random>
+#include <thread>
+
+namespace fs = std::filesystem;
 
 namespace kvs {
 
 namespace sstable {
+
+bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
+                                           db::DBImpl *db) {
+  int num_sst_files = 0;
+  int num_sst_files_info = 0;
+
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      num_sst_files++;
+    }
+  }
+
+  for (const auto &sst_file_info :
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
+    num_sst_files_info += sst_file_info.size();
+  }
+
+  return (num_sst_files == num_sst_files_info) ? true : false;
+}
+
+void ClearAllSstFiles(const db::Config *config) {
+  // clear all SST files created for next test
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      fs::remove(entry.path());
+    }
+  }
+}
 
 std::vector<Byte> data_encoded = {
     // Data section
@@ -145,6 +180,70 @@ TEST(TableTest, CreateTable) {
   EXPECT_EQ(level_sst_info[0][0]->sst_id, 1);
   EXPECT_EQ(level_sst_info[0][0]->level, 0);
   EXPECT_TRUE(level_sst_info[0][0]->table_->GetBlockIndex().size() != 0);
+
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+
+  ClearAllSstFiles(config);
+}
+
+TEST(TableTest, BasicTableReader) {
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB();
+  const db::Config *const config = db->GetConfig();
+  const int nums_elems = 10000000;
+
+  size_t memtable_size = 0;
+  std::string key, value, smallest_key, largest_key;
+  for (int i = 0; i < nums_elems; i++) {
+    key = "key" + std::to_string(i);
+    value = "value" + std::to_string(i);
+
+    if (smallest_key.empty()) {
+      smallest_key = key;
+    }
+    if (key > largest_key) {
+      largest_key = key;
+    }
+
+    db->Put(key, value, 0 /*txn_id*/);
+    memtable_size += key.size() + value.size();
+    if (memtable_size >= config->GetPerMemTableSizeLimit()) {
+      break;
+    }
+  }
+
+  // Force creating a new sst
+  db->ForceFlushMemTable();
+
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+
+  // There is only 1 sst file
+  std::string filename = config->GetSavedDataPath() + "1" + ".sst";
+
+  const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
+      &version_sst_metadata =
+          db->GetVersionManager()->GetLatestVersion()->GetSstMetadata();
+
+  EXPECT_EQ(
+      db->GetVersionManager()->GetLatestVersion()->GetSstMetadata()[0].size(),
+      1);
+
+  auto table_reader = std::make_unique<TableReader>(
+      std::move(filename), version_sst_metadata[0][0]->file_size);
+  EXPECT_TRUE(table_reader->Open());
+
+  const std::vector<BlockIndex> &block_index = table_reader->GetBlockIndex();
+
+  EXPECT_TRUE(!block_index.empty());
+
+  for (const auto &bi : block_index) {
+    EXPECT_TRUE(!bi.GetSmallestKey().empty());
+    EXPECT_TRUE(!bi.GetLargestKey().empty());
+    EXPECT_TRUE(bi.GetBlockStartOffset() > 0);
+    EXPECT_TRUE(bi.GetBlockSize() > 0);
+  }
+
+  ClearAllSstFiles(config);
 }
 
 } // namespace sstable

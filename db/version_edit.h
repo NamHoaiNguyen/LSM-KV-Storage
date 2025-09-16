@@ -22,6 +22,8 @@ struct SSTMetadata {
 
   int level;
 
+  uint64_t file_size;
+
   // TODO(namnh) : These two fields maybe are used in the future.(for table
   // cache)
   std::string smallest_key;
@@ -45,8 +47,8 @@ public:
   VersionEdit(VersionEdit &&) = default;
   VersionEdit &operator=(VersionEdit &&) = default;
 
-  void AddNewFiles(SSTId sst_id, int level, std::string_view smallest_key,
-                   std::string_view laragest_key,
+  void AddNewFiles(SSTId sst_id, int level, uint64_t file_size,
+                   std::string_view smallest_key, std::string_view laragest_key,
                    std::shared_ptr<sstable::TableBuilder> table);
 
   // Add files that need to be deleted in new version
