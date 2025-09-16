@@ -65,8 +65,6 @@ private:
   // Below are objects that VersionManager does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
   // allocate/deallocate, etc... these objects.
-  DBImpl *db_;
-
   const Config *config_;
 
   kvs::ThreadPool *thread_pool_;

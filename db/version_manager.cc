@@ -13,7 +13,7 @@ namespace db {
 
 VersionManager::VersionManager(DBImpl *db, const Config *config,
                                kvs::ThreadPool *thread_pool)
-    : db_(db), config_(config), thread_pool_(thread_pool) {}
+    : config_(config), thread_pool_(thread_pool) {}
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
@@ -117,8 +117,6 @@ const Version *VersionManager::GetLatestVersion() const {
 }
 
 const Config *const VersionManager::GetConfig() { return config_; }
-
-const DBImpl *const VersionManager::GetDB() { return db_; }
 
 } // namespace db
 

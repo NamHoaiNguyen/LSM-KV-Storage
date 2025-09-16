@@ -17,6 +17,8 @@
 #include "mvcc/transaction_manager.h"
 #include "sstable/block_builder.h"
 #include "sstable/table_builder.h"
+#include "sstable/table_reader.h"
+#include "sstable/table_reader_cache.h"
 
 // libC++
 #include <algorithm>
@@ -35,6 +37,7 @@ DBImpl::DBImpl(bool is_testing)
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
+      table_reader_cache_(std::make_unique<sstable::TableReaderCache>()),
       version_manager_(std::make_unique<VersionManager>(this, config_.get(),
                                                         thread_pool_)) {}
 

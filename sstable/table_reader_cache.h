@@ -18,7 +18,7 @@ class TableReader;
 
 class TableReaderCache {
 public:
-  TableReaderCache(int kDefaultCacheSize = 1000);
+  TableReaderCache() = default;
 
   ~TableReaderCache() = default;
 

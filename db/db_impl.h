@@ -24,6 +24,7 @@ class TransactionManager;
 
 namespace sstable {
 class TableBuilder;
+class TableReaderCache;
 } // namespace sstable
 
 namespace db {
@@ -107,6 +108,8 @@ private:
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
   kvs::ThreadPool *thread_pool_;
+
+  std::unique_ptr<sstable::TableReaderCache> table_reader_cache_;
 
   std::unique_ptr<VersionManager> version_manager_;
 
