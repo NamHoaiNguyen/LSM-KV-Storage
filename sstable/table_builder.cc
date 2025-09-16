@@ -20,7 +20,8 @@ TableBuilder::TableBuilder(std::string &&filename, uint64_t table_id,
     : filename_(std::move(filename)), table_id_(table_id),
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),
-      min_txnid_(UINT64_MAX), max_txnid_(0), config_(config) {}
+      min_txnid_(UINT64_MAX), max_txnid_(0), total_block_entries_(0),
+      config_(config) {}
 
 void TableBuilder::AddEntry(std::string_view key,
                             std::optional<std::string_view> value, TxnId txn_id,
@@ -152,6 +153,8 @@ void TableBuilder::Finish() {
   if (block_index_size < 0) {
     throw std::runtime_error("Error when flushing meta section of sstable");
   }
+
+  starting_offset_meta_section_ = current_offset_;
 
   // Encode extra_buffer and write it to page cache
   EncodeExtraInfo();

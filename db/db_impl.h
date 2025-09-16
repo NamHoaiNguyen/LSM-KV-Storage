@@ -3,7 +3,6 @@
 
 #include "common/macros.h"
 #include "db/version.h"
-#include "db/version_edit.h"
 
 #include <condition_variable>
 #include <functional>

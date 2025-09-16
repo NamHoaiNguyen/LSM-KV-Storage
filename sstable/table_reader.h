@@ -87,6 +87,8 @@ private:
 
   std::vector<BlockIndex> block_index_;
 
+  std::array<Byte, 40> extra_info_buffer;
+
   std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 };
 

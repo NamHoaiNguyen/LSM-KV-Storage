@@ -1,16 +1,7 @@
 #include "db/version_manager.h"
 
-#include "common/base_iterator.h"
 #include "common/thread_pool.h"
-#include "db/base_memtable.h"
-#include "db/compact.h"
 #include "db/config.h"
-#include "db/version.h"
-#include "db/version_manager.h"
-#include "io/base_file.h"
-#include "sstable/block_builder.h"
-#include "sstable/block_index.h"
-#include "sstable/table_builder.h"
 
 // libC++
 #include <algorithm>
@@ -74,8 +65,8 @@ void VersionManager::ApplyNewChanges(
       latest_levels_score[level] = old_levels_score[level];
 
       // If file are in list of should be deleted file, skip
-      if (deleted_files.find({sst_info->table_->GetTableId(),
-                              sst_info->level}) != deleted_files.end()) {
+      if (deleted_files.find({sst_info->table_id, sst_info->level}) !=
+          deleted_files.end()) {
         continue;
       }
 

@@ -135,7 +135,10 @@ private:
   // Largest key of each block
   std::string block_largest_key_;
 
+  // Current offthat in file that is written to
   uint64_t current_offset_;
+
+  uint64_t starting_offset_meta_section_;
 
   std::vector<BlockIndex> block_index_;
 
@@ -143,6 +146,7 @@ private:
 
   std::vector<Byte> extra_buffer_;
 
+  // Total number of block in sst
   uint64_t total_block_entries_;
 
   // Min transaction id of block

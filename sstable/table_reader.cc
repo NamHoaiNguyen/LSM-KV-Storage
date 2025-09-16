@@ -4,6 +4,8 @@
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
 
+#include <iostream>
+
 namespace kvs {
 constexpr int kDefaultExtraInfoSize = 40; // Bytes
 }
@@ -36,7 +38,7 @@ bool TableReader::Open() {
 void TableReader::DecodeExtraInfo(uint64_t *total_block_entries,
                                   uint64_t *starting_meta_section_offset,
                                   uint64_t *meta_section_length) {
-  std::array<Byte, kDefaultExtraInfoSize> extra_info_buffer;
+  // std::array<Byte, kDefaultExtraInfoSize> extra_info_buffer;
 
   // Get last 40 bytes
   uint64_t start_offset_extra_info = file_size_ - kDefaultExtraInfoSize - 1;
@@ -78,9 +80,17 @@ void TableReader::FetchBlockIndexInfo(uint64_t total_block_entries,
   uint64_t starting_offset = 0;
 
   for (int i = 0; i < total_block_entries; i++) {
+    if (i < total_block_entries) {
+      assert(starting_offset < meta_section_length);
+    }
+
     // First 4 bytes contain info smallest key length
     const uint32_t smallest_key_length = *reinterpret_cast<const uint32_t *>(
         &block_index_buffer[starting_offset]);
+
+    if (smallest_key_length > 100) {
+      std::cout << "namnh" << std::endl;
+    }
     // Move block_index_current_offset to starting offset of key
     starting_offset += sizeof(uint32_t);
 

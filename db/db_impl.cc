@@ -16,7 +16,6 @@
 #include "mvcc/transaction.h"
 #include "mvcc/transaction_manager.h"
 #include "sstable/block_builder.h"
-#include "sstable/block_index.h"
 #include "sstable/table_builder.h"
 
 // libC++
@@ -192,8 +191,11 @@ void DBImpl::CreateNewSST(
     uint64_t filesize = new_sst->GetFileSize();
     std::string_view table_smallest_key = new_sst->GetSmallestKey();
     std::string_view table_largest_key = new_sst->GetLargestKey();
+    std::string filename =
+        config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
     version_edit->AddNewFiles(sst_id, 0 /*level*/, filesize, table_smallest_key,
-                              table_largest_key, std::move(new_sst));
+                              table_largest_key, std::move(filename),
+                              std::move(new_sst));
   }
 
   // Signal that this worker is done

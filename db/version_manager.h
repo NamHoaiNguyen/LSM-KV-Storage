@@ -2,7 +2,6 @@
 #define DB_VERSION_MANAGER_H
 
 #include "db/version.h"
-#include "db/version_edit.h"
 
 #include <deque>
 #include <memory>
