@@ -16,7 +16,6 @@
 #include "mvcc/transaction.h"
 #include "mvcc/transaction_manager.h"
 #include "sstable/block_builder.h"
-#include "sstable/block_index.h"
 #include "sstable/table_builder.h"
 
 // libC++
@@ -168,9 +167,9 @@ void DBImpl::CreateNewSST(
 
   std::string filename =
       config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
-  auto new_sst = std::make_shared<sstable::TableBuilder>(std::move(filename),
-                                                         sst_id, config_.get());
-  if (!new_sst->Open()) {
+  sstable::TableBuilder new_sst(std::move(filename), config_.get());
+
+  if (!new_sst.Open()) {
     work_done.count_down();
     return;
   }
@@ -178,22 +177,24 @@ void DBImpl::CreateNewSST(
   auto iterator = std::make_unique<MemTableIterator>(immutable_memtable.get());
   // Iterate through all key/value pairs to add them to sst
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-    new_sst->AddEntry(iterator->GetKey(), iterator->GetValue(),
-                      iterator->GetTransactionId(), iterator->GetType());
+    new_sst.AddEntry(iterator->GetKey(), iterator->GetValue(),
+                     iterator->GetTransactionId(), iterator->GetType());
   }
 
   // All of key/value pairs had been written to sst. SST should be flushed to
   // disk
-  new_sst->Finish();
+  new_sst.Finish();
 
   {
     std::scoped_lock lock(mutex_);
     // Update new sst lvl 0 info
-    uint64_t filesize = new_sst->GetFileSize();
-    std::string_view table_smallest_key = new_sst->GetSmallestKey();
-    std::string_view table_largest_key = new_sst->GetLargestKey();
+    uint64_t filesize = new_sst.GetFileSize();
+    std::string_view table_smallest_key = new_sst.GetSmallestKey();
+    std::string_view table_largest_key = new_sst.GetLargestKey();
+    std::string filename =
+        config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
     version_edit->AddNewFiles(sst_id, 0 /*level*/, filesize, table_smallest_key,
-                              table_largest_key, std::move(new_sst));
+                              table_largest_key, std::move(filename));
   }
 
   // Signal that this worker is done
