@@ -189,9 +189,10 @@ void DBImpl::CreateNewSST(
   {
     std::scoped_lock lock(mutex_);
     // Update new sst lvl 0 info
+    uint64_t filesize = new_sst->GetFileSize();
     std::string_view table_smallest_key = new_sst->GetSmallestKey();
     std::string_view table_largest_key = new_sst->GetLargestKey();
-    version_edit->AddNewFiles(sst_id, 0 /*level*/, table_smallest_key,
+    version_edit->AddNewFiles(sst_id, 0 /*level*/, filesize, table_smallest_key,
                               table_largest_key, std::move(new_sst));
   }
 

@@ -32,11 +32,12 @@ SST data format
 |         Block Section         |    Meta Section   |          Extra          |
 -------------------------------------------------------------------------------
 | data block | ... | data block |      metadata     |        Extra info       |
+-------------------------------------------------------------------------------
 
 Meta Section format
---------------------------------------------------
-| MetaEntry | ... | MetaEntry | num_entries (8B) |
---------------------------------------------------
+-------------------------------
+| MetaEntry | ... | MetaEntry |
+-------------------------------
 
 MetaEntry format(block_meta)(in order from top to bottom, left to right)
 -----------------------------------------------------------------------------
@@ -45,10 +46,10 @@ MetaEntry format(block_meta)(in order from top to bottom, left to right)
 -----------------------------------------------------------------------------
 
 Extra format(in order from top to bottom, left to right)
------------------------------------------------------
-| Meta section offset(8B) | Meta section length(8B) |
-|  Min TransactionId(8B)  |  Max TransactionId(8B)  |
------------------------------------------------------
+-------------------------------------------------------------------------------
+| Total block entries(8B) | Meta section offset(8B) | Meta section length(8B) |
+|  Min TransactionId(8B)  |  Max TransactionId(8B)  |                         |
+-------------------------------------------------------------------------------
 */
 
 namespace sstable {
@@ -102,6 +103,8 @@ public:
 
   uint64_t GetTableId() const;
 
+  uint64_t GetFileSize() const;
+
   // For testing
   BlockBuilder *GetBlockData();
 
@@ -136,17 +139,17 @@ private:
 
   std::vector<BlockIndex> block_index_;
 
-  std::vector<Byte> index_block_buffer_;
+  std::vector<Byte> block_index_buffer_;
 
   std::vector<Byte> extra_buffer_;
+
+  uint64_t total_block_entries_;
 
   // Min transaction id of block
   TxnId min_txnid_;
 
   // Max transaction id of block
   TxnId max_txnid_;
-
-  // uint64_t
 
   std::string table_smallest_key_;
 
