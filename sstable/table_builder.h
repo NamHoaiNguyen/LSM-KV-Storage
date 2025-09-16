@@ -136,17 +136,17 @@ private:
 
   std::vector<BlockIndex> block_index_;
 
-  std::vector<Byte> index_block_buffer_;
+  std::vector<Byte> block_index_buffer_;
 
   std::vector<Byte> extra_buffer_;
+
+  uint64_t total_block_entries_;
 
   // Min transaction id of block
   TxnId min_txnid_;
 
   // Max transaction id of block
   TxnId max_txnid_;
-
-  // uint64_t
 
   std::string table_smallest_key_;
 

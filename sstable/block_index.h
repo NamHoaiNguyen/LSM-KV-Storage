@@ -40,7 +40,6 @@ public:
 
   // NOT best practise. But because largest key is immutable, so it is
   // fine.
-
   std::string_view GetLargestKey() const;
 
   uint64_t GetBlockStartOffset() const;

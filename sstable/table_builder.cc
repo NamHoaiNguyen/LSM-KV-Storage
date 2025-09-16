@@ -88,6 +88,9 @@ void TableBuilder::FlushBlock() {
                             block_starting_offset,
                             current_offset_ - block_starting_offset);
 
+  // Increase number of total block entries of table
+  total_block_entries_++;
+
   // Reset block data
   block_data_->Reset();
 }
@@ -119,22 +122,22 @@ void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
       reinterpret_cast<const Byte *const>(&block_length);
 
   // Insert length of first key(4 Bytes)
-  index_block_buffer_.insert(index_block_buffer_.end(), first_key_len_bytes,
+  block_index_buffer_.insert(block_index_buffer_.end(), first_key_len_bytes,
                              first_key_len_bytes + sizeof(uint32_t));
   // Insert first key
-  index_block_buffer_.insert(index_block_buffer_.end(), first_key_buff,
+  block_index_buffer_.insert(block_index_buffer_.end(), first_key_buff,
                              first_key_buff + first_key_len);
   // Insert length of last key(4 Bytes)
-  index_block_buffer_.insert(index_block_buffer_.end(), last_key_len_bytes,
+  block_index_buffer_.insert(block_index_buffer_.end(), last_key_len_bytes,
                              last_key_len_bytes + sizeof(uint32_t));
   // Insert last key
-  index_block_buffer_.insert(index_block_buffer_.end(), last_key_buff,
+  block_index_buffer_.insert(block_index_buffer_.end(), last_key_buff,
                              last_key_buff + last_key_len);
   // Insert starting offset of block data
-  index_block_buffer_.insert(index_block_buffer_.end(), block_start_offset_buff,
+  block_index_buffer_.insert(block_index_buffer_.end(), block_start_offset_buff,
                              block_start_offset_buff + sizeof(uint64_t));
   // Insert length of block data
-  index_block_buffer_.insert(index_block_buffer_.end(), block_length_buff,
+  block_index_buffer_.insert(block_index_buffer_.end(), block_length_buff,
                              block_length_buff + sizeof(uint64_t));
 }
 
@@ -142,16 +145,25 @@ void TableBuilder::Finish() {
   // Flush remaining data to
   FlushBlock();
 
-  // Write block_index_ to page cache
-  std::span<const Byte> block_index_buffer = index_block_buffer_;
+  // Write block_index_buffer_ to page cache
   // current_offset now is starting offset of block section
   ssize_t block_index_size =
-      write_file_object_->Append(block_index_buffer, current_offset_);
+      write_file_object_->Append(block_index_buffer_, current_offset_);
   if (block_index_size < 0) {
     throw std::runtime_error("Error when flushing meta section of sstable");
   }
 
+  // Update current_offset_
+  current_offset_ += block_index_size;
+
+  // Encode extra_buffer and write it to page cache
   EncodeExtraInfo();
+  // current_offset now is starting offset of block section
+  ssize_t extra_info_size =
+      write_file_object_->Append(extra_buffer_, current_offset_);
+  if (extra_info_size < 0) {
+    throw std::runtime_error("Error when flushing extra data info to sstable");
+  }
 
   // Ensure that data is persisted to disk from page cache
   if (write_file_object_->Flush()) {
@@ -169,15 +181,21 @@ void TableBuilder::Finish() {
 }
 
 void TableBuilder::EncodeExtraInfo() {
+  // Insert total number of entries
+  const Byte const* total_block_entries_bytes =
+      reinterpret_cast<const Byte const*>(&total_block_entries_);
+  extra_buffer_.insert(extra_buffer_.end(), total_block_entries_bytes,
+                       total_block_entries_bytes + sizeof(uint64_t));
+
+  // Insert starting offset of meta section
   const Byte *const meta_section_offset_bytes =
       reinterpret_cast<const Byte *const>(&current_offset_);
-  // Insert starting offset of meta section
   extra_buffer_.insert(extra_buffer_.end(), meta_section_offset_bytes,
                        meta_section_offset_bytes + sizeof(uint64_t));
 
   // Insert size of meta section
   uint64_t block_index_size_u64 =
-      static_cast<uint64_t>(index_block_buffer_.size());
+      static_cast<uint64_t>(block_index_buffer_.size());
   const Byte *const meta_section_len =
       reinterpret_cast<const Byte *const>(&block_index_size_u64);
   extra_buffer_.insert(extra_buffer_.end(), meta_section_len,
