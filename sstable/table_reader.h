@@ -28,9 +28,9 @@ SST data format
 -------------------------------------------------------------------------------
 
 Meta Section format
---------------------------------------------------
-| MetaEntry | ... | MetaEntry | num_entries (8B) |
---------------------------------------------------
+-------------------------------
+| MetaEntry | ... | MetaEntry |
+-------------------------------
 
 MetaEntry format(block_meta)(in order from top to bottom, left to right)
 -----------------------------------------------------------------------------
@@ -45,6 +45,7 @@ Extra format(in order from top to bottom, left to right)
 -------------------------------------------------------------------------------
 */
 
+// TODO(namnh) : With this design, a need for table reader cache becomes an indispensable requirement 
 class TableReader {
 public:
   TableReader(std::string &&filename);
@@ -63,20 +64,20 @@ public:
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
-  // Not best practise. But because table reader is immutable, it is ok
-  std::string_view GetSmallestKey() const { return smallest_key_; }
-
-  // Not best practise. But because table reader is immutable, it is ok
-  std::string_view GetLargestKey() const { return largest_key_; }
-
 private:
+  void DecodeExtraInfo(uint64_t *total_block_entries
+                       uint64_t *starting_meta_section_offset,
+                       uint64_t *meta_section_length);
+
+  void FetchBlockIndexInfo(uint64_t total_block_entries,
+                           uint64_t starting_meta_section_offset,
+                           uint64_t meta_section_length);
+
   std::string filename_;
 
-  SSTId sst_id_;
+  TxnId min_transaction_id_;
 
-  std::string smallest_key_;
-
-  std::string largest_key_;
+  TxnId max_transaction_id_;
 
   std::vector<BlockIndex> block_index_;
 
