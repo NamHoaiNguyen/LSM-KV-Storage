@@ -85,7 +85,7 @@ std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
 
       if (version_->levels_sst_info_[0][i]->smallest_key < smallest_key) {
         // Update smallest key
-        smallest_key = version_->levels_sst_info_[0][i]->largest_key;
+        smallest_key = version_->levels_sst_info_[0][i]->smallest_key;
         // Re-iterating
         i = 0;
       }
