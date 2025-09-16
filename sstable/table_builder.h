@@ -103,6 +103,8 @@ public:
 
   uint64_t GetTableId() const;
 
+  uint64_t GetFileSize() const;
+
   // For testing
   BlockBuilder *GetBlockData();
 

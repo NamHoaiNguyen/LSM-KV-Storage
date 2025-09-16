@@ -5,13 +5,14 @@
 namespace kvs {
 
 namespace db {
-void VersionEdit::AddNewFiles(SSTId sst_id, int level,
+void VersionEdit::AddNewFiles(SSTId sst_id, int level, uint64_t file_size,
                               std::string_view smallest_key,
                               std::string_view laragest_key,
                               std::shared_ptr<sstable::TableBuilder> table) {
   auto sst_metadata = std::make_shared<SSTMetadata>();
   sst_metadata->sst_id = sst_id;
   sst_metadata->level = level;
+  sst_metadata->file_size = file_size;
   sst_metadata->smallest_key = std::string(smallest_key);
   sst_metadata->largest_key = std::string(laragest_key);
   sst_metadata->table_ = std::move(table);

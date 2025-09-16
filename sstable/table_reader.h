@@ -6,6 +6,7 @@
 #include "io/linux_file.h"
 
 // libC++
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
@@ -45,10 +46,11 @@ Extra format(in order from top to bottom, left to right)
 -------------------------------------------------------------------------------
 */
 
-// TODO(namnh) : With this design, a need for table reader cache becomes an indispensable requirement 
+// TODO(namnh) : With this design, a need for table reader cache becomes an
+// indispensable requirement
 class TableReader {
 public:
-  TableReader(std::string &&filename);
+  TableReader(std::string &&filename, uint64_t file_size);
 
   ~TableReader() = default;
 
@@ -64,8 +66,10 @@ public:
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
+  const std::vector<BlockIndex> &GetBlockIndex() const;
+
 private:
-  void DecodeExtraInfo(uint64_t *total_block_entries
+  void DecodeExtraInfo(uint64_t *total_block_entries,
                        uint64_t *starting_meta_section_offset,
                        uint64_t *meta_section_length);
 
@@ -74,6 +78,8 @@ private:
                            uint64_t meta_section_length);
 
   std::string filename_;
+
+  uint64_t file_size_;
 
   TxnId min_transaction_id_;
 

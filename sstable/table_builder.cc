@@ -153,17 +153,21 @@ void TableBuilder::Finish() {
     throw std::runtime_error("Error when flushing meta section of sstable");
   }
 
+  // Encode extra_buffer and write it to page cache
+  EncodeExtraInfo();
+
   // Update current_offset_
   current_offset_ += block_index_size;
 
-  // Encode extra_buffer and write it to page cache
-  EncodeExtraInfo();
   // current_offset now is starting offset of block section
   ssize_t extra_info_size =
       write_file_object_->Append(extra_buffer_, current_offset_);
   if (extra_info_size < 0) {
     throw std::runtime_error("Error when flushing extra data info to sstable");
   }
+
+  // Update current_offset_
+  current_offset_ += extra_info_size;
 
   // Ensure that data is persisted to disk from page cache
   if (write_file_object_->Flush()) {
@@ -174,16 +178,16 @@ void TableBuilder::Finish() {
 
   // Maybe should open file for reading only for using later?
   if (!read_file_object_) {
-    read_file_object_ = std::make_shared<io::LinuxReadOnlyFile>(filename_);
-    // TODO(namnh) : recheck. It can exhaust file descriptors
-    read_file_object_->Open();
+    // read_file_object_ = std::make_shared<io::LinuxReadOnlyFile>(filename_);
+    // // TODO(namnh) : recheck. It can exhaust file descriptors
+    // read_file_object_->Open();
   }
 }
 
 void TableBuilder::EncodeExtraInfo() {
   // Insert total number of entries
-  const Byte const* total_block_entries_bytes =
-      reinterpret_cast<const Byte const*>(&total_block_entries_);
+  const Byte *const total_block_entries_bytes =
+      reinterpret_cast<const Byte *const>(&total_block_entries_);
   extra_buffer_.insert(extra_buffer_.end(), total_block_entries_bytes,
                        total_block_entries_bytes + sizeof(uint64_t));
 
@@ -274,6 +278,8 @@ io::WriteOnlyFile *TableBuilder::GetWriteOnlyFileObject() {
 const std::vector<BlockIndex> &TableBuilder::GetBlockIndex() {
   return block_index_;
 }
+
+uint64_t TableBuilder::GetFileSize() const { return current_offset_ + 1; }
 
 } // namespace sstable
 

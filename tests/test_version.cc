@@ -32,13 +32,6 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
     num_sst_files_info += sst_file_info.size();
   }
 
-  // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
-    if (fs::is_regular_file(entry.status())) {
-      fs::remove(entry.path());
-    }
-  }
-
   return (num_sst_files == num_sst_files_info) ? true : false;
 }
 
