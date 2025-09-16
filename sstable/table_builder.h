@@ -63,8 +63,7 @@ class BlockIndex;
 // disk finishes and only latest version sees this visibility
 class TableBuilder {
 public:
-  TableBuilder(std::string &&filename, uint64_t table_id,
-               const db::Config *config);
+  TableBuilder(std::string &&filename, const db::Config *config);
 
   ~TableBuilder() = default;
 
@@ -75,6 +74,8 @@ public:
   // Move constructor/assignment
   TableBuilder(TableBuilder &&) = default;
   TableBuilder &operator=(TableBuilder &&) = default;
+
+  bool Open();
 
   // Add new key/value pairs to SST
   // Entries MUST be sorted in ascending order before be added
@@ -87,12 +88,6 @@ public:
   // After this method is executed, SST file is immutable
   void Finish();
 
-  bool Open();
-
-  void Read();
-
-  db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
-
   // Not best practise. But because table is immutable after be written, it is
   // ok
   std::string_view GetSmallestKey() const;
@@ -100,8 +95,6 @@ public:
   // Not best practise. But because table is immutable after be written, it is
   // ok
   std::string_view GetLargestKey() const;
-
-  uint64_t GetTableId() const;
 
   uint64_t GetFileSize() const;
 
@@ -119,10 +112,6 @@ private:
                           uint64_t block_start_offset, uint64_t block_length);
 
   std::string filename_;
-
-  uint64_t table_id_;
-
-  std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 
   std::unique_ptr<io::WriteOnlyFile> write_file_object_;
 

@@ -34,8 +34,6 @@ struct SSTMetadata {
   std::string largest_key;
 
   std::shared_ptr<sstable::TableReader> table_;
-
-  std::shared_ptr<sstable::TableBuilder> table_builder;
 };
 
 class VersionEdit {
@@ -54,8 +52,7 @@ public:
 
   void AddNewFiles(SSTId table_id, int level, uint64_t file_size,
                    std::string_view smallest_key, std::string_view largest_key,
-                   std::string &&filename,
-                   std::shared_ptr<sstable::TableBuilder> table_builder);
+                   std::string &&filename);
 
   // Add files that need to be deleted in new version
   void RemoveFiles(int level, SSTId sst_id);

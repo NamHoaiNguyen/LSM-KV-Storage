@@ -15,13 +15,20 @@ namespace kvs {
 
 namespace sstable {
 
-TableBuilder::TableBuilder(std::string &&filename, uint64_t table_id,
-                           const db::Config *config)
-    : filename_(std::move(filename)), table_id_(table_id),
+TableBuilder::TableBuilder(std::string &&filename, const db::Config *config)
+    : filename_(std::move(filename)),
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), total_block_entries_(0),
       config_(config) {}
+
+bool TableBuilder::Open() {
+  if (!write_file_object_) {
+    return false;
+  }
+
+  return write_file_object_->Open();
+}
 
 void TableBuilder::AddEntry(std::string_view key,
                             std::optional<std::string_view> value, TxnId txn_id,
@@ -173,18 +180,7 @@ void TableBuilder::Finish() {
   current_offset_ += extra_info_size;
 
   // Ensure that data is persisted to disk from page cache
-  if (write_file_object_->Flush()) {
-    // All data in SST is persisted to disk. Free file object
-    // to not allow any writing
-    write_file_object_.reset();
-  }
-
-  // Maybe should open file for reading only for using later?
-  if (!read_file_object_) {
-    read_file_object_ = std::make_shared<io::LinuxReadOnlyFile>(filename_);
-    // TODO(namnh) : recheck. It can exhaust file descriptors
-    read_file_object_->Open();
-  }
+  write_file_object_->Flush();
 }
 
 void TableBuilder::EncodeExtraInfo() {
@@ -221,46 +217,6 @@ void TableBuilder::EncodeExtraInfo() {
                        max_txnid_bytes + sizeof(uint64_t));
 }
 
-bool TableBuilder::Open() {
-  if (!write_file_object_) {
-    return false;
-  }
-
-  return write_file_object_->Open();
-}
-
-void TableBuilder::Read() {
-  if (!read_file_object_) {
-    read_file_object_ = std::make_unique<io::LinuxReadOnlyFile>(filename_);
-  }
-}
-
-db::GetStatus TableBuilder::SearchKey(std::string_view key,
-                                      TxnId txn_id) const {
-  // Find the block that have smallest largest key that >= key
-  int left = 0;
-  int right = block_index_.size();
-
-  while (left < right) {
-    int mid = left + (right - left) / 2;
-    if (block_index_[mid].GetLargestKey() >= key) {
-      right = mid;
-    } else {
-      left = mid + 1;
-    }
-  }
-
-  uint64_t block_offset = block_index_[right].GetBlockStartOffset();
-  uint64_t block_size = block_index_[right].GetBlockSize();
-
-  // TODO(namnh) : Should cache this block.
-  auto block_reader =
-      std::make_unique<BlockReader>(read_file_object_, block_size);
-  db::GetStatus status = block_reader->SearchKey(block_offset, key, txn_id);
-
-  return status;
-}
-
 std::string_view TableBuilder::GetSmallestKey() const {
   return table_smallest_key_;
 }
@@ -268,8 +224,6 @@ std::string_view TableBuilder::GetSmallestKey() const {
 std::string_view TableBuilder::GetLargestKey() const {
   return table_largest_key_;
 }
-
-uint64_t TableBuilder::GetTableId() const { return table_id_; };
 
 // For testing
 BlockBuilder *TableBuilder::GetBlockData() { return block_data_.get(); };
