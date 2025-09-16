@@ -178,9 +178,9 @@ void TableBuilder::Finish() {
 
   // Maybe should open file for reading only for using later?
   if (!read_file_object_) {
-    // read_file_object_ = std::make_shared<io::LinuxReadOnlyFile>(filename_);
-    // // TODO(namnh) : recheck. It can exhaust file descriptors
-    // read_file_object_->Open();
+    read_file_object_ = std::make_shared<io::LinuxReadOnlyFile>(filename_);
+    // TODO(namnh) : recheck. It can exhaust file descriptors
+    read_file_object_->Open();
   }
 }
 
