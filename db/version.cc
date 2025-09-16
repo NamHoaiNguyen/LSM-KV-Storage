@@ -1,17 +1,10 @@
 #include "db/version.h"
 
 #include "common/thread_pool.h"
-#include "db/base_memtable.h"
-#include "db/compact.h"
 #include "db/config.h"
-#include "db/memtable.h"
-#include "db/memtable_iterator.h"
-#include "db/version.h"
 #include "db/version_manager.h"
 #include "io/base_file.h"
-#include "sstable/block_builder.h"
-#include "sstable/block_index.h"
-#include "sstable/table_builder.h"
+#include "sstable/table_reader.h"
 
 namespace kvs {
 
@@ -47,8 +40,7 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   // Search in SSTs lvl0
   // Files are saved from oldest-to-newest
   for (const auto &sst : std::views::reverse(levels_sst_info_[0])) {
-    if (key < sst->table_->GetSmallestKey() ||
-        key > sst->table_->GetLargestKey()) {
+    if (key < sst->smallest_key || key > sst->largest_key) {
       continue;
     }
 

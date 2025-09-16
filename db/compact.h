@@ -15,7 +15,7 @@ namespace db {
 // KEY RULE: Compact is only triggerd by LATEST version
 class Compact {
 public:
-  Compact(const Version *version, VersionEdit* version_edit);
+  Compact(const Version *version, VersionEdit *version_edit);
 
   ~Compact() = default;
 
@@ -51,7 +51,7 @@ private:
 
   const Version *version_;
 
-  VersionEdit* version_edit_;
+  VersionEdit *version_edit_;
 
   // NO need to acquire lock to protect this data structure. Because
   // new version is created when there is a change(create new SST, delete old

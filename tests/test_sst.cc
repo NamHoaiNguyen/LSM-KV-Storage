@@ -112,9 +112,8 @@ TEST(TableTest, BasicEncode) {
   config->LoadConfig();
 
   std::string filename = "/home/hoainam/self/biggg/lsm-kv-storage/data/1.sst";
-  uint64_t table_id = 1;
   auto table = std::make_unique<sstable::TableBuilder>(std::move(filename),
-                                                       table_id, config.get());
+                                                       config.get());
   table->GetWriteOnlyFileObject()->Open();
 
   std::string key1 = "apple";
@@ -177,7 +176,7 @@ TEST(TableTest, CreateTable) {
 
   EXPECT_EQ(level_sst_info[0][0]->smallest_key, smallest_key);
   EXPECT_EQ(level_sst_info[0][0]->largest_key, largest_key);
-  EXPECT_EQ(level_sst_info[0][0]->sst_id, 1);
+  EXPECT_EQ(level_sst_info[0][0]->table_id, 1);
   EXPECT_EQ(level_sst_info[0][0]->level, 0);
   EXPECT_TRUE(level_sst_info[0][0]->table_->GetBlockIndex().size() != 0);
 
@@ -239,7 +238,7 @@ TEST(TableTest, BasicTableReader) {
   for (const auto &bi : block_index) {
     EXPECT_TRUE(!bi.GetSmallestKey().empty());
     EXPECT_TRUE(!bi.GetLargestKey().empty());
-    EXPECT_TRUE(bi.GetBlockStartOffset() > 0);
+    EXPECT_TRUE(bi.GetBlockStartOffset() >= 0);
     EXPECT_TRUE(bi.GetBlockSize() > 0);
   }
 

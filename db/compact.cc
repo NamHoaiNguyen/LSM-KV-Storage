@@ -60,18 +60,16 @@ std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
   uint64_t oldest_lvl0_sst_id = ULONG_MAX;
   int oldest_sst_index = 0;
   for (int i = 0; i < version_->levels_sst_info_[0].size(); i++) {
-    if (version_->levels_sst_info_[0][i]->table_->GetTableId() <
-        oldest_lvl0_sst_id) {
-      oldest_lvl0_sst_id =
-          version_->levels_sst_info_[0][i]->table_->GetTableId();
+    if (version_->levels_sst_info_[0][i]->table_id < oldest_lvl0_sst_id) {
+      oldest_lvl0_sst_id = version_->levels_sst_info_[0][i]->table_id;
       oldest_sst_index = i;
     }
   }
 
   std::string_view smallest_key =
-      version_->levels_sst_info_[0][oldest_sst_index]->table_->GetSmallestKey();
+      version_->levels_sst_info_[0][oldest_sst_index]->smallest_key;
   std::string_view largest_key =
-      version_->levels_sst_info_[0][oldest_sst_index]->table_->GetLargestKey();
+      version_->levels_sst_info_[0][oldest_sst_index]->largest_key;
 
   // Add oldest lvl 0 to compact list
   files_need_compaction_[0].push_back(
@@ -79,27 +77,22 @@ std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
 
   // Iterate through all sst lvl 0
   for (int i = 0; i < version_->levels_sst_info_[0].size(); i++) {
-    if (smallest_key <=
-            version_->levels_sst_info_[0][i]->table_->GetSmallestKey() &&
-        largest_key >=
-            version_->levels_sst_info_[0][i]->table_->GetLargestKey()) {
+    if (smallest_key <= version_->levels_sst_info_[0][i]->smallest_key &&
+        largest_key >= version_->levels_sst_info_[0][i]->largest_key) {
       // If overllaping, this file should also be added to compact list
       files_need_compaction_[0].push_back(
           version_->levels_sst_info_[0][i].get());
 
-      if (version_->levels_sst_info_[0][i]->table_->GetSmallestKey() <
-          smallest_key) {
+      if (version_->levels_sst_info_[0][i]->smallest_key < smallest_key) {
         // Update smallest key
-        smallest_key =
-            version_->levels_sst_info_[0][i]->table_->GetSmallestKey();
+        smallest_key = version_->levels_sst_info_[0][i]->smallest_key;
         // Re-iterating
         i = 0;
       }
 
-      if (largest_key <
-          version_->levels_sst_info_[0][i]->table_->GetLargestKey()) {
+      if (largest_key < version_->levels_sst_info_[0][i]->largest_key) {
         // Update largest key
-        largest_key = version_->levels_sst_info_[0][i]->table_->GetLargestKey();
+        largest_key = version_->levels_sst_info_[0][i]->largest_key;
         // Re-iterating
         i = 0;
       }
@@ -121,10 +114,8 @@ void Compact::GetOverlappingSSTOtherLvls(int level,
 
   for (size_t i = starting_file_index.value();
        i < version_->levels_sst_info_[level].size(); i++) {
-    if (smallest_key <=
-            version_->levels_sst_info_[level][i]->table_->GetLargestKey() &&
-        largest_key >=
-            version_->levels_sst_info_[level][i]->table_->GetSmallestKey()) {
+    if (smallest_key <= version_->levels_sst_info_[level][i]->largest_key &&
+        largest_key >= version_->levels_sst_info_[level][i]->smallest_key) {
       files_need_compaction_[1].push_back(
           version_->levels_sst_info_[level][i].get());
     } else {
@@ -154,8 +145,7 @@ Compact::FindNonOverlappingFiles(int level, std::string_view smallest_key,
 
   while (left < right) {
     size_t mid = left + (right - left) / 2;
-    if (version_->levels_sst_info_[level][mid]->table_->GetLargestKey() <
-        smallest_key) {
+    if (version_->levels_sst_info_[level][mid]->largest_key < smallest_key) {
       // Largest key of sst index "mid" < smallest_key. Therefor all files
       // at or before "mid" are uninteresting
       left = mid + 1;

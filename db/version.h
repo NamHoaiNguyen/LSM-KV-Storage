@@ -28,6 +28,7 @@ class Compact;
 class Config;
 class DBImpl;
 class ThreadPool;
+class VersionEdit;
 class VersionManager;
 
 // Version is a snapshot holding info of all SST files at the specific

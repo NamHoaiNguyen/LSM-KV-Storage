@@ -81,6 +81,7 @@ void TableReader::FetchBlockIndexInfo(uint64_t total_block_entries,
     // First 4 bytes contain info smallest key length
     const uint32_t smallest_key_length = *reinterpret_cast<const uint32_t *>(
         &block_index_buffer[starting_offset]);
+
     // Move block_index_current_offset to starting offset of key
     starting_offset += sizeof(uint32_t);
 
