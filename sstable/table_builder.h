@@ -127,8 +127,6 @@ private:
   // Current offthat in file that is written to
   uint64_t current_offset_;
 
-  uint64_t starting_offset_meta_section_;
-
   std::vector<BlockIndex> block_index_;
 
   std::vector<Byte> block_index_buffer_;

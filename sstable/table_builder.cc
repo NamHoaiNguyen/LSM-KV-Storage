@@ -161,8 +161,6 @@ void TableBuilder::Finish() {
     throw std::runtime_error("Error when flushing meta section of sstable");
   }
 
-  starting_offset_meta_section_ = current_offset_;
-
   // Encode extra_buffer and write it to page cache
   EncodeExtraInfo();
 
