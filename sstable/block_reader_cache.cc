@@ -4,8 +4,6 @@
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
 
-#include <iostream>
-
 namespace kvs {
 
 namespace sstable {
@@ -62,11 +60,8 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   std::shared_lock rlock(mutex_);
   const BlockReader *block_reader = GetBlockReader(block_info);
   assert(block_reader);
-  status = block_reader->SearchKey(block_info.second, key, txn_id);
-  // if (!status.value.has_value()) {
-  //   std::cout << "namnh check no value!!!" << std::endl;
-  // }
 
+  status = block_reader->SearchKey(block_info.second, key, txn_id);
   return status;
 }
 
