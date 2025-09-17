@@ -66,6 +66,10 @@ public:
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
+  std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
+
+  uint64_t GetFileSize() const;
+
   const std::vector<BlockIndex> &GetBlockIndex() const;
 
 private:
@@ -77,9 +81,9 @@ private:
                            uint64_t starting_meta_section_offset,
                            uint64_t meta_section_length);
 
-  std::string filename_;
+  const std::string filename_;
 
-  uint64_t file_size_;
+  const uint64_t file_size_;
 
   TxnId min_transaction_id_;
 
@@ -87,7 +91,7 @@ private:
 
   std::vector<BlockIndex> block_index_;
 
-  std::shared_ptr<io::ReadOnlyFile> read_file_object_;
+  const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 };
 
 } // namespace sstable

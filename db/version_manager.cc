@@ -2,6 +2,7 @@
 
 #include "common/thread_pool.h"
 #include "db/config.h"
+#include "sstable/table_reader_cache.h"
 
 // libC++
 #include <algorithm>
@@ -11,9 +12,12 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(DBImpl *db, const Config *config,
+VersionManager::VersionManager(DBImpl *db,
+                               const TableReaderCache* table_reader_cache,
+                               const Config *config,
                                kvs::ThreadPool *thread_pool)
-    : config_(config), thread_pool_(thread_pool) {}
+    : table_reader_cache_(table_reader_cache), 
+      config_(config), thread_pool_(thread_pool) {}
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
@@ -94,6 +98,12 @@ void VersionManager::ApplyNewChanges(
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
   latest_version_->IncreaseRefCount();
+}
+
+Status VersionManager::GetKey(std::string_view key, TxnId txn_id,
+                              SSTId table_id) const {
+  // No need to acquire mutex. Because this method is read-only
+  return table_reader_cache_->GetKeyFromTableCache(key, txn_id, table_id);
 }
 
 bool VersionManager::NeedSSTCompaction() const {

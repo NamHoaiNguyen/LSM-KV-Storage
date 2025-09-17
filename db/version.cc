@@ -45,7 +45,12 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     }
 
     // TODO(namnh) : Implement bloom filter
-    status = sst->table_->SearchKey(key, txn_id);
+    // status = sst->table_->SearchKey(key, txn_id);
+    // if (status.type != db::ValueType::NOT_FOUND) {
+    //   break;
+    // }
+
+    status = version_manager_->GetKey(key, txn_id, sst->table_id);
     if (status.type != db::ValueType::NOT_FOUND) {
       break;
     }

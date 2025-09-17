@@ -2,6 +2,7 @@
 #define DB_VERSION_MANAGER_H
 
 #include "db/version.h"
+#include "db/status.h"
 
 #include <deque>
 #include <memory>
@@ -11,6 +12,10 @@
 namespace kvs {
 
 class ThreadPool;
+
+namespace sstable {
+class TableReaderCache;
+}
 
 namespace db {
 
@@ -44,14 +49,14 @@ public:
 
   bool NeedSSTCompaction() const;
 
+  Status GetKey(std::string_view key, TxnId txn_id, SSTId table_id) const;
+
   // For testing
   const std::deque<std::unique_ptr<Version>> &GetVersions() const;
 
   const Version *GetLatestVersion() const;
 
   const Config *const GetConfig();
-
-  const DBImpl *const GetDB();
 
 private:
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
@@ -65,6 +70,8 @@ private:
   // Below are objects that VersionManager does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
   // allocate/deallocate, etc... these objects.
+  const sstable::TableReaderCache* table_reader_cache_;
+
   const Config *config_;
 
   kvs::ThreadPool *thread_pool_;

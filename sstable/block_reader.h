@@ -75,7 +75,7 @@ public:
   BlockReader(BlockReader &&) = default;
   BlockReader &operator=(BlockReader &&) = default;
 
-  db::GetStatus SearchKey(uint64_t offset, std::string_view key, TxnId txn_id);
+  db::GetStatus SearchKey(BlockOffset offset, std::string_view key, TxnId txn_id);
 
 private:
   // Get starting offset of data entry at index entry_index(th) base on
@@ -99,7 +99,7 @@ private:
 
   std::vector<Byte> buffer_;
 
-  std::shared_ptr<io::ReadOnlyFile> read_file_object_;
+  const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 };
 
 } // namespace sstable

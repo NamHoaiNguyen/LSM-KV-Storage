@@ -16,7 +16,7 @@ BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
   buffer_.resize(size);
 }
 
-db::GetStatus BlockReader::SearchKey(uint64_t offset, std::string_view key,
+db::GetStatus BlockReader::SearchKey(BlockOffset offset, std::string_view key,
                                      TxnId txn_id) {
   db::GetStatus status;
 

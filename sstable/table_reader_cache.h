@@ -8,6 +8,7 @@
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
+#include <string_view>
 #include <unordered_map>
 
 namespace kvs {
@@ -18,7 +19,7 @@ class TableReader;
 
 class TableReaderCache {
 public:
-  TableReaderCache() = default;
+  explicit TableReaderCache(const Config* config);
 
   ~TableReaderCache() = default;
 
@@ -30,12 +31,17 @@ public:
   TableReaderCache(TableReaderCache &&) = default;
   TableReaderCache &operator=(TableReaderCache &&) = default;
 
-  const TableReader *GetTableReader(SSTId table_id) const;
-
-  void AddTableReaderIntoCache(SSTId table_id, std::unique_ptr<TableReader>);
+  GetStatus GetKeyFromTableCache(std::string_view key,
+                                 TxnId txn_id, SSTId table_id) const;
 
 private:
-  std::unordered_map<SSTId, std::unique_ptr<TableReader>> table_readers_map_;
+  const TableReader *GetTableReader(SSTId table_id) const;
+
+  const Config* config_;
+
+  std::unique_ptr<BlockC
+
+  mutable std::unordered_map<SSTId, std::unique_ptr<TableReader>> table_readers_map_;
 
   mutable std::shared_mutex mutex_;
 };

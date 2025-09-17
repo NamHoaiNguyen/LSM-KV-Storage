@@ -155,6 +155,14 @@ db::GetStatus TableReader::SearchKey(std::string_view key, TxnId txn_id) const {
   return status;
 }
 
+std::shared_ptr<io::ReadOnlyFile> TableReader::GetReadFileObject() const {
+  return read_file_object_;
+}
+
+uint64_t TableReader::GetFileSize() const {
+  return file_size_;
+}
+
 const std::vector<BlockIndex> &TableReader::GetBlockIndex() const {
   return block_index_;
 }
