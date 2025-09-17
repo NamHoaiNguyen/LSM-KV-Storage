@@ -25,6 +25,7 @@ class TransactionManager;
 namespace sstable {
 class TableBuilder;
 class TableReaderCache;
+class BlockReaderCache;
 } // namespace sstable
 
 namespace db {
@@ -110,6 +111,8 @@ private:
   kvs::ThreadPool *thread_pool_;
 
   std::unique_ptr<sstable::TableReaderCache> table_reader_cache_;
+
+  std::unique_ptr<sstable::BlockReaderCache> block_reader_cache_;
 
   std::unique_ptr<VersionManager> version_manager_;
 

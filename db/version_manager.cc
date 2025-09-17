@@ -2,6 +2,7 @@
 
 #include "common/thread_pool.h"
 #include "db/config.h"
+#include "sstable/block_reader_cache.h"
 #include "sstable/table_reader_cache.h"
 
 // libC++
@@ -12,12 +13,15 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(DBImpl *db,
-                               const TableReaderCache* table_reader_cache,
-                               const Config *config,
-                               kvs::ThreadPool *thread_pool)
-    : table_reader_cache_(table_reader_cache), 
-      config_(config), thread_pool_(thread_pool) {}
+VersionManager::VersionManager(
+    DBImpl *db, const sstable::TableReaderCache *table_reader_cache,
+    const sstable::BlockReaderCache *block_reader_cache, const Config *config,
+    kvs::ThreadPool *thread_pool)
+    : table_reader_cache_(table_reader_cache),
+      block_reader_cache_(block_reader_cache), config_(config),
+      thread_pool_(thread_pool) {
+  assert(table_reader_cache_ && block_reader_cache_ && config_ && thread_pool_);
+}
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
@@ -100,10 +104,11 @@ void VersionManager::ApplyNewChanges(
   latest_version_->IncreaseRefCount();
 }
 
-Status VersionManager::GetKey(std::string_view key, TxnId txn_id,
-                              SSTId table_id) const {
+GetStatus VersionManager::GetKey(std::string_view key, TxnId txn_id,
+                                 SSTId table_id, uint64_t file_size) const {
   // No need to acquire mutex. Because this method is read-only
-  return table_reader_cache_->GetKeyFromTableCache(key, txn_id, table_id);
+  return table_reader_cache_->GetKeyFromTableCache(
+      key, txn_id, table_id, file_size, block_reader_cache_);
 }
 
 bool VersionManager::NeedSSTCompaction() const {

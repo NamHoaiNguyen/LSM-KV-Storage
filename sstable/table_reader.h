@@ -19,6 +19,7 @@ class ReadOnlyFile;
 
 namespace sstable {
 class BlockIndex;
+class BlockReaderCache;
 
 /*
 SST data format
@@ -50,7 +51,7 @@ Extra format(in order from top to bottom, left to right)
 // indispensable requirement
 class TableReader {
 public:
-  TableReader(std::string &&filename, uint64_t file_size);
+  TableReader(std::string &&filename, SSTId table_id, uint64_t file_size);
 
   ~TableReader() = default;
 
@@ -64,7 +65,9 @@ public:
 
   bool Open();
 
-  db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
+  db::GetStatus SearchKey(
+      std::string_view key, TxnId txn_id,
+      const sstable::BlockReaderCache *block_reader_cache = nullptr) const;
 
   std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
 
@@ -82,6 +85,8 @@ private:
                            uint64_t meta_section_length);
 
   const std::string filename_;
+
+  SSTId table_id_;
 
   const uint64_t file_size_;
 

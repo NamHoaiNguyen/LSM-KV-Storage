@@ -2,6 +2,7 @@
 #define SSTABLE_TABLE_READER_CACHE_H
 
 #include "common/macros.h"
+#include "db/status.h"
 #include "sstable/block_index.h"
 
 // libC++
@@ -13,13 +14,18 @@
 
 namespace kvs {
 
+namespace db {
+class Config;
+}
+
 namespace sstable {
 
+class BlockReaderCache;
 class TableReader;
 
 class TableReaderCache {
 public:
-  explicit TableReaderCache(const Config* config);
+  explicit TableReaderCache(const db::Config *config);
 
   ~TableReaderCache() = default;
 
@@ -31,17 +37,18 @@ public:
   TableReaderCache(TableReaderCache &&) = default;
   TableReaderCache &operator=(TableReaderCache &&) = default;
 
-  GetStatus GetKeyFromTableCache(std::string_view key,
-                                 TxnId txn_id, SSTId table_id) const;
+  db::GetStatus GetKeyFromTableCache(
+      std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
+      const sstable::BlockReaderCache *block_reader_cache) const;
 
-private:
+  // NOT THREAD-SAFE. MUST acquire mutex before calling
   const TableReader *GetTableReader(SSTId table_id) const;
 
-  const Config* config_;
+private:
+  const db::Config *config_;
 
-  std::unique_ptr<BlockC
-
-  mutable std::unordered_map<SSTId, std::unique_ptr<TableReader>> table_readers_map_;
+  mutable std::unordered_map<SSTId, std::unique_ptr<TableReader>>
+      table_readers_map_;
 
   mutable std::shared_mutex mutex_;
 };

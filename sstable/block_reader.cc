@@ -17,7 +17,7 @@ BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
 }
 
 db::GetStatus BlockReader::SearchKey(BlockOffset offset, std::string_view key,
-                                     TxnId txn_id) {
+                                     TxnId txn_id) const {
   db::GetStatus status;
 
   if (offset < 0) {

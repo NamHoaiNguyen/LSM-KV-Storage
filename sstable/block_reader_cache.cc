@@ -1,57 +1,72 @@
 #include "sstable/block_reader_cache.h"
 
-#include "sstable/table_reader_cache.h"
+#include "sstable/block_reader.h"
 #include "sstable/table_reader.h"
+#include "sstable/table_reader_cache.h"
+
+#include <iostream>
 
 namespace kvs {
 
 namespace sstable {
 
-BlockReaderCache::BlockReaderCache(const TableReaderCache* table_reader_cache)
-    : table_reader_cache_(table_reader_cache) {}
+BlockReaderCache::BlockReaderCache(const TableReaderCache *table_reader_cache)
+    : table_reader_cache_(table_reader_cache) {
+  assert(table_reader_cache_);
+}
 
-const BlockReader *BlockReaderCache::GetBlockReader(std::pair<SSTId, BlockOffset> block_info) const {
-  std::shared_lock rlock(mutex_);
-
-  auto block_reader_iterator = block_readers_map_.find(block_info);
-  if (block_reader_iterator == block_readers_map_.end()) {
+// NOT THREAD-SAFE. MUST acquire mutex before calling
+const BlockReader *BlockReaderCache::GetBlockReader(
+    std::pair<SSTId, BlockOffset> block_info) const {
+  auto block_reader_iterator = block_reader_cache_.find(block_info);
+  if (block_reader_iterator == block_reader_cache_.end()) {
     return nullptr;
   }
 
   return block_reader_iterator->second.get();
 }
 
-GetStatus BlockReaderCache::GetKeyFromBlockCache(std::string_view key,
-                                                 TxnId txn_id,
-                                                 std::pair<SSTId, BlockOffset> block_info) const {
-  GetStatus status;
+db::GetStatus
+BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
+                                       std::pair<SSTId, BlockOffset> block_info,
+                                       uint64_t block_size) const {
 
-  const BlockReader* block_reader = GetBlockReader(block_info);
-  if (!block_reader) {
-    // Get table reader from table reader cache
-    const TableReader* table_reader =
-        table_reader_cache_->GetTableReader(block_info.first);
-    assert(table_reader);
+  db::GetStatus status;
 
-    // Create new table reader
-    auto block_reader = 
-        std::make_unique<BlockReader>(table_reader->GetReadFileObject(),
-                                      table_reader->GetFileSize());
-
-    // Search key in new table
-    status = block_reader->GetKey(key, txn_id);
-
-    // Insert table into cache
-    {
-      std::scoped_lock rwlock(mutex_);
-      block_readers_map_.insert({block_info, std::move(table_reader)});
+  {
+    std::shared_lock rlock(mutex_);
+    const BlockReader *block_reader = GetBlockReader(block_info);
+    if (block_reader) {
+      // if table reader had already been in cache
+      status = block_reader->SearchKey(block_info.second, key, txn_id);
+      return status;
     }
-
-    return status;
   }
 
-  // if table reader had already been in cache
-  status = block_reader->GetKey(key, txn_id);
+  const TableReader *table_reader =
+      table_reader_cache_->GetTableReader(block_info.first);
+  assert(table_reader);
+
+  // Create new table reader
+  auto new_block_reader = std::make_unique<BlockReader>(
+      table_reader->GetReadFileObject(), block_size);
+
+  {
+    // Insert new block reader into cache
+    std::scoped_lock rwlock(mutex_);
+    block_reader_cache_.insert(
+        std::make_pair(block_info, std::move(new_block_reader)));
+  }
+
+  // Search key in new block reader
+  std::shared_lock rlock(mutex_);
+  const BlockReader *block_reader = GetBlockReader(block_info);
+  assert(block_reader);
+  status = block_reader->SearchKey(block_info.second, key, txn_id);
+  // if (!status.value.has_value()) {
+  //   std::cout << "namnh check no value!!!" << std::endl;
+  // }
+
   return status;
 }
 

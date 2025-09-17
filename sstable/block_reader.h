@@ -75,7 +75,8 @@ public:
   BlockReader(BlockReader &&) = default;
   BlockReader &operator=(BlockReader &&) = default;
 
-  db::GetStatus SearchKey(BlockOffset offset, std::string_view key, TxnId txn_id);
+  db::GetStatus SearchKey(BlockOffset offset, std::string_view key,
+                          TxnId txn_id) const;
 
 private:
   // Get starting offset of data entry at index entry_index(th) base on
@@ -97,7 +98,7 @@ private:
                            uint64_t data_entry_offset,
                            db::ValueType value_type) const;
 
-  std::vector<Byte> buffer_;
+  mutable std::vector<Byte> buffer_;
 
   const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 };

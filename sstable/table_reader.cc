@@ -3,6 +3,7 @@
 #include "io/linux_file.h"
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
+#include "sstable/block_reader_cache.h"
 
 namespace kvs {
 constexpr int kDefaultExtraInfoSize = 40; // Bytes
@@ -12,8 +13,10 @@ namespace kvs {
 
 namespace sstable {
 
-TableReader::TableReader(std::string &&filename, uint64_t file_size)
-    : filename_(std::move(filename)), file_size_(file_size),
+TableReader::TableReader(std::string &&filename, SSTId table_id,
+                         uint64_t file_size)
+    : filename_(std::move(filename)), table_id_(table_id),
+      file_size_(file_size),
       read_file_object_(std::make_shared<io::LinuxReadOnlyFile>(filename_)) {}
 
 bool TableReader::Open() {
@@ -130,7 +133,11 @@ void TableReader::FetchBlockIndexInfo(uint64_t total_block_entries,
   }
 }
 
-db::GetStatus TableReader::SearchKey(std::string_view key, TxnId txn_id) const {
+db::GetStatus TableReader::SearchKey(
+    std::string_view key, TxnId txn_id,
+    const sstable::BlockReaderCache *block_reader_cache) const {
+  assert(block_reader_cache);
+
   // Find the block that have smallest largest key that >= key
   int left = 0;
   int right = block_index_.size();
@@ -147,21 +154,15 @@ db::GetStatus TableReader::SearchKey(std::string_view key, TxnId txn_id) const {
   uint64_t block_offset = block_index_[right].GetBlockStartOffset();
   uint64_t block_size = block_index_[right].GetBlockSize();
 
-  // TODO(namnh) : Should cache this block.
-  auto block_reader =
-      std::make_unique<BlockReader>(read_file_object_, block_size);
-  db::GetStatus status = block_reader->SearchKey(block_offset, key, txn_id);
-
-  return status;
+  return block_reader_cache->GetKeyFromBlockCache(
+      key, txn_id, {table_id_, block_offset}, block_size);
 }
 
 std::shared_ptr<io::ReadOnlyFile> TableReader::GetReadFileObject() const {
   return read_file_object_;
 }
 
-uint64_t TableReader::GetFileSize() const {
-  return file_size_;
-}
+uint64_t TableReader::GetFileSize() const { return file_size_; }
 
 const std::vector<BlockIndex> &TableReader::GetBlockIndex() const {
   return block_index_;
