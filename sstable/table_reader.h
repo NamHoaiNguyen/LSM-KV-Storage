@@ -69,7 +69,7 @@ public:
       std::string_view key, TxnId txn_id,
       const sstable::BlockReaderCache *block_reader_cache = nullptr) const;
 
-  std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
+  const std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
 
   uint64_t GetFileSize() const;
 

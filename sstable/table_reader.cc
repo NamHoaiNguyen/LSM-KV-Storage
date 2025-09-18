@@ -158,7 +158,7 @@ db::GetStatus TableReader::SearchKey(
       key, txn_id, {table_id_, block_offset}, block_size);
 }
 
-std::shared_ptr<io::ReadOnlyFile> TableReader::GetReadFileObject() const {
+const std::shared_ptr<io::ReadOnlyFile> TableReader::GetReadFileObject() const {
   return read_file_object_;
 }
 
