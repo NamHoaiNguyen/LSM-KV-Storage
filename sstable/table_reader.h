@@ -67,7 +67,7 @@ public:
 
   db::GetStatus SearchKey(
       std::string_view key, TxnId txn_id,
-      const sstable::BlockReaderCache *block_reader_cache = nullptr) const;
+      const sstable::BlockReaderCache *block_reader_cache) const;
 
   const std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
 
