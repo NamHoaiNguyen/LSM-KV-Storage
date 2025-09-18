@@ -7,6 +7,8 @@ add_library(sstable
   block_reader_cache.h
   block_reader.cc
   block_reader.h
+  block_reader_iterator.cc
+  block_reader_iterator.h
   table_builder.cc
   table_builder.h
   table_reader_cache.cc
