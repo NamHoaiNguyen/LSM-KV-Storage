@@ -75,30 +75,38 @@ public:
   BlockReader(BlockReader &&) = default;
   BlockReader &operator=(BlockReader &&) = default;
 
-  db::GetStatus SearchKey(BlockOffset offset, std::string_view key,
-                          TxnId txn_id) const;
+  bool FetchBlockData(BlockOffset offset);
+
+  db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
+
+  friend class BlockReaderIterator;
 
 private:
   // Get starting offset of data entry at index entry_index(th) base on
   // offset_section(starting offset of offset section)
   // See block data format above
-  uint64_t GetDataEntryOffset(std::span<const Byte> buffer,
-                              const uint64_t offset_section,
-                              const int entry_index) const;
+  uint64_t GetDataEntryOffset(int entry_index) const;
 
   // Get type of key base on data_entry_offset(starting offset of data entry)
   // See block data format above
-  db::ValueType GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
-                                          uint64_t data_entry_offset) const;
+  db::ValueType GetValueTypeFromDataEntry(uint64_t data_entry_offset) const;
 
-  // Get key and value of data entry that start at data_entry_offset
-  // See block data format above
-  std::pair<std::string_view, std::optional<std::string_view>>
-  GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
-                           uint64_t data_entry_offset,
-                           db::ValueType value_type) const;
+  // Get key of data entry that start at data_entry_offset
+  std::string_view GetKeyFromDataEntry(uint64_t data_entry_offset) const;
+
+  // Get value of data entry that start at data_entry_offset
+  std::string_view GetValueFromDataEntry(uint64_t data_entry_offset) const;
 
   mutable std::vector<Byte> buffer_;
+
+  // Total data entries in a block
+  uint64_t total_data_entries_;
+
+  // Starting offset of offset section
+  uint64_t offset_section_;
+
+  // Contain starting offset and length of each data entries
+  std::vector<uint64_t> data_entries_offset_info_;
 
   const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 };

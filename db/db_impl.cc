@@ -194,10 +194,10 @@ void DBImpl::CreateNewSST(
   // disk
   new_sst.Finish();
 
-  std::string filename =
-      config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
   {
     std::scoped_lock lock(mutex_);
+    std::string filename =
+        config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
     version_edit->AddNewFiles(sst_id, 0 /*level*/, new_sst.GetFileSize(),
                               new_sst.GetSmallestKey(), new_sst.GetLargestKey(),
                               std::move(filename));
