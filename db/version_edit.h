@@ -14,10 +14,6 @@
 
 namespace kvs {
 
-namespace sstable {
-class TableReader;
-}
-
 namespace db {
 
 struct SSTMetadata {
@@ -32,8 +28,6 @@ struct SSTMetadata {
   std::string smallest_key;
 
   std::string largest_key;
-
-  std::shared_ptr<sstable::TableReader> table_;
 };
 
 class VersionEdit {

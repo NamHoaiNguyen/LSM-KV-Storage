@@ -12,6 +12,11 @@ namespace kvs {
 
 class ThreadPool;
 
+namespace sstable {
+class BlockReaderCache;
+class TableReaderCache;
+} // namespace sstable
+
 namespace db {
 
 class BaseMemTable;
@@ -21,8 +26,10 @@ class Config;
 
 class VersionManager {
 public:
-  VersionManager(DBImpl *db, const Config *config,
-                 kvs::ThreadPool *thread_pool);
+  VersionManager(DBImpl *db,
+                 const sstable::TableReaderCache *table_reader_cache,
+                 const sstable::BlockReaderCache *block_reader_cache,
+                 const Config *config, kvs::ThreadPool *thread_pool);
 
   ~VersionManager() = default;
 
@@ -44,14 +51,15 @@ public:
 
   bool NeedSSTCompaction() const;
 
+  GetStatus GetKey(std::string_view key, TxnId txn_id, SSTId table_id,
+                   uint64_t file_size) const;
+
   // For testing
   const std::deque<std::unique_ptr<Version>> &GetVersions() const;
 
   const Version *GetLatestVersion() const;
 
   const Config *const GetConfig();
-
-  const DBImpl *const GetDB();
 
 private:
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
@@ -65,7 +73,9 @@ private:
   // Below are objects that VersionManager does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
   // allocate/deallocate, etc... these objects.
-  DBImpl *db_;
+  const sstable::TableReaderCache *table_reader_cache_;
+
+  const sstable::BlockReaderCache *block_reader_cache_;
 
   const Config *config_;
 

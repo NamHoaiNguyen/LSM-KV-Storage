@@ -16,7 +16,11 @@
 #include "mvcc/transaction.h"
 #include "mvcc/transaction_manager.h"
 #include "sstable/block_builder.h"
+#include "sstable/block_reader.h"
+#include "sstable/block_reader_cache.h"
 #include "sstable/table_builder.h"
+#include "sstable/table_reader.h"
+#include "sstable/table_reader_cache.h"
 
 // libC++
 #include <algorithm>
@@ -35,8 +39,13 @@ DBImpl::DBImpl(bool is_testing)
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
-      version_manager_(std::make_unique<VersionManager>(this, config_.get(),
-                                                        thread_pool_)) {}
+      table_reader_cache_(
+          std::make_unique<sstable::TableReaderCache>(config_.get())),
+      block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
+          table_reader_cache_.get())),
+      version_manager_(std::make_unique<VersionManager>(
+          this, table_reader_cache_.get(), block_reader_cache_.get(),
+          config_.get(), thread_pool_)) {}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
@@ -185,16 +194,13 @@ void DBImpl::CreateNewSST(
   // disk
   new_sst.Finish();
 
+  std::string filename =
+      config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
   {
     std::scoped_lock lock(mutex_);
-    // Update new sst lvl 0 info
-    uint64_t filesize = new_sst.GetFileSize();
-    std::string_view table_smallest_key = new_sst.GetSmallestKey();
-    std::string_view table_largest_key = new_sst.GetLargestKey();
-    std::string filename =
-        config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
-    version_edit->AddNewFiles(sst_id, 0 /*level*/, filesize, table_smallest_key,
-                              table_largest_key, std::move(filename));
+    version_edit->AddNewFiles(sst_id, 0 /*level*/, new_sst.GetFileSize(),
+                              new_sst.GetSmallestKey(), new_sst.GetLargestKey(),
+                              std::move(filename));
   }
 
   // Signal that this worker is done

@@ -270,7 +270,7 @@ TEST(VersionTest, ConcurrencyPutAndGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  const int nums_elem_each_thread = 100000;
+  const int nums_elem_each_thread = 1000000;
 
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
@@ -331,6 +331,7 @@ TEST(VersionTest, ConcurrencyPutAndGet) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
+      EXPECT_TRUE(key_found.has_value());
       EXPECT_EQ(key_found.value(), value);
     }
     all_reads_done.count_down();

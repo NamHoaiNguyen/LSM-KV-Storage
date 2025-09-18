@@ -32,7 +32,7 @@ struct GetStatus {
 
   ValueType type{ValueType::NOT_FOUND};
 
-  std::optional<std::string> value;
+  std::optional<std::string> value{std::nullopt};
 };
 
 } // namespace db
