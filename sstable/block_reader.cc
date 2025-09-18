@@ -16,49 +16,58 @@ BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
   buffer_.resize(size);
 }
 
-db::GetStatus BlockReader::SearchKey(BlockOffset offset, std::string_view key,
-                                     TxnId txn_id) const {
-  db::GetStatus status;
-
+bool BlockReader::FetchBlockData(BlockOffset offset) {
   if (offset < 0) {
-    return status;
+    return false;
   }
 
   ssize_t bytes_read = read_file_object_->RandomRead(buffer_, offset);
   if (bytes_read < 0) {
-    return status;
+    return false;
   }
 
   int64_t last_block_offset = buffer_.size() - 1;
   // 16 last bytes of lock contain metadata info(num entries + starting offset
   // of offset section)
-  const uint64_t block_num_entries =
-      *reinterpret_cast<const uint64_t *>(&buffer_[last_block_offset - 15]);
-  const uint64_t offset_offset_section =
-      *reinterpret_cast<const uint64_t *>(&buffer_[last_block_offset - 7]);
+  total_data_entries_ =
+      *reinterpret_cast<uint64_t *>(&buffer_[last_block_offset - 15]);
+  offset_section_ =
+      *reinterpret_cast<uint64_t *>(&buffer_[last_block_offset - 7]);
+
+  for (uint64_t i = 0; i < total_data_entries_; i++) {
+    data_entries_offset_info_.emplace_back(GetDataEntryOffset(i));
+  }
+
+  return true;
+}
+
+db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
+  db::GetStatus status;
 
   // Binary search key in block based on offset
   uint64_t left = 0;
-  uint64_t right = block_num_entries;
+  uint64_t right = total_data_entries_;
 
   while (left <= right) {
     uint64_t mid = left + (right - left) / 2;
 
     // Get value type of data entry
-    uint64_t data_entry_offset =
-        GetDataEntryOffset(buffer_, offset_offset_section, mid);
-    db::ValueType value_type =
-        GetValueTypeFromDataEntry(buffer_, data_entry_offset);
+    uint64_t data_entry_offset = GetDataEntryOffset(mid);
+    db::ValueType value_type = GetValueTypeFromDataEntry(data_entry_offset);
+    assert(value_type == db::ValueType::PUT ||
+           value_type == db::ValueType::DELETED);
 
     // Get key and(or) value of data entry
-    auto [key_in_block, value_in_block] =
-        GetKeyValueFromDataEntry(buffer_, data_entry_offset, value_type);
+    auto key_in_block = GetKeyFromDataEntry(data_entry_offset);
     if (key_in_block == key) {
       status.type = value_type;
-      status.value =
-          (value_in_block)
-              ? std::make_optional<std::string>(value_in_block.value())
-              : std::nullopt;
+      if (status.type == db::ValueType::DELETED) {
+        // entry is deleted, value of entry is empty
+        status.value = std::nullopt;
+        return status;
+      }
+
+      status.value = GetValueFromDataEntry(data_entry_offset);
       return status;
     } else if (key_in_block < key) {
       left = mid + 1;
@@ -76,57 +85,53 @@ db::GetStatus BlockReader::SearchKey(BlockOffset offset, std::string_view key,
   return status;
 }
 
-uint64_t BlockReader::GetDataEntryOffset(std::span<const Byte> buffer,
-                                         const uint64_t offset_section,
-                                         const int entry_index) const {
+uint64_t BlockReader::GetDataEntryOffset(int entry_index) const {
   // Starting offset of offset entry at index (entry_index) (th)
-  uint64_t offset_entry = offset_section + entry_index * 2 * sizeof(uint64_t);
+  uint64_t offset_entry = offset_section_ + entry_index * 2 * sizeof(uint64_t);
 
   const uint64_t data_entry_offset =
-      *reinterpret_cast<const uint64_t *>(&buffer[offset_entry]);
+      *reinterpret_cast<const uint64_t *>(&buffer_[offset_entry]);
 
   return data_entry_offset;
 }
 
 db::ValueType
-BlockReader::GetValueTypeFromDataEntry(std::span<const Byte> buffer_view,
-                                       uint64_t data_entry_offset) const {
-  Byte value_type_byte = buffer_view[data_entry_offset];
+BlockReader::GetValueTypeFromDataEntry(uint64_t data_entry_offset) const {
+  Byte value_type_byte = buffer_[data_entry_offset];
   db::ValueType value_type =
       *reinterpret_cast<const db::ValueType *>(&value_type_byte);
 
   return value_type;
 }
 
-std::pair<std::string_view, std::optional<std::string_view>>
-BlockReader::GetKeyValueFromDataEntry(std::span<const Byte> buffer_view,
-                                      uint64_t data_entry_offset,
-                                      db::ValueType value_type) const {
-  assert(value_type != db::ValueType::INVALID);
-
+std::string_view
+BlockReader::GetKeyFromDataEntry(uint64_t data_entry_offset) const {
   const uint32_t key_len = *reinterpret_cast<const uint32_t *>(
-      &buffer_view[data_entry_offset + sizeof(uint8_t)]);
+      &buffer_[data_entry_offset + sizeof(uint8_t)]);
 
   uint64_t start_offset_key =
       data_entry_offset + sizeof(uint8_t) + sizeof(uint32_t);
 
   std::string_view key(
-      reinterpret_cast<const char *>(&buffer_view[start_offset_key]), key_len);
+      reinterpret_cast<const char *>(&buffer_[start_offset_key]), key_len);
 
-  if (value_type == db::ValueType::DELETED) {
-    return {key, std::nullopt};
-  }
+  return key;
+}
 
-  uint64_t start_offset_value_len = start_offset_key + key.size();
+std::string_view
+BlockReader::GetValueFromDataEntry(uint64_t data_entry_offset) const {
+  std::string_view key = GetKeyFromDataEntry(data_entry_offset);
+
+  uint64_t start_offset_value_len =
+      data_entry_offset + sizeof(uint8_t) + sizeof(uint32_t) + key.size();
   const uint32_t value_len =
-      *reinterpret_cast<const uint32_t *>(&buffer_view[start_offset_value_len]);
+      *reinterpret_cast<const uint32_t *>(&buffer_[start_offset_value_len]);
 
   uint64_t start_offset_value = start_offset_value_len + sizeof(uint32_t);
   std::string_view value(
-      reinterpret_cast<const char *>(&buffer_view[start_offset_value]),
-      value_len);
+      reinterpret_cast<const char *>(&buffer_[start_offset_value]), value_len);
 
-  return {key, value};
+  return value;
 }
 
 } // namespace sstable
