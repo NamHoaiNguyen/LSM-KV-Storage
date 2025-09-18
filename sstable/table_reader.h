@@ -86,7 +86,7 @@ private:
 
   const std::string filename_;
 
-  SSTId table_id_;
+  const SSTId table_id_;
 
   const uint64_t file_size_;
 
