@@ -9,21 +9,19 @@ namespace kvs {
 
 namespace sstable {
 
-bool 
 
-BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
-                         size_t size)
-    : read_file_object_(read_file_object) {
-  assert(size > 0);
-  buffer_.resize(size);
-}
+// BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
+//                          size_t size) {
+//   assert(size > 0);
+//   buffer_.resize(size);
+// }
 
 BlockReader::BlockReader(std::unique_ptr<BlockReaderData> block_reader_data)
     : total_data_entries_(block_reader_data->total_data_entries),
       offset_section_(block_reader_data->offset_section),
       data_entries_offset_info_(
           std::move(block_reader_data->data_entries_offset_info)),
-      buffer_(std:move(block_reader_data->buffer)) {}
+      buffer_(std::move(block_reader_data->buffer)) {}
 
 // bool BlockReader::FetchBlockData(BlockOffset offset) {
 //   if (offset < 0) {

@@ -5,6 +5,21 @@
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
 
+namespace {
+
+uint64_t GetDataEntryOffset(uint64_t offset_section, int entry_index,
+                            std::span<const kvs::Byte> buffer)  {
+  // Starting offset of offset entry at index (entry_index) (th)
+  uint64_t offset_entry = offset_section + entry_index * 2 * sizeof(uint64_t);
+
+  const uint64_t data_entry_offset =
+      *reinterpret_cast<const uint64_t *>(&buffer[offset_entry]);
+
+  return data_entry_offset;
+}
+
+} // namespace 
+
 namespace kvs {
 constexpr int kDefaultExtraInfoSize = 40; // Bytes
 }
@@ -164,26 +179,27 @@ std::unique_ptr<BlockReaderData>
     return nullptr;
   }
 
-  std::vector<Byte> buffer;
-  ssize_t bytes_read = read_file_object_->RandomRead(buffer, offset);
+  auto block_reader_data = std::make_unique<BlockReaderData>();
+  ssize_t bytes_read =
+      read_file_object_->RandomRead(block_reader_data->buffer, offset);
   if (bytes_read < 0) {
     return nullptr;
   }
 
-  auto block_reader_data = std::make_unique<BlockReaderData>();
-  int64_t last_block_offset = buffer.size() - 1;
+  int64_t last_block_offset = block_reader_data->buffer.size() - 1;
   // 16 last bytes of lock contain metadata info(num entries + starting offset
   // of offset section)
-  block_reader_data->total_data_entries_ =
-      *reinterpret_cast<uint64_t *>(&buffer[last_block_offset - 15]);
-  block_reader_data->offset_section_ =
-      *reinterpret_cast<uint64_t *>(&buffer[last_block_offset - 7]);
+  block_reader_data->total_data_entries =
+      *reinterpret_cast<uint64_t *>(&block_reader_data->buffer[last_block_offset - 15]);
+  block_reader_data->offset_section =
+      *reinterpret_cast<uint64_t *>(&block_reader_data->buffer[last_block_offset - 7]);
 
-  for (uint64_t i = 0; i < total_data_entries_; i++) {
+  for (uint64_t i = 0; i < block_reader_data->total_data_entries; i++) {
     block_reader_data->data_entries_offset_info
-        .emplace_back(GetDataEntryOffset(i));
+        .emplace_back(GetDataEntryOffset(i, 
+                                         block_reader_data->offset_section,
+                                         block_reader_data->buffer));
   }
-  block_reader_data->buffer = std::move(buffer);
 
   return block_reader_data;
 }

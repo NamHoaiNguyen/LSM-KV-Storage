@@ -8,6 +8,7 @@
 // libC++
 #include <cassert>
 #include <memory>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,7 @@ class ReadOnlyFile;
 namespace sstable {
 class BlockIndex;
 class BlockReaderCache;
+class BlockReaderData;
 
 /*
 SST data format
@@ -69,7 +71,8 @@ public:
       std::string_view key, TxnId txn_id,
       const sstable::BlockReaderCache *block_reader_cache) const;
 
-  std::unique_ptr<BlockReaderData> SetupDataForBlockReader(BlockOffset offset) const;
+  std::unique_ptr<BlockReaderData>
+      SetupDataForBlockReader(BlockOffset offset) const;
 
   const std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
 
