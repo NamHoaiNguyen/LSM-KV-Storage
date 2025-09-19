@@ -39,6 +39,7 @@ struct BlockReaderData {
   // Contain starting offset and length of each data entries
   std::vector<uint64_t> data_entries_offset_info;
 
+  // Buffer that data from block is written into
   std::vector<Byte> buffer;
 };
 
@@ -132,8 +133,6 @@ private:
 
   // Contain starting offset and length of each data entries
   const std::vector<uint64_t> data_entries_offset_info_;
-
-  // const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
 };
 
 } // namespace sstable

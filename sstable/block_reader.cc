@@ -9,44 +9,12 @@ namespace kvs {
 
 namespace sstable {
 
-
-// BlockReader::BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object,
-//                          size_t size) {
-//   assert(size > 0);
-//   buffer_.resize(size);
-// }
-
 BlockReader::BlockReader(std::unique_ptr<BlockReaderData> block_reader_data)
     : total_data_entries_(block_reader_data->total_data_entries),
       offset_section_(block_reader_data->offset_section),
       data_entries_offset_info_(
           std::move(block_reader_data->data_entries_offset_info)),
       buffer_(std::move(block_reader_data->buffer)) {}
-
-// bool BlockReader::FetchBlockData(BlockOffset offset) {
-//   if (offset < 0) {
-//     return false;
-//   }
-
-//   ssize_t bytes_read = read_file_object_->RandomRead(buffer_, offset);
-//   if (bytes_read < 0) {
-//     return false;
-//   }
-
-//   int64_t last_block_offset = buffer_.size() - 1;
-//   // 16 last bytes of lock contain metadata info(num entries + starting offset
-//   // of offset section)
-//   total_data_entries_ =
-//       *reinterpret_cast<uint64_t *>(&buffer_[last_block_offset - 15]);
-//   offset_section_ =
-//       *reinterpret_cast<uint64_t *>(&buffer_[last_block_offset - 7]);
-
-//   for (uint64_t i = 0; i < total_data_entries_; i++) {
-//     data_entries_offset_info_.emplace_back(GetDataEntryOffset(i));
-//   }
-
-//   return true;
-// }
 
 db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
   db::GetStatus status;

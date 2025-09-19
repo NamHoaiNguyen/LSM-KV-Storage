@@ -35,7 +35,7 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
     std::shared_lock rlock(mutex_);
     const BlockReader *block_reader = GetBlockReader(block_info);
     if (block_reader) {
-      // if table reader had already been in cache
+      // if tablereader had already been in cache
       status = block_reader->SearchKey(key, txn_id);
       return status;
     }
@@ -45,28 +45,22 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
       table_reader_cache_->GetTableReader(block_info.first);
   assert(table_reader);
 
-  // Setup data for new block reader by table reader
+  // Setup data for new blockreader by tablereader
   std::unique_ptr<BlockReaderData> block_reader_data = 
       table_reader->SetupDataForBlockReader(block_size, block_info.second);
 
-  // Create new table reader
-  // auto new_block_reader = std::make_unique<BlockReader>(
-  //     table_reader->GetReadFileObject(), block_size);
+  // Create new tablereader
   auto new_block_reader = std::make_unique<BlockReader>(
       std::move(block_reader_data));
-  // // Immediately fetch data from block into memory
-  // if (!new_block_reader->FetchBlockData(block_info.second)) {
-  //   return status;
-  // }
 
   {
-    // Insert new block reader into cache
+    // Insert new blockreader into cache
     std::scoped_lock rwlock(mutex_);
     block_reader_cache_.insert(
         std::make_pair(block_info, std::move(new_block_reader)));
   }
 
-  // Search key in new block reader
+  // Lookup key in new blockreader
   std::shared_lock rlock(mutex_);
   const BlockReader *block_reader = GetBlockReader(block_info);
   assert(block_reader);
