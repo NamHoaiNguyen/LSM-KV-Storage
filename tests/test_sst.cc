@@ -229,9 +229,8 @@ TEST(TableTest, BasicTableReader) {
       db->GetVersionManager()->GetLatestVersion()->GetSstMetadata()[0].size(),
       1);
 
-  auto table_reader = std::make_unique<TableReader>(
+  auto table_reader = CreateAndSetupDataForTableReader(
       std::move(filename), table_id, version_sst_metadata[0][0]->file_size);
-  EXPECT_TRUE(table_reader->Open());
 
   const std::vector<BlockIndex> &block_index = table_reader->GetBlockIndex();
 

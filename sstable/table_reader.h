@@ -22,6 +22,7 @@ namespace sstable {
 class BlockIndex;
 class BlockReaderCache;
 class BlockReaderData;
+class BlockReader;
 
 /*
 SST data format
@@ -49,11 +50,38 @@ Extra format(in order from top to bottom, left to right)
 -------------------------------------------------------------------------------
 */
 
+struct TableReaderData {
+  TableReaderData() = default;
+
+  // No copy allowed
+  TableReaderData(const TableReaderData &) = delete;
+  TableReaderData &operator=(TableReaderData &) = delete;
+
+  // Move constructor/assignment
+  TableReaderData(TableReaderData &&) = default;
+  TableReaderData &operator=(TableReaderData &&) = default;
+
+  std::string filename;
+
+  SSTId table_id;
+
+  uint64_t file_size;
+
+  TxnId min_transaction_id;
+
+  TxnId max_transaction_id;
+
+  std::vector<BlockIndex> block_index;
+
+  std::unique_ptr<io::ReadOnlyFile> read_file_object;
+};
+
 // TODO(namnh) : With this design, a need for table reader cache becomes an
 // indispensable requirement
 class TableReader {
 public:
-  TableReader(std::string &&filename, SSTId table_id, uint64_t file_size);
+  TableReader(std::unique_ptr<TableReaderData> table_reader_data);
+  // TableReader(std::string &&filename, SSTId table_id, uint64_t file_size);
 
   ~TableReader() = default;
 
@@ -65,42 +93,46 @@ public:
   TableReader(TableReader &&) = default;
   TableReader &operator=(TableReader &&) = default;
 
-  bool Open();
+  // bool Open();
 
   db::GetStatus
   SearchKey(std::string_view key, TxnId txn_id,
             const sstable::BlockReaderCache *block_reader_cache) const;
 
-  std::unique_ptr<BlockReaderData>
-  SetupDataForBlockReader(uint64_t block_size, BlockOffset offset) const;
+  std::unique_ptr<BlockReader>
+  CreateAndSetupDataForBlockReader(uint64_t block_size,
+                                   BlockOffset offset) const;
 
   uint64_t GetFileSize() const;
 
   const std::vector<BlockIndex> &GetBlockIndex() const;
 
 private:
-  void DecodeExtraInfo(uint64_t *total_block_entries,
-                       uint64_t *starting_meta_section_offset,
-                       uint64_t *meta_section_length);
-
-  void FetchBlockIndexInfo(uint64_t total_block_entries,
-                           uint64_t starting_meta_section_offset,
-                           uint64_t meta_section_length);
-
   const std::string filename_;
 
   const SSTId table_id_;
 
   const uint64_t file_size_;
 
-  TxnId min_transaction_id_;
+  const TxnId min_transaction_id_;
 
-  TxnId max_transaction_id_;
+  const TxnId max_transaction_id_;
 
-  std::vector<BlockIndex> block_index_;
+  const std::vector<BlockIndex> block_index_;
 
-  const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
+  const std::unique_ptr<io::ReadOnlyFile> read_file_object_;
 };
+
+std::unique_ptr<TableReader>
+CreateAndSetupDataForTableReader(std::string &&filename, SSTId table_id,
+                                 uint64_t file_size);
+
+void DecodeExtraInfo(TableReaderData *table_reader_data);
+
+void FetchBlockIndexInfo(uint64_t total_block_entries,
+                         uint64_t starting_meta_section_offset,
+                         uint64_t meta_section_length,
+                         TableReaderData *table_reader_data);
 
 } // namespace sstable
 
