@@ -5,6 +5,7 @@
 #include "db/status.h"
 
 // libC++
+#include <cassert>
 #include <memory>
 #include <span>
 #include <string_view>
@@ -19,7 +20,10 @@ class ReadOnlyFile;
 namespace sstable {
 
 struct BlockReaderData {
-  BlockReaderData() = default;
+  BlockReaderData(uint64_t block_size) {
+    assert(block_size > 0);
+    buffer.resize(block_size);
+  }
 
   // Move constructor/assignment
   BlockReaderData(BlockReaderData&&) = default;

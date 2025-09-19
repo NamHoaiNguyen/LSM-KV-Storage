@@ -72,7 +72,7 @@ public:
       const sstable::BlockReaderCache *block_reader_cache) const;
 
   std::unique_ptr<BlockReaderData>
-      SetupDataForBlockReader(BlockOffset offset) const;
+      SetupDataForBlockReader(uint64_t block_size, BlockOffset offset) const;
 
   const std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
 

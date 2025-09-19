@@ -174,12 +174,12 @@ db::GetStatus TableReader::SearchKey(
 }
 
 std::unique_ptr<BlockReaderData>
-    TableReader::SetupDataForBlockReader(BlockOffset offset) const {  
+    TableReader::SetupDataForBlockReader(uint64_t block_size, BlockOffset offset) const {
   if (offset < 0) {
     return nullptr;
   }
 
-  auto block_reader_data = std::make_unique<BlockReaderData>();
+  auto block_reader_data = std::make_unique<BlockReaderData>(block_size);
   ssize_t bytes_read =
       read_file_object_->RandomRead(block_reader_data->buffer, offset);
   if (bytes_read < 0) {
@@ -196,8 +196,7 @@ std::unique_ptr<BlockReaderData>
 
   for (uint64_t i = 0; i < block_reader_data->total_data_entries; i++) {
     block_reader_data->data_entries_offset_info
-        .emplace_back(GetDataEntryOffset(i, 
-                                         block_reader_data->offset_section,
+        .emplace_back(GetDataEntryOffset(block_reader_data->offset_section, i,
                                          block_reader_data->buffer));
   }
 

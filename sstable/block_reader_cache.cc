@@ -47,7 +47,7 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
 
   // Setup data for new block reader by table reader
   std::unique_ptr<BlockReaderData> block_reader_data = 
-      table_reader->SetupDataForBlockReader(block_info.second);
+      table_reader->SetupDataForBlockReader(block_size, block_info.second);
 
   // Create new table reader
   // auto new_block_reader = std::make_unique<BlockReader>(
