@@ -13,9 +13,9 @@ BlockReaderCache::BlockReaderCache(const TableReaderCache *table_reader_cache)
   assert(table_reader_cache_);
 }
 
-// NOT THREAD-SAFE. MUST acquire mutex before calling
 const BlockReader *BlockReaderCache::GetBlockReader(
     std::pair<SSTId, BlockOffset> block_info) const {
+  std::shared_lock rlock(mutex_);
   auto block_reader_iterator = block_reader_cache_.find(block_info);
   if (block_reader_iterator == block_reader_cache_.end()) {
     return nullptr;
@@ -32,7 +32,12 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   db::GetStatus status;
 
   {
-    std::shared_lock rlock(mutex_);
+    // TODO(namnh) : After getting BlockReader from BlockReaderCache, lock is
+    // released. It means that we need a mechansim to ensure that TableReader is
+    // not freed until operation is finished.
+    // Temporarily, because of lacking cache eviction mechanism. everything is
+    // fine. But when cache eviction algorithm is implemented, ref count for
+    // BlockReader should be also done too
     const BlockReader *block_reader = GetBlockReader(block_info);
     if (block_reader) {
       // if tablereader had already been in cache
@@ -57,7 +62,7 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   }
 
   // Lookup key in new blockreader
-  std::shared_lock rlock(mutex_);
+  // TODO(namnh) : same as above
   const BlockReader *block_reader = GetBlockReader(block_info);
   assert(block_reader);
 

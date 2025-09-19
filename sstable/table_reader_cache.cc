@@ -13,8 +13,8 @@ TableReaderCache::TableReaderCache(const db::Config *config) : config_(config) {
   assert(config_);
 }
 
-// NOT THREAD-SAFE. MUST acquire mutex before calling
 const TableReader *TableReaderCache::GetTableReader(SSTId table_id) const {
+  std::shared_lock rlock(mutex_);
   auto table_reader_iterator = table_readers_map_.find(table_id);
   if (table_reader_iterator == table_readers_map_.end()) {
     return nullptr;
@@ -29,7 +29,12 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   db::GetStatus status;
 
   {
-    std::shared_lock rlock(mutex_);
+    // TODO(namnh) : After getting TableReader from TableReaderCache, lock is
+    // released. It means that we need a mechansim to ensure that TableReader is
+    // not freed until operation is finished.
+    // Temporarily, because of lacking cache eviction mechanism. everything is
+    // fine. But when cache eviction algorithm is implemented, ref count for
+    // TableReader should be also done too
     const TableReader *table_reader = GetTableReader(table_id);
     if (table_reader) {
       // if table reader had already been in cache
@@ -56,7 +61,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   }
 
   // Search key in new table
-  std::shared_lock rlock(mutex_);
+  // TODO(namnh) : Same as above
   const TableReader *table_reader = GetTableReader(table_id);
   assert(table_reader);
   status = table_reader->SearchKey(key, txn_id, block_reader_cache);

@@ -42,7 +42,6 @@ public:
                                      uint64_t block_size) const;
 
 private:
-  // NOT THREAD-SAFE. MUST acquire mutex before calling
   const BlockReader *
   GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;
 

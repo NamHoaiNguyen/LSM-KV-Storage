@@ -311,9 +311,6 @@ TEST(VersionTest, ConcurrencyPutAndGet) {
   // Force clearing all immutable memtables
   db->ForceFlushMemTable();
 
-  // Sleep to wait all written data is persisted to disk
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
   // Now all immutable memtables are no longer in memory, it means that all

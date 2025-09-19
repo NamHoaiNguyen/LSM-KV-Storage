@@ -41,7 +41,6 @@ public:
       std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
       const sstable::BlockReaderCache *block_reader_cache) const;
 
-  // NOT THREAD-SAFE. MUST acquire mutex before calling
   const TableReader *GetTableReader(SSTId table_id) const;
 
 private:
