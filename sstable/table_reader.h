@@ -106,14 +106,6 @@ public:
   const std::vector<BlockIndex> &GetBlockIndex() const;
 
 private:
-  // void DecodeExtraInfo(uint64_t *total_block_entries,
-  //                      uint64_t *starting_meta_section_offset,
-  //                      uint64_t *meta_section_length);
-
-  // void FetchBlockIndexInfo(uint64_t total_block_entries,
-  //                          uint64_t starting_meta_section_offset,
-  //                          uint64_t meta_section_length);
-
   const std::string filename_;
 
   const SSTId table_id_;
@@ -126,7 +118,6 @@ private:
 
   const std::vector<BlockIndex> block_index_;
 
-  // const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
   const std::unique_ptr<io::ReadOnlyFile> read_file_object_;
 };
 
