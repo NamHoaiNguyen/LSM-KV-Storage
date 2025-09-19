@@ -5,6 +5,7 @@
 #include "db/status.h"
 
 // libC++
+#include <cassert>
 #include <memory>
 #include <span>
 #include <string_view>
@@ -17,6 +18,30 @@ class ReadOnlyFile;
 }
 
 namespace sstable {
+
+struct BlockReaderData {
+  BlockReaderData(uint64_t block_size) {
+    assert(block_size > 0);
+    buffer.resize(block_size);
+  }
+
+  // Move constructor/assignment
+  BlockReaderData(BlockReaderData &&) = default;
+
+  BlockReaderData &operator=(BlockReaderData &&) = default;
+
+  // Total data entries in a block
+  uint64_t total_data_entries;
+
+  // Starting offset of offset section
+  uint64_t offset_section;
+
+  // Contain starting offset and length of each data entries
+  std::vector<uint64_t> data_entries_offset_info;
+
+  // Buffer that data from block is written into
+  std::vector<Byte> buffer;
+};
 
 /*
 Block data format(unit: Byte)
@@ -64,7 +89,7 @@ Extra format
 
 class BlockReader {
 public:
-  BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object, size_t size);
+  BlockReader(std::unique_ptr<BlockReaderData> block_reader_data);
   ~BlockReader() = default;
 
   // No copy allowed
@@ -74,8 +99,6 @@ public:
   // Move constructor/assignment
   BlockReader(BlockReader &&) = default;
   BlockReader &operator=(BlockReader &&) = default;
-
-  bool FetchBlockData(BlockOffset offset);
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
@@ -97,18 +120,16 @@ private:
   // Get value of data entry that start at data_entry_offset
   std::string_view GetValueFromDataEntry(uint64_t data_entry_offset) const;
 
-  mutable std::vector<Byte> buffer_;
+  const std::vector<Byte> buffer_;
 
   // Total data entries in a block
-  uint64_t total_data_entries_;
+  const uint64_t total_data_entries_;
 
   // Starting offset of offset section
-  uint64_t offset_section_;
+  const uint64_t offset_section_;
 
   // Contain starting offset and length of each data entries
-  std::vector<uint64_t> data_entries_offset_info_;
-
-  const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
+  const std::vector<uint64_t> data_entries_offset_info_;
 };
 
 } // namespace sstable
