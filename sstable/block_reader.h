@@ -101,8 +101,6 @@ public:
   BlockReader(BlockReader &&) = default;
   BlockReader &operator=(BlockReader &&) = default;
 
-  bool FetchBlockData(BlockOffset offset);
-
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
   friend class BlockReaderIterator;
