@@ -26,9 +26,9 @@ struct BlockReaderData {
   }
 
   // Move constructor/assignment
-  BlockReaderData(BlockReaderData&&) = default;
+  BlockReaderData(BlockReaderData &&) = default;
 
-  BlockReaderData& operator=(BlockReaderData&&) = default;
+  BlockReaderData &operator=(BlockReaderData &&) = default;
 
   // Total data entries in a block
   uint64_t total_data_entries;
@@ -89,7 +89,6 @@ Extra format
 
 class BlockReader {
 public:
-  // BlockReader(std::shared_ptr<io::ReadOnlyFile> read_file_object, size_t size);
   BlockReader(std::unique_ptr<BlockReaderData> block_reader_data);
   ~BlockReader() = default;
 
