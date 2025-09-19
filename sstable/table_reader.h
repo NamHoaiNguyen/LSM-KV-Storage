@@ -67,14 +67,12 @@ public:
 
   bool Open();
 
-  db::GetStatus SearchKey(
-      std::string_view key, TxnId txn_id,
-      const sstable::BlockReaderCache *block_reader_cache) const;
+  db::GetStatus
+  SearchKey(std::string_view key, TxnId txn_id,
+            const sstable::BlockReaderCache *block_reader_cache) const;
 
   std::unique_ptr<BlockReaderData>
-      SetupDataForBlockReader(uint64_t block_size, BlockOffset offset) const;
-
-  const std::shared_ptr<io::ReadOnlyFile> GetReadFileObject() const;
+  SetupDataForBlockReader(uint64_t block_size, BlockOffset offset) const;
 
   uint64_t GetFileSize() const;
 

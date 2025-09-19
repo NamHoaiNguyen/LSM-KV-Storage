@@ -8,7 +8,7 @@
 namespace {
 
 uint64_t GetDataEntryOffset(uint64_t offset_section, int entry_index,
-                            std::span<const kvs::Byte> buffer)  {
+                            std::span<const kvs::Byte> buffer) {
   // Starting offset of offset entry at index (entry_index) (th)
   uint64_t offset_entry = offset_section + entry_index * 2 * sizeof(uint64_t);
 
@@ -18,7 +18,7 @@ uint64_t GetDataEntryOffset(uint64_t offset_section, int entry_index,
   return data_entry_offset;
 }
 
-} // namespace 
+} // namespace
 
 namespace kvs {
 constexpr int kDefaultExtraInfoSize = 40; // Bytes
@@ -174,7 +174,8 @@ db::GetStatus TableReader::SearchKey(
 }
 
 std::unique_ptr<BlockReaderData>
-    TableReader::SetupDataForBlockReader(uint64_t block_size, BlockOffset offset) const {
+TableReader::SetupDataForBlockReader(uint64_t block_size,
+                                     BlockOffset offset) const {
   if (offset < 0) {
     return nullptr;
   }
@@ -189,23 +190,17 @@ std::unique_ptr<BlockReaderData>
   int64_t last_block_offset = block_reader_data->buffer.size() - 1;
   // 16 last bytes of lock contain metadata info(num entries + starting offset
   // of offset section)
-  block_reader_data->total_data_entries =
-      *reinterpret_cast<uint64_t *>(&block_reader_data->buffer[last_block_offset - 15]);
-  block_reader_data->offset_section =
-      *reinterpret_cast<uint64_t *>(&block_reader_data->buffer[last_block_offset - 7]);
+  block_reader_data->total_data_entries = *reinterpret_cast<uint64_t *>(
+      &block_reader_data->buffer[last_block_offset - 15]);
+  block_reader_data->offset_section = *reinterpret_cast<uint64_t *>(
+      &block_reader_data->buffer[last_block_offset - 7]);
 
   for (uint64_t i = 0; i < block_reader_data->total_data_entries; i++) {
-    block_reader_data->data_entries_offset_info
-        .emplace_back(GetDataEntryOffset(block_reader_data->offset_section, i,
-                                         block_reader_data->buffer));
+    block_reader_data->data_entries_offset_info.emplace_back(GetDataEntryOffset(
+        block_reader_data->offset_section, i, block_reader_data->buffer));
   }
 
   return block_reader_data;
-}
-
-
-const std::shared_ptr<io::ReadOnlyFile> TableReader::GetReadFileObject() const {
-  return read_file_object_;
 }
 
 uint64_t TableReader::GetFileSize() const { return file_size_; }
