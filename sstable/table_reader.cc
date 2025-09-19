@@ -190,9 +190,9 @@ db::GetStatus TableReader::SearchKey(
       key, txn_id, {table_id_, block_offset}, block_size);
 }
 
-std::unique_ptr<BlockReaderData>
-TableReader::SetupDataForBlockReader(uint64_t block_size,
-                                     BlockOffset offset) const {
+std::unique_ptr<BlockReader>
+TableReader::CreateAndSetupDataForBlockReader(uint64_t block_size,
+                                              BlockOffset offset) const {
   if (offset < 0) {
     return nullptr;
   }
@@ -217,7 +217,11 @@ TableReader::SetupDataForBlockReader(uint64_t block_size,
         block_reader_data->offset_section, i, block_reader_data->buffer));
   }
 
-  return block_reader_data;
+  // Create new blockreader
+  auto new_block_reader =
+      std::make_unique<BlockReader>(std::move(block_reader_data));
+
+  return new_block_reader;
 }
 
 uint64_t TableReader::GetFileSize() const { return file_size_; }

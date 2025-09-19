@@ -22,6 +22,7 @@ namespace sstable {
 class BlockIndex;
 class BlockReaderCache;
 class BlockReaderData;
+class BlockReader;
 
 /*
 SST data format
@@ -98,8 +99,9 @@ public:
   SearchKey(std::string_view key, TxnId txn_id,
             const sstable::BlockReaderCache *block_reader_cache) const;
 
-  std::unique_ptr<BlockReaderData>
-  SetupDataForBlockReader(uint64_t block_size, BlockOffset offset) const;
+  std::unique_ptr<BlockReader>
+  CreateAndSetupDataForBlockReader(uint64_t block_size,
+                                   BlockOffset offset) const;
 
   uint64_t GetFileSize() const;
 
