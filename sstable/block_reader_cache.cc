@@ -45,13 +45,19 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
       table_reader_cache_->GetTableReader(block_info.first);
   assert(table_reader);
 
+  // Setup data for new block reader by table reader
+  std::unique_ptr<BlockReaderData> block_reader_data = 
+      table_reader->SetupDataForBlockReader(block_info.second);
+
   // Create new table reader
+  // auto new_block_reader = std::make_unique<BlockReader>(
+  //     table_reader->GetReadFileObject(), block_size);
   auto new_block_reader = std::make_unique<BlockReader>(
-      table_reader->GetReadFileObject(), block_size);
-  // Immediately fetch data from block into memory
-  if (!new_block_reader->FetchBlockData(block_info.second)) {
-    return status;
-  }
+      std::move(block_reader_data));
+  // // Immediately fetch data from block into memory
+  // if (!new_block_reader->FetchBlockData(block_info.second)) {
+  //   return status;
+  // }
 
   {
     // Insert new block reader into cache
