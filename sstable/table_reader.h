@@ -49,10 +49,37 @@ Extra format(in order from top to bottom, left to right)
 -------------------------------------------------------------------------------
 */
 
+struct TableReaderData() {
+  TableReaderData() = default;
+
+  // No copy allowed
+  TableReaderData(const TableReaderData &) = delete;
+  TableReaderData &operator=(TableReaderData &) = delete;
+
+  // Move constructor/assignment
+  TableReaderData(TableReaderData &&) = default;
+  TableReaderData &operator=(TableReaderData &&) = default;
+
+  std::string filename;
+
+  SSTId table_id;
+
+  uint64_t file_size;
+
+  TxnId min_transaction_id;
+
+  TxnId max_transaction_id;
+
+  std::vector<BlockIndex> block_index;
+
+  std::unique_ptr<io::ReadOnlyFile> read_file_object;
+}
+
 // TODO(namnh) : With this design, a need for table reader cache becomes an
 // indispensable requirement
 class TableReader {
 public:
+  TableReader(std::unique_ptr<TableReaderData> table_reader_data);
   TableReader(std::string &&filename, SSTId table_id, uint64_t file_size);
 
   ~TableReader() = default;
@@ -93,13 +120,14 @@ private:
 
   const uint64_t file_size_;
 
-  TxnId min_transaction_id_;
+  const TxnId min_transaction_id_;
 
-  TxnId max_transaction_id_;
+  const TxnId max_transaction_id_;
 
-  std::vector<BlockIndex> block_index_;
+  const std::vector<BlockIndex> block_index_;
 
-  const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
+  // const std::shared_ptr<io::ReadOnlyFile> read_file_object_;
+  const std::unique_ptr<io::ReadOnlyFile> read_file_object_;
 };
 
 } // namespace sstable

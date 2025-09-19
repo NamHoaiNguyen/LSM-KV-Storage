@@ -43,9 +43,14 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
       config_->GetSavedDataPath() + std::to_string(table_id) + ".sst";
 
   // Create new table reader
-  auto new_table_reader =
-      std::make_unique<TableReader>(std::move(filename), table_id, file_size);
-  if (!new_table_reader->Open()) {
+  // auto new_table_reader =
+  //     std::make_unique<TableReader>(std::move(filename), table_id, file_size);
+  // if (!new_table_reader->Open()) {
+  //   throw std::runtime_error("Can't open SST file to read");
+  // }
+
+  auto new_table_reader = CreateAndSetupDataForTableReader(std::move(filename), table_id, file_size);
+  if (!new_table_reader) {
     throw std::runtime_error("Can't open SST file to read");
   }
 
