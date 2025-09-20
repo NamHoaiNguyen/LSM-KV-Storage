@@ -5,6 +5,8 @@ add_library(sstable
   block_index.h
   block_reader_cache.cc
   block_reader_cache.h
+  block_reader_iterator.cc
+  block_reader_iterator.h
   block_reader.cc
   block_reader.h
   table_builder.cc

@@ -120,6 +120,8 @@ private:
   // Get value of data entry that start at data_entry_offset
   std::string_view GetValueFromDataEntry(uint64_t data_entry_offset) const;
 
+  TxnId GetTransactionIdFromDataEntry(uint64_t data_entry_offset) const;
+
   const std::vector<Byte> buffer_;
 
   // Total data entries in a block

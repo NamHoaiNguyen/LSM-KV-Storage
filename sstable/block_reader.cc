@@ -109,6 +109,18 @@ BlockReader::GetValueFromDataEntry(uint64_t data_entry_offset) const {
   return value;
 }
 
+TxnId BlockReader::GetTransactionIdFromDataEntry(
+    uint64_t data_entry_offset) const {
+  std::string_view key = GetKeyFromDataEntry(data_entry_offset);
+  std::string_view value = GetValueFromDataEntry(data_entry_offset);
+
+  uint64_t start_txnid_offset = data_entry_offset + sizeof(uint8_t) +
+                                sizeof(uint32_t) + key.size() +
+                                sizeof(uint32_t) + value.size();
+
+  return *reinterpret_cast<const TxnId *>(&buffer_[start_txnid_offset]);
+}
+
 } // namespace sstable
 
 } // namespace kvs
