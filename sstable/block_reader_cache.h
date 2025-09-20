@@ -39,7 +39,8 @@ public:
 
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,
-                                     uint64_t block_size) const;
+                                     uint64_t block_size,
+                                     const TableReader *table_reader) const;
 
 private:
   const BlockReader *

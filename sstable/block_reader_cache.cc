@@ -27,32 +27,29 @@ const BlockReader *BlockReaderCache::GetBlockReader(
 db::GetStatus
 BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                        std::pair<SSTId, BlockOffset> block_info,
-                                       uint64_t block_size) const {
-
+                                       uint64_t block_size,
+                                       const TableReader *table_reader) const {
+  assert(table_reader);
   db::GetStatus status;
 
-  {
-    // TODO(namnh) : After getting BlockReader from BlockReaderCache, lock is
-    // released. It means that we need a mechansim to ensure that TableReader is
-    // not freed until operation is finished.
-    // Temporarily, because of lacking cache eviction mechanism. everything is
-    // fine. But when cache eviction algorithm is implemented, ref count for
-    // BlockReader should be also done too
-    const BlockReader *block_reader = GetBlockReader(block_info);
-    if (block_reader) {
-      // if tablereader had already been in cache
-      status = block_reader->SearchKey(key, txn_id);
-      return status;
-    }
+  // TODO(namnh) : After getting BlockReader from BlockReaderCache, lock is
+  // released. It means that we need a mechansim to ensure that TableReader is
+  // not freed until operation is finished.
+  // Temporarily, because of lacking cache eviction mechanism. everything is
+  // fine. But when cache eviction algorithm is implemented, ref count for
+  // BlockReader should be also done too
+  const BlockReader *block_reader = GetBlockReader(block_info);
+  if (block_reader) {
+    // if tablereader had already been in cache
+    status = block_reader->SearchKey(key, txn_id);
+    return status;
   }
-
-  const TableReader *table_reader =
-      table_reader_cache_->GetTableReader(block_info.first);
-  assert(table_reader);
 
   // Create new tablereader
   auto new_block_reader = table_reader->CreateAndSetupDataForBlockReader(
       block_size, block_info.second);
+
+  status = new_block_reader->SearchKey(key, txn_id);
 
   {
     // Insert new blockreader into cache
@@ -60,13 +57,6 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
     block_reader_cache_.insert(
         std::make_pair(block_info, std::move(new_block_reader)));
   }
-
-  // Lookup key in new blockreader
-  // TODO(namnh) : same as above
-  const BlockReader *block_reader = GetBlockReader(block_info);
-  assert(block_reader);
-
-  status = block_reader->SearchKey(key, txn_id);
   return status;
 }
 

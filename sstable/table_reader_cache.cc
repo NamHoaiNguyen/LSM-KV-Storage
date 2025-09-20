@@ -28,19 +28,18 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
     const sstable::BlockReaderCache *block_reader_cache) const {
   db::GetStatus status;
 
-  {
-    // TODO(namnh) : After getting TableReader from TableReaderCache, lock is
-    // released. It means that we need a mechansim to ensure that TableReader is
-    // not freed until operation is finished.
-    // Temporarily, because of lacking cache eviction mechanism. everything is
-    // fine. But when cache eviction algorithm is implemented, ref count for
-    // TableReader should be also done too
-    const TableReader *table_reader = GetTableReader(table_id);
-    if (table_reader) {
-      // if table reader had already been in cache
-      status = table_reader->SearchKey(key, txn_id, block_reader_cache);
-      return status;
-    }
+  // TODO(namnh) : After getting TableReader from TableReaderCache, lock is
+  // released. It means that we need a mechansim to ensure that TableReader is
+  // not freed until operation is finished.
+  // Temporarily, because of lacking cache eviction mechanism. everything is
+  // fine. But when cache eviction algorithm is implemented, ref count for
+  // TableReader should be also done too
+  const TableReader *table_reader = GetTableReader(table_id);
+  if (table_reader) {
+    // if table reader had already been in cache
+    status =
+        table_reader->SearchKey(key, txn_id, block_reader_cache, table_reader);
+    return status;
   }
 
   // if table hadn't been in cache, create new table and load into cache
@@ -54,17 +53,16 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
     throw std::runtime_error("Can't open SST file to read");
   }
 
+  // Search key in new table
+  status = new_table_reader->SearchKey(key, txn_id, block_reader_cache,
+                                       new_table_reader.get());
+
   {
     // Insert table into cache
     std::scoped_lock rwlock(mutex_);
     table_readers_map_.insert({table_id, std::move(new_table_reader)});
   }
 
-  // Search key in new table
-  // TODO(namnh) : Same as above
-  const TableReader *table_reader = GetTableReader(table_id);
-  assert(table_reader);
-  status = table_reader->SearchKey(key, txn_id, block_reader_cache);
   return status;
 }
 

@@ -165,9 +165,10 @@ TableReader::TableReader(std::unique_ptr<TableReaderData> table_reader_data)
       block_index_(std::move(table_reader_data->block_index)),
       read_file_object_(std::move(table_reader_data->read_file_object)) {}
 
-db::GetStatus TableReader::SearchKey(
-    std::string_view key, TxnId txn_id,
-    const sstable::BlockReaderCache *block_reader_cache) const {
+db::GetStatus
+TableReader::SearchKey(std::string_view key, TxnId txn_id,
+                       const sstable::BlockReaderCache *block_reader_cache,
+                       const TableReader *table_reader) const {
   assert(block_reader_cache);
 
   // Find the block that have smallest largest key that >= key
@@ -187,7 +188,7 @@ db::GetStatus TableReader::SearchKey(
   uint64_t block_size = block_index_[right].GetBlockSize();
 
   return block_reader_cache->GetKeyFromBlockCache(
-      key, txn_id, {table_id_, block_offset}, block_size);
+      key, txn_id, {table_id_, block_offset}, block_size, table_reader);
 }
 
 std::unique_ptr<BlockReader>
