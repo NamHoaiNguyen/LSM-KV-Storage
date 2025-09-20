@@ -6,7 +6,6 @@
 
 // libC++
 #include <memory>
-#include <optional>
 #include <string>
 #include <string_view>
 
@@ -79,8 +78,8 @@ public:
 
   // Add new key/value pairs to SST
   // Entries MUST be sorted in ascending order before be added
-  void AddEntry(std::string_view key, std::optional<std::string_view> value,
-                TxnId txn_id, db::ValueType value_type);
+  void AddEntry(std::string_view key, std::string_view value, TxnId txn_id,
+                db::ValueType value_type);
 
   // Flush block data to disk
   void FlushBlock();

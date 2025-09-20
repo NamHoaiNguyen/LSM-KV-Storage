@@ -5,7 +5,6 @@
 #include "db/status.h"
 
 // libC++
-#include <optional>
 #include <string_view>
 
 namespace kvs {
@@ -24,7 +23,7 @@ public:
 
   virtual std::string_view GetKey() = 0;
 
-  virtual std::optional<std::string_view> GetValue() = 0;
+  virtual std::string_view GetValue() = 0;
 
   virtual db::ValueType GetType() = 0;
 

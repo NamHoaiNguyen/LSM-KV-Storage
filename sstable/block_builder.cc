@@ -9,9 +9,8 @@ namespace sstable {
 BlockBuilder::BlockBuilder()
     : block_size_(0), num_entries_(0), data_current_offset_(0) {}
 
-void BlockBuilder::AddEntry(std::string_view key,
-                            std::optional<std::string_view> value, TxnId txn_id,
-                            db::ValueType value_type) {
+void BlockBuilder::AddEntry(std::string_view key, std::string_view value,
+                            TxnId txn_id, db::ValueType value_type) {
   assert(key.data());
 
   // Add entry into data entry section
@@ -19,7 +18,7 @@ void BlockBuilder::AddEntry(std::string_view key,
 
   size_t data_entry_size =
       sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
-      (value ? sizeof(uint32_t) + value.value().size() : 0) + sizeof(TxnId);
+      (value.data() ? sizeof(uint32_t) + value.size() : 0) + sizeof(TxnId);
 
   // Add offset info of this entry into offset section
   EncodeOffsetEntry(data_current_offset_, data_entry_size);
@@ -34,8 +33,7 @@ void BlockBuilder::AddEntry(std::string_view key,
   block_size_ += data_entry_size + 2 * sizeof(uint64_t);
 }
 
-void BlockBuilder::EncodeDataEntry(std::string_view key,
-                                   std::optional<std::string_view> value,
+void BlockBuilder::EncodeDataEntry(std::string_view key, std::string_view value,
                                    TxnId txn_id, db::ValueType value_type) {
   assert(key.size() <= kMaxKeySize);
 
@@ -55,11 +53,11 @@ void BlockBuilder::EncodeDataEntry(std::string_view key,
   const Byte *const key_bytes = reinterpret_cast<const Byte *const>(key.data());
   data_buffer_.insert(data_buffer_.end(), key_bytes, key_bytes + key_len);
 
-  if (value) {
+  if (value.data()) {
     assert(value_type == db::ValueType::PUT);
     // Insert length of value(4 bytes)
     // Safe, because we limit length of key is less than 2^32
-    const uint32_t value_len = static_cast<uint32_t>(value.value().size());
+    const uint32_t value_len = static_cast<uint32_t>(value.size());
     const Byte *const value_len_bytes =
         reinterpret_cast<const Byte *>(&value_len);
     data_buffer_.insert(data_buffer_.end(), value_len_bytes,
@@ -67,7 +65,7 @@ void BlockBuilder::EncodeDataEntry(std::string_view key,
 
     // Insert value
     const Byte *const value_bytes =
-        reinterpret_cast<const Byte *const>(value.value().data());
+        reinterpret_cast<const Byte *const>(value.data());
     data_buffer_.insert(data_buffer_.end(), value_bytes,
                         value_bytes + value_len);
   }

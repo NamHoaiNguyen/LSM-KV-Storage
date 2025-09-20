@@ -23,7 +23,7 @@ public:
 
   std::string_view GetKey() override;
 
-  std::optional<std::string_view> GetValue() override;
+  std::string_view GetValue() override;
 
   ValueType GetType() override;
 

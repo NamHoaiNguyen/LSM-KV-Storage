@@ -20,9 +20,9 @@ std::string_view SkipListIterator::GetKey() {
   return node_->key_;
 }
 
-std::optional<std::string_view> SkipListIterator::GetValue() {
+std::string_view SkipListIterator::GetValue() {
   if (!node_ || !node_->value_) {
-    return std::nullopt;
+    return std::string_view{};
   }
 
   return std::string_view(node_->value_.value());

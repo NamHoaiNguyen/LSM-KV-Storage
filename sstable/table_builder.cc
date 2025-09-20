@@ -30,9 +30,8 @@ bool TableBuilder::Open() {
   return write_file_object_->Open();
 }
 
-void TableBuilder::AddEntry(std::string_view key,
-                            std::optional<std::string_view> value, TxnId txn_id,
-                            db::ValueType value_type) {
+void TableBuilder::AddEntry(std::string_view key, std::string_view value,
+                            TxnId txn_id, db::ValueType value_type) {
   assert(key.data() && value_type != db::ValueType::INVALID ||
          txn_id != INVALID_TXN_ID);
 
