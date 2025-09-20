@@ -6,7 +6,6 @@
 
 // libC++
 #include <cassert>
-#include <optional>
 
 namespace kvs {
 

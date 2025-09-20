@@ -11,6 +11,16 @@ BlockReaderIterator::BlockReaderIterator(const BlockReader *block_reader)
   assert(block_reader_);
 }
 
+std::optional<uint64_t> BlockReaderIterator::GetCurrentDataEntryOffset() {
+  if (current_offset_index_ < 0 ||
+      current_offset_index_ >=
+          block_reader_->data_entries_offset_info_.size()) {
+    return std::nullopt;
+  }
+
+  return block_reader_->data_entries_offset_info_[current_offset_index_];
+}
+
 std::string_view BlockReaderIterator::GetKey() {
   std::optional<uint64_t> data_entry_offset = GetCurrentDataEntryOffset();
   if (!data_entry_offset) {
@@ -42,16 +52,6 @@ db::ValueType BlockReaderIterator::GetType() {
   }
 
   return block_reader_->GetValueTypeFromDataEntry(data_entry_offset.value());
-}
-
-std::optional<uint64_t> BlockReaderIterator::GetCurrentDataEntryOffset() {
-  if (current_offset_index_ < 0 ||
-      current_offset_index_ >=
-          block_reader_->data_entries_offset_info_.size()) {
-    return std::nullopt;
-  }
-
-  return block_reader_->data_entries_offset_info_[current_offset_index_];
 }
 
 TxnId BlockReaderIterator::GetTransactionId() {
@@ -106,15 +106,10 @@ void BlockReaderIterator::Seek(std::string_view key) {
   current_offset_index_ = left;
 }
 
-void BlockReaderIterator::SeekToFirst() {
-  current_offset_index_ = block_reader_->data_entries_offset_info_[0];
-}
+void BlockReaderIterator::SeekToFirst() { current_offset_index_ = 0; }
 
 void BlockReaderIterator::SeekToLast() {
-  uint64_t total_data_entries = block_reader_->data_entries_offset_info_.size();
-
-  current_offset_index_ =
-      block_reader_->data_entries_offset_info_[total_data_entries - 1];
+  current_offset_index_ = block_reader_->data_entries_offset_info_.size() - 1;
 }
 
 } // namespace sstable
