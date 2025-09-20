@@ -53,6 +53,7 @@ private:
 
   const BlockReader *block_reader_;
 
+  // Contain index of block_index_ data member in BlockReader
   uint64_t current_offset_index_;
 };
 

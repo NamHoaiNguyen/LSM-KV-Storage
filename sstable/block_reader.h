@@ -36,7 +36,7 @@ struct BlockReaderData {
   // Starting offset of offset section
   uint64_t offset_section;
 
-  // Contain starting offset and length of each data entries
+  // Contain starting offset of each data entries
   std::vector<uint64_t> data_entries_offset_info;
 
   // Buffer that data from block is written into
@@ -130,7 +130,7 @@ private:
   // Starting offset of offset section
   const uint64_t offset_section_;
 
-  // Contain starting offset and length of each data entries
+  // Contain starting offset of each data entries
   const std::vector<uint64_t> data_entries_offset_info_;
 };
 
