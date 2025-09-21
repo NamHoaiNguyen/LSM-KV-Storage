@@ -8,11 +8,6 @@ namespace kvs {
 
 namespace sstable {
 
-BlockReaderCache::BlockReaderCache(const TableReaderCache *table_reader_cache)
-    : table_reader_cache_(table_reader_cache) {
-  assert(table_reader_cache_);
-}
-
 const BlockReader *BlockReaderCache::GetBlockReader(
     std::pair<SSTId, BlockOffset> block_info) const {
   std::shared_lock rlock(mutex_);

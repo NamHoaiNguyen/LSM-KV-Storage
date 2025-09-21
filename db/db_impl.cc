@@ -41,8 +41,7 @@ DBImpl::DBImpl(bool is_testing)
       thread_pool_(new kvs::ThreadPool()),
       table_reader_cache_(
           std::make_unique<sstable::TableReaderCache>(config_.get())),
-      block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
-          table_reader_cache_.get())),
+      block_reader_cache_(std::make_unique<sstable::BlockReaderCache>()),
       version_manager_(std::make_unique<VersionManager>(
           this, table_reader_cache_.get(), block_reader_cache_.get(),
           config_.get(), thread_pool_)) {}

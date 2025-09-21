@@ -25,7 +25,7 @@ class TableReader;
 
 class BlockReaderCache {
 public:
-  explicit BlockReaderCache(const TableReaderCache *table_reader_cache);
+  BlockReaderCache() = default;
 
   ~BlockReaderCache() = default;
 
