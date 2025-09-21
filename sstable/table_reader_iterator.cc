@@ -5,8 +5,6 @@
 #include "sstable/block_reader_iterator.h"
 #include "sstable/table_reader.h"
 
-#include <iostream>
-
 namespace kvs {
 
 namespace sstable {
@@ -47,7 +45,6 @@ void TableReaderIterator::Next() {
   block_reader_iterator_->Next();
   if (block_reader_iterator_->IsValid()) {
     // There is still data entry in block to iterate
-    // block_reader_iterator_->Next();
     return;
   }
 
@@ -55,10 +52,6 @@ void TableReaderIterator::Next() {
   current_block_offset_index_++;
   if (!IsValid()) {
     return;
-  }
-
-  if (current_block_offset_index_ >= table_reader_->block_index_.size()) {
-    std::cout << "namnh debug TableReaderIterator::Next" << std::endl;
   }
 
   CreateNewBlockReaderIterator(GetBlockOffsetAndSizeBaseOnIndex());
