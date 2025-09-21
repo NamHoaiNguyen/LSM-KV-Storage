@@ -258,6 +258,10 @@ DBImpl::GetImmutableMemTables() {
   return immutable_memtables_;
 }
 
+const sstable::BlockReaderCache *DBImpl::GetBlockReaderCache() const {
+  return block_reader_cache_.get();
+}
+
 } // namespace db
 
 } // namespace kvs

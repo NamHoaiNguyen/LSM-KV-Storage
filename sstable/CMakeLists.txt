@@ -13,6 +13,8 @@ add_library(sstable
   table_builder.h
   table_reader_cache.cc
   table_reader_cache.h
+  table_reader_iterator.cc
+  table_reader_iterator.h
   table_reader.cc
   table_reader.h
 )

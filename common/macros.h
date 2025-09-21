@@ -12,6 +12,8 @@ using SSTId = uint64_t;
 
 using BlockOffset = uint64_t;
 
+using BlockSize = uint64_t;
+
 using TxnId = uint64_t; // Transaction Id
 
 using TimeStamp = uint64_t; // Transaction timestamp

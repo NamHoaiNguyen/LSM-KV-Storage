@@ -70,6 +70,8 @@ public:
 
   const std::vector<std::unique_ptr<BaseMemTable>> &GetImmutableMemTables();
 
+  const sstable::BlockReaderCache *GetBlockReaderCache() const;
+
 private:
   void FlushMemTableJob();
 
