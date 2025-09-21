@@ -47,7 +47,7 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
 
   // Create new tablereader
   auto new_block_reader = table_reader->CreateAndSetupDataForBlockReader(
-      block_size, block_info.second);
+      block_info.second, block_size);
 
   status = new_block_reader->SearchKey(key, txn_id);
 

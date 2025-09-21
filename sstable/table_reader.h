@@ -93,18 +93,19 @@ public:
   TableReader(TableReader &&) = default;
   TableReader &operator=(TableReader &&) = default;
 
-  // bool Open();
-
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id,
                           const sstable::BlockReaderCache *block_reader_cache,
                           const TableReader *table_reader) const;
 
   std::unique_ptr<BlockReader>
-  CreateAndSetupDataForBlockReader(uint64_t block_size,
-                                   BlockOffset offset) const;
+  CreateAndSetupDataForBlockReader(BlockOffset offset,
+                                   uint64_t block_size) const;
 
   uint64_t GetFileSize() const;
 
+  friend class TableReaderIterator;
+
+  // For testing
   const std::vector<BlockIndex> &GetBlockIndex() const;
 
 private:
@@ -112,12 +113,14 @@ private:
 
   const SSTId table_id_;
 
+  // Size of SST file
   const uint64_t file_size_;
 
   const TxnId min_transaction_id_;
 
   const TxnId max_transaction_id_;
 
+  // Contain starting offset and size of each block in table
   const std::vector<BlockIndex> block_index_;
 
   const std::unique_ptr<io::ReadOnlyFile> read_file_object_;

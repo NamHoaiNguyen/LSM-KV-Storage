@@ -192,8 +192,8 @@ TableReader::SearchKey(std::string_view key, TxnId txn_id,
 }
 
 std::unique_ptr<BlockReader>
-TableReader::CreateAndSetupDataForBlockReader(uint64_t block_size,
-                                              BlockOffset offset) const {
+TableReader::CreateAndSetupDataForBlockReader(BlockOffset offset,
+                                              uint64_t block_size) const {
   if (offset < 0) {
     return nullptr;
   }

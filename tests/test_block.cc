@@ -251,8 +251,8 @@ TEST(BlockTest, BlockReaderIterator) {
     uint64_t block_size = block_index[i].GetBlockSize();
 
     std::unique_ptr<sstable::BlockReader> block_reader =
-        table_reader->CreateAndSetupDataForBlockReader(block_size,
-                                                       block_offset);
+        table_reader->CreateAndSetupDataForBlockReader(block_offset,
+                                                       block_size);
     auto iterator =
         std::make_unique<sstable::BlockReaderIterator>(block_reader.get());
 
