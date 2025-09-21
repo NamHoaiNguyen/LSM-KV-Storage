@@ -48,6 +48,8 @@ public:
 
   void SeekToLast() override;
 
+  friend class TableReaderIterator;
+
 private:
   std::optional<uint64_t> GetCurrentDataEntryOffset();
 

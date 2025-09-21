@@ -109,6 +109,9 @@ public:
   const std::vector<BlockIndex> &GetBlockIndex() const;
 
 private:
+  std::pair<BlockOffset, BlockSize>
+  GetBlockOffsetAndSize(std::string_view key) const;
+
   const std::string filename_;
 
   const SSTId table_id_;

@@ -37,15 +37,18 @@ public:
   BlockReaderCache(BlockReaderCache &&) = default;
   BlockReaderCache &operator=(BlockReaderCache &&) = default;
 
+  const BlockReader *
+  GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;
+
+  void AddNewBlockReader(std::pair<SSTId, BlockOffset> block_info,
+                         std::unique_ptr<BlockReader> block_reader) const;
+
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,
                                      uint64_t block_size,
                                      const TableReader *table_reader) const;
 
 private:
-  const BlockReader *
-  GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;
-
   // Custom hash for pair<int, int>
   struct pair_hash {
     size_t operator()(const std::pair<SSTId, BlockOffset> &p) const noexcept {

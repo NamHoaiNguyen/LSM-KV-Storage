@@ -170,7 +170,14 @@ TableReader::SearchKey(std::string_view key, TxnId txn_id,
                        const sstable::BlockReaderCache *block_reader_cache,
                        const TableReader *table_reader) const {
   assert(block_reader_cache);
+  auto [block_offset, block_size] = GetBlockOffsetAndSize(key);
 
+  return block_reader_cache->GetKeyFromBlockCache(
+      key, txn_id, {table_id_, block_offset}, block_size, table_reader);
+}
+
+std::pair<BlockOffset, BlockSize>
+TableReader::GetBlockOffsetAndSize(std::string_view key) const {
   // Find the block that have smallest largest key that >= key
   int left = 0;
   int right = block_index_.size();
@@ -184,11 +191,10 @@ TableReader::SearchKey(std::string_view key, TxnId txn_id,
     }
   }
 
-  uint64_t block_offset = block_index_[right].GetBlockStartOffset();
-  uint64_t block_size = block_index_[right].GetBlockSize();
+  BlockOffset block_offset = block_index_[right].GetBlockStartOffset();
+  BlockSize block_size = block_index_[right].GetBlockSize();
 
-  return block_reader_cache->GetKeyFromBlockCache(
-      key, txn_id, {table_id_, block_offset}, block_size, table_reader);
+  return {block_offset, block_size};
 }
 
 std::unique_ptr<BlockReader>
