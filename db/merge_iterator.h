@@ -7,6 +7,7 @@
 // libC++
 #include <cassert>
 #include <memory>
+#include <queue>
 #include <vector>
 
 namespace kvs {
@@ -57,6 +58,9 @@ private:
       table_reader_iterators_;
 
   const size_t num_iterators_;
+
+  std::priority_queue<std::string, std::vector<std::string>,
+                      std::greater<std::string>> min_heap_;
 };
 
 } // namespace db

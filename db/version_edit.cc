@@ -10,6 +10,7 @@ void VersionEdit::AddNewFiles(SSTId table_id, int level, uint64_t file_size,
                               std::string &&filename) {
   auto sst_metadata = std::make_shared<SSTMetadata>();
   sst_metadata->table_id = table_id;
+  sst_metadata->filename = std::move(filename);
   sst_metadata->level = level;
   sst_metadata->file_size = file_size;
   sst_metadata->smallest_key = std::string(smallest_key);

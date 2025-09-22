@@ -1,5 +1,7 @@
 #include "db/merge_iterator.h"
 
+#include "sstable/table_reader_iterator.h"
+
 namespace kvs {
 
 namespace db {
@@ -24,12 +26,20 @@ void MergeIterator::Next() {}
 
 void MergeIterator::Prev() {}
 
-// Jump  to and load first block in table
+// Jump to and load first block in table
 void MergeIterator::Seek(std::string_view key) {}
 
-void MergeIterator::SeekToFirst() { for (size_t i = 0; i <) }
+void MergeIterator::SeekToFirst() {
+  for (const auto iterator& : table_reader_iterators_) {
+    iterator->SeekToFirst();
+  }
+}
 
-void MergeIterator::SeekToLast() {}
+void MergeIterator::SeekToLast() {
+  for (const auto iterator& : table_reader_iterators_) {
+    iterator->SeekToLast();
+  }
+}
 
 } // namespace db
 

@@ -19,6 +19,8 @@ namespace db {
 struct SSTMetadata {
   SSTId table_id;
 
+  std::string filename;
+
   int level;
 
   uint64_t file_size;
