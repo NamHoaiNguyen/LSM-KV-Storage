@@ -10,6 +10,8 @@
 
 namespace kvs {
 
+class BaseIterator;
+
 namespace sstable {
 class BlockReaderCache;
 class TableReaderCache;
@@ -40,6 +42,8 @@ public:
 
 private:
   void DoL0L1Compact();
+
+  std::unique_ptr<kvs::BaseIterator> CreateMergeIterator();
 
   // Find all overlapping sst files at level
   std::pair<std::string_view, std::string_view> GetOverlappingSSTLvl0();

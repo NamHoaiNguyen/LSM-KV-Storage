@@ -1,5 +1,6 @@
 #include "db/compact.h"
 
+#include "common/base_iterator.h"
 #include "common/macros.h"
 #include "db/db_impl.h"
 #include "db/merge_iterator.h"
@@ -170,22 +171,26 @@ Compact::FindNonOverlappingFiles(int level, std::string_view smallest_key,
   return right;
 }
 
-void Compact::DoCompactJob() {
+std::unique_ptr<kvs::BaseIterator> Compact::CreateMergeIterator() {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
   std::string filename;
+  SSTId table_id;
 
   for (int level = 0; level < 2; level++) {
     for (int i = 0; i < files_need_compaction_[level].size(); i++) {
       filename = files_need_compaction_[level][i]->filename;
-      SSTId table_id = files_need_compaction_[level][i]->table_id;
+      table_id = files_need_compaction_[level][i]->table_id;
+      // Find table in cache
       const sstable::TableReader *table_reader =
           table_reader_cache_->GetTableReader(table_id);
       if (!table_reader) {
+        // If not found, create new table and add into cache
         std::string filename = files_need_compaction_[level][i]->filename;
         uint64_t file_size = files_need_compaction_[level][i]->file_size;
         auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
             std::move(filename), table_id, file_size);
+        // create iterator for new table
         table_reader_iterators.emplace_back(
             std::make_unique<sstable::TableReaderIterator>(
                 block_reader_cache_, new_table_reader.get()));
@@ -203,9 +208,20 @@ void Compact::DoCompactJob() {
     }
   }
 
-  auto iterator =
-      std::make_unique<MergeIterator>(std::move(table_reader_iterators));
+  return std::make_unique<MergeIterator>(std::move(table_reader_iterators));
+}
+
+void Compact::DoCompactJob() {
+  std::vector<std::unique_ptr<sstable::TableReaderIterator>>
+      table_reader_iterators;
+  std::unique_ptr<kvs::BaseIterator> iterator = CreateMergeIterator();
+  std::string_view current_key = std::string_view{};
+
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    std::string_view key = iterator->GetKey();
+    std::string_view value = iterator->GetValue();
+    db::ValueType type = iterator->GetType();
+    assert(type == db::ValueType::PUT || type == db::ValueType::DELETED);
   }
 }
 
