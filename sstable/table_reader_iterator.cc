@@ -55,9 +55,11 @@ void TableReaderIterator::Next() {
   }
 
   CreateNewBlockReaderIterator(GetBlockOffsetAndSizeBaseOnIndex());
+  block_reader_iterator_->SeekToFirst();
 }
 
 void TableReaderIterator::Prev() {
+  // TODO(namnh) : logic of backward is wrong
   if (!block_reader_iterator_) {
     return;
   }
@@ -75,6 +77,7 @@ void TableReaderIterator::Prev() {
   }
 
   CreateNewBlockReaderIterator(GetBlockOffsetAndSizeBaseOnIndex());
+  block_reader_iterator_->SeekToLast();
 }
 
 void TableReaderIterator::Seek(std::string_view key) {
@@ -86,12 +89,14 @@ void TableReaderIterator::SeekToFirst() {
   current_block_offset_index_ = 0;
 
   CreateNewBlockReaderIterator(GetBlockOffsetAndSizeBaseOnIndex());
+  block_reader_iterator_->SeekToFirst();
 }
 
 void TableReaderIterator::SeekToLast() {
   current_block_offset_index_ = table_reader_->block_index_.size() - 1;
 
   CreateNewBlockReaderIterator(GetBlockOffsetAndSizeBaseOnIndex());
+  block_reader_iterator_->SeekToLast();
 }
 
 std::pair<BlockOffset, BlockSize>

@@ -332,6 +332,20 @@ TEST(TableTest, TableReaderIterator) {
     total_elems++;
   }
 
+  int last_elem_index = total_elems - 1;
+  for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
+    std::string_view key_found = iterator->GetKey();
+    std::string_view value_found = iterator->GetValue();
+
+    // Order of key/value in iterator must be sorted
+    EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
+    EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
+
+    EXPECT_EQ(value_found, db->Get(key_found, 0 /*txn_id*/));
+
+    last_elem_index--;
+  }
+
   // Number of key value pairs should be equal to list_key_value's size.
   EXPECT_EQ(list_key_value.size(), total_elems);
 
