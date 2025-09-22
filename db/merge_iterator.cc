@@ -54,29 +54,50 @@ void MergeIterator::Prev() {
 }
 
 // Jump to and load first block in table
-void MergeIterator::Seek(std::string_view key) {}
+void MergeIterator::Seek(std::string_view key) {
+  // Clear data of min_heap_ each "Seek"
+  std::priority_queue<HeapItem, std::vector<HeapItem>, Compare> pq;
+  min_heap_.swap(pq);
 
-void MergeIterator::SeekToFirst() {
   for (const auto &iterator : table_reader_iterators_) {
+    iterator->Seek(key);
+
     // build HeapItem for each table iterator
     HeapItem heap_item(iterator->GetKey(), iterator->GetTransactionId(),
                        iterator.get());
     // Add item into min heap
     min_heap_.push(heap_item);
+  }
+}
 
+void MergeIterator::SeekToFirst() {
+  // Clear data of min_heap_ each "Seek"
+  std::priority_queue<HeapItem, std::vector<HeapItem>, Compare> pq;
+  min_heap_.swap(pq);
+
+  for (const auto &iterator : table_reader_iterators_) {
     iterator->SeekToFirst();
+    // build HeapItem for each table iterator
+    HeapItem heap_item(iterator->GetKey(), iterator->GetTransactionId(),
+                       iterator.get());
+    // Add item into min heap
+    min_heap_.push(heap_item);
   }
 }
 
 void MergeIterator::SeekToLast() {
+  // Clear data of min_heap_ each "Seek"
+  // Clear data of min_heap_ each "Seek"
+  std::priority_queue<HeapItem, std::vector<HeapItem>, Compare> pq;
+  min_heap_.swap(pq);
+
   for (const auto &iterator : table_reader_iterators_) {
+    iterator->SeekToLast();
     // build HeapItem for each table iterator
     HeapItem heap_item(iterator->GetKey(), iterator->GetTransactionId(),
                        iterator.get());
     // Add item into min heap
     min_heap_.push(heap_item);
-
-    iterator->SeekToLast();
   }
 }
 
