@@ -229,7 +229,9 @@ void DBImpl::ExecuteBackgroundCompaction() {
 
   version->IncreaseRefCount();
   auto version_edit = std::make_unique<VersionEdit>();
-  auto compact = std::make_unique<Compact>(version, version_edit.get());
+  auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
+                                           table_reader_cache_.get(), version,
+                                           version_edit.get());
   compact->PickCompact();
   version->DecreaseRefCount();
 

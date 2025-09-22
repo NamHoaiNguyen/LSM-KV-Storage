@@ -4,9 +4,11 @@
 #include "db/db_impl.h"
 #include "db/merge_iterator.h"
 #include "db/version.h"
+#include "sstable/block_reader_iterator.h"
 #include "sstable/table_builder.h"
+#include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
-#include "sstable/table_reader"
+#include "sstable/table_reader_iterator.h"
 
 // libC++
 #include <cassert>
@@ -16,13 +18,12 @@ namespace kvs {
 
 namespace db {
 
-Compact::Compact(const BlockReaderCache* block_reader_cache_,
-                 const TableReaderCache* table_reader_cache,
-                 const Version *version, const c
-                 VersionEdit *version_edit)
+Compact::Compact(const sstable::BlockReaderCache *block_reader_cache,
+                 const sstable::TableReaderCache *table_reader_cache,
+                 const Version *version, VersionEdit *version_edit)
     : block_reader_cache_(block_reader_cache),
-      table_reader_cache_(table_reader_cache), 
-      version_(version), version_edit_(version_edit) {
+      table_reader_cache_(table_reader_cache), version_(version),
+      version_edit_(version_edit) {
   assert(block_reader_cache_ && table_reader_cache_ && version_);
 }
 
@@ -170,36 +171,42 @@ Compact::FindNonOverlappingFiles(int level, std::string_view smallest_key,
 }
 
 void Compact::DoCompactJob() {
-  std::vector<std::unique_ptr<sstable::TableReaderIterator>> table_reader_iterators;
+  std::vector<std::unique_ptr<sstable::TableReaderIterator>>
+      table_reader_iterators;
+  std::string filename;
 
   for (int level = 0; level < 2; level++) {
     for (int i = 0; i < files_need_compaction_[level].size(); i++) {
       filename = files_need_compaction_[level][i]->filename;
       SSTId table_id = files_need_compaction_[level][i]->table_id;
-      const TableReader* table_reader = table_reader_cache_->GetTableReader(table_id);
+      const sstable::TableReader *table_reader =
+          table_reader_cache_->GetTableReader(table_id);
       if (!table_reader) {
         std::string filename = files_need_compaction_[level][i]->filename;
         uint64_t file_size = files_need_compaction_[level][i]->file_size;
-        auto new_table_reader =
-            std::make_unique<sstable::TableReader>(std::move(filename, ,table_id, file_size));
+        auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
+            std::move(filename), table_id, file_size);
         table_reader_iterators.emplace_back(
-            std::make_unique<sstable::TableReaderIterator>(block_reader_cache_, new_table_reader.get());
-        );
+            std::make_unique<sstable::TableReaderIterator>(
+                block_reader_cache_, new_table_reader.get()));
 
         // Insert new table into cache
-        table_reader_cache_->AddNewTableReader(table_id, std::move(new_table_reader));
+        table_reader_cache_->AddNewTableReader(table_id,
+                                               std::move(new_table_reader));
         continue;
       }
 
       // If table reader had already been in cache, just create table iterator
       table_reader_iterators.emplace_back(
-          std::make_unique<sstable::TableReaderIterator>(block_reader_cache_, new_table_reader.get());
-      );
+          std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
+                                                         table_reader));
     }
   }
 
-  auto iterator = std::make_unique<MergeIterator>(std::move(table_reader_iterators));
-  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {}
+  auto iterator =
+      std::make_unique<MergeIterator>(std::move(table_reader_iterators));
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+  }
 }
 
 } // namespace db

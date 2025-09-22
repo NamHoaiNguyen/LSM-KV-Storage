@@ -13,15 +13,15 @@ namespace kvs {
 namespace sstable {
 class BlockReaderCache;
 class TableReaderCache;
-}
+} // namespace sstable
 
 namespace db {
 
 // KEY RULE: Compact is only triggerd by LATEST version
 class Compact {
 public:
-  Compact(const BlockReaderCache* block_reader_cache,
-          const TableReaderCache* table_reader_cache,
+  Compact(const sstable::BlockReaderCache *block_reader_cache,
+          const sstable::TableReaderCache *table_reader_cache,
           const Version *version, VersionEdit *version_edit);
 
   ~Compact() = default;
@@ -56,9 +56,9 @@ private:
   // Execute compaction based on compact info
   void DoCompactJob();
 
-  const BlockReaderCache* block_reader_cache_;
+  const sstable::BlockReaderCache *block_reader_cache_;
 
-  const TableReaderCache* table_reader_cache_;
+  const sstable::TableReaderCache *table_reader_cache_;
 
   const Version *version_;
 
