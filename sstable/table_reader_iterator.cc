@@ -55,11 +55,12 @@ void TableReaderIterator::Next() {
   }
 
   CreateNewBlockReaderIterator(GetBlockOffsetAndSizeBaseOnIndex());
+  // Each time new block reader iterator is created, move "pointer" to the first
+  // data entry of block
   block_reader_iterator_->SeekToFirst();
 }
 
 void TableReaderIterator::Prev() {
-  // TODO(namnh) : logic of backward is wrong
   if (!block_reader_iterator_) {
     return;
   }
@@ -77,6 +78,8 @@ void TableReaderIterator::Prev() {
   }
 
   CreateNewBlockReaderIterator(GetBlockOffsetAndSizeBaseOnIndex());
+  // Each time new block reader iterator is created, move "pointer" to the last
+  // data entry of block
   block_reader_iterator_->SeekToLast();
 }
 
