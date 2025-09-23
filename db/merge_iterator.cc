@@ -3,6 +3,8 @@
 #include "sstable/block_reader_iterator.h"
 #include "sstable/table_reader_iterator.h"
 
+#include <iostream>
+
 namespace kvs {
 
 namespace db {
@@ -38,7 +40,14 @@ void MergeIterator::Next() {
   heap_item.iterator->Next();
   if (heap_item.iterator->IsValid()) {
     // re-push into heap if table iterator is still valid
-    min_heap_.push(heap_item);
+    HeapItem new_heap_item(heap_item.iterator->GetKey(),
+                           heap_item.iterator->GetTransactionId(),
+                           heap_item.iterator);
+    min_heap_.push(new_heap_item);
+  }
+
+  if (min_heap_.size() == 1) {
+    std::cout << "namnh" << std::endl;
   }
 }
 
@@ -49,7 +58,10 @@ void MergeIterator::Prev() {
   heap_item.iterator->Prev();
   if (heap_item.iterator->IsValid()) {
     // re-push into heap if table iterator is still valid
-    min_heap_.push(heap_item);
+    HeapItem new_heap_item(heap_item.iterator->GetKey(),
+                           heap_item.iterator->GetTransactionId(),
+                           heap_item.iterator);
+    min_heap_.push(new_heap_item);
   }
 }
 
@@ -75,7 +87,7 @@ void MergeIterator::SeekToFirst() {
   std::priority_queue<HeapItem, std::vector<HeapItem>, Compare> pq;
   min_heap_.swap(pq);
 
-  for (const auto &iterator : table_reader_iterators_) {
+  for (auto &iterator : table_reader_iterators_) {
     iterator->SeekToFirst();
     // build HeapItem for each table iterator
     HeapItem heap_item(iterator->GetKey(), iterator->GetTransactionId(),
