@@ -21,11 +21,11 @@ namespace db {
 
 Compact::Compact(const sstable::BlockReaderCache *block_reader_cache,
                  const sstable::TableReaderCache *table_reader_cache,
-                 const Version *version, VersionEdit *version_edit)
+                 const Version *version, DBImpl* db) {}
     : block_reader_cache_(block_reader_cache),
       table_reader_cache_(table_reader_cache), version_(version),
-      version_edit_(version_edit) {
-  assert(block_reader_cache_ && table_reader_cache_ && version_);
+      version_edit_(version_edit), db_(db) {
+  assert(block_reader_cache_ && table_reader_cache_ && version_ && db_);
 }
 
 void Compact::PickCompact() {
@@ -63,6 +63,8 @@ void Compact::DoL0L1Compact() {
   // Get overlapping lvl1 sst files
   GetOverlappingSSTOtherLvls(1 /*level*/, keys.first /*smallest_key*/,
                              keys.second /*largest_key*/);
+  // Execute compaction
+  DoCompactJob();
 }
 
 std::pair<std::string_view, std::string_view> Compact::GetOverlappingSSTLvl0() {
@@ -214,16 +216,66 @@ std::unique_ptr<kvs::BaseIterator> Compact::CreateMergeIterator() {
 void Compact::DoCompactJob() {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
-  std::unique_ptr<kvs::BaseIterator> iterator = CreateMergeIterator();
-  std::string_view current_key = std::string_view{};
+  std::string_view last_current_key = std::string_view{};
+  auto version_edit = std::make_unique<VersionEdit>();
 
+  uint64_t new_sst_id = db_->GetNextSSTId();
+  std::string filename =
+      db_->GetConfig()->GetSavedDataPath() +
+          std::to_string(new_sst_id) + ".sst";
+   
+  auto new_sst = std::make_unique<sstable::TableBuilder>
+                    (std::move(filename), config_.get());
+
+  if (!new_sst.Open()) {
+    return;
+  }
+
+  std::unique_ptr<kvs::BaseIterator> iterator = CreateMergeIterator();
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
     db::ValueType type = iterator->GetType();
+    TxnId txn_id = iterator->GetTransactionId();
     assert(type == db::ValueType::PUT || type == db::ValueType::DELETED);
+    
+    // Filter
+    if (!ShouldPickEntry()) {
+      continue;
+    }
+
+    new_sst->AddEntry(key, value, txn_id, type);
+    if (new_sst->GetFileSize() >= db_->GetConfig()->GetSSTBlockSize()) {
+      new_sst->Finish();
+      version_edit->AddNewFiles(new_sst_id, 0 /*level*/, new_sst.GetFileSize(),
+                                new_sst.GetSmallestKey(), new_sst.GetLargestKey(),
+                                std::move(filename));
+      if (iterator->IsValid()) {
+        // If still have data, it means that a new SST will be created
+        new_sst_id = db_->GetNextSSTId();
+        filename = db_->GetConfig()->GetSavedDataPath()
+                      + std::to_string(new_sst_id) + ".sst";
+        new_sst.reset(new sstable::TableBuilder(std::move(filename), config_.get()));
+        if (!new_sst.Open()) {
+          return;
+        }
+      }
+    }
+  }
+
+  // All files that need to be compacted should be deleted after all
+  for (int level = 0; level < 2; level++) {
+    for (int i = 0; i < files_need_compaction_[level].size(); i++) {
+      version_edit->RemoveFiles(files_need_compaction_[level][i]->level
+                                files_need_compaction_[level][i]->table_id);
+    }
   }
 }
+
+bool Compact::ShouldPickEntry() {
+
+}
+
 
 } // namespace db
 

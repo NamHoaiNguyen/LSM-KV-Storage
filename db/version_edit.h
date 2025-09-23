@@ -30,6 +30,9 @@ struct SSTMetadata {
   std::string smallest_key;
 
   std::string largest_key;
+ 
+  // Count how many number of versions are refering to this file
+  std::atomic<uint64_t> ref_count;
 };
 
 class VersionEdit {

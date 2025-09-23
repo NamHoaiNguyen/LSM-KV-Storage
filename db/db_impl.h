@@ -82,6 +82,9 @@ private:
 
   void ExecuteBackgroundCompaction();
 
+  void CreateNewVersionDueToCompaction(
+      std::unique_ptr<VersionEdit> version_edit);
+
   const std::string dbname_;
 
   std::atomic<uint64_t> next_sstable_id_;

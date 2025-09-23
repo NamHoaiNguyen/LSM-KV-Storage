@@ -15,6 +15,7 @@ void VersionEdit::AddNewFiles(SSTId table_id, int level, uint64_t file_size,
   sst_metadata->file_size = file_size;
   sst_metadata->smallest_key = std::string(smallest_key);
   sst_metadata->largest_key = std::string(largest_key);
+  sst_metadata->ref_count = 0; // Only latest version refers to new file
 
   new_files_.push_back(std::move(sst_metadata));
 }

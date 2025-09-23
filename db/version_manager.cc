@@ -25,11 +25,20 @@ VersionManager::VersionManager(
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
+  for (const auto& sst_metadata : versions_.GetSstMetadata()) {
+    // Decrease refcount of each SST file that version is referring to 
+    // each time this version is removed.
+    sst_metadata->ref_count--;
+
+    // TODO(namnh) : Remove obsolete file if its refcount = 0
+  }
+  
   versions_.erase(std::remove_if(versions_.begin(), versions_.end(),
                                  [version_id](const auto &version) {
                                    return version->GetVersionId() == version_id;
                                  }),
                   versions_.end());
+  
 }
 
 void VersionManager::CreateLatestVersion() {
@@ -78,6 +87,9 @@ void VersionManager::ApplyNewChanges(
         continue;
       }
 
+      // Increase refcount of SST metadata
+      sst_info->ref_count++;
+
       latest_version_sst_info[level].push_back(sst_info);
     }
   }
@@ -86,6 +98,10 @@ void VersionManager::ApplyNewChanges(
   const std::vector<std::shared_ptr<SSTMetadata>> &added_files =
       version_edit->GetImmutableNewFiles();
   for (const auto &file : added_files) {
+    // Increase refcount of SST metadata(= 1)
+    file->ref_count++;
+    assert(file->ref_count == 1);
+
     latest_version_sst_info[file->level].push_back(file);
   }
 

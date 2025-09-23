@@ -20,7 +20,7 @@ TableBuilder::TableBuilder(std::string &&filename, const db::Config *config)
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), total_block_entries_(0),
-      config_(config) {}
+      file_size_(0), config_(config) {}
 
 bool TableBuilder::Open() {
   if (!write_file_object_) {
@@ -52,6 +52,9 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
   // Update block/table largest key
   block_largest_key_ = std::string(key);
   table_largest_key_ = std::string(key);
+
+  file_size_ += sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
+      (value.data() ? sizeof(uint32_t) + value.size() : 0) + sizeof(TxnId);
 
   if (block_data_->GetBlockSize() >= config_->GetSSTBlockSize()) {
     FlushBlock();
@@ -146,6 +149,9 @@ void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
   // Insert length of block data
   block_index_buffer_.insert(block_index_buffer_.end(), block_length_buff,
                              block_length_buff + sizeof(uint64_t));
+
+  file_size_ += sizeof(uint32_t) + first_key.size() +
+      sizeof(uint32_t) + last_key.size() + 2 * sizeof(uint64_t);
 }
 
 void TableBuilder::Finish() {

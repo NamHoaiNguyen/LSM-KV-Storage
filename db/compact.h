@@ -19,12 +19,14 @@ class TableReaderCache;
 
 namespace db {
 
+class DBImpl;
+
 // KEY RULE: Compact is only triggerd by LATEST version
 class Compact {
 public:
   Compact(const sstable::BlockReaderCache *block_reader_cache,
           const sstable::TableReaderCache *table_reader_cache,
-          const Version *version, VersionEdit *version_edit);
+          const Version *version, DBImpl* db);
 
   ~Compact() = default;
 
@@ -60,13 +62,15 @@ private:
   // Execute compaction based on compact info
   void DoCompactJob();
 
+  bool ShouldPickEntry();
+
   const sstable::BlockReaderCache *block_reader_cache_;
 
   const sstable::TableReaderCache *table_reader_cache_;
 
   const Version *version_;
 
-  VersionEdit *version_edit_;
+  DBImpl* db_;
 
   // NO need to acquire lock to protect this data structure. Because
   // new version is created when there is a change(create new SST, delete old
