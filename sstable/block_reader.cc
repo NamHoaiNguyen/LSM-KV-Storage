@@ -95,6 +95,10 @@ BlockReader::GetKeyFromDataEntry(uint64_t data_entry_offset) const {
 
 std::string_view
 BlockReader::GetValueFromDataEntry(uint64_t data_entry_offset) const {
+  if (GetValueTypeFromDataEntry(data_entry_offset) == db::ValueType::DELETED) {
+    return std::string_view{};
+  }
+
   std::string_view key = GetKeyFromDataEntry(data_entry_offset);
 
   uint64_t start_offset_value_len =
@@ -114,9 +118,9 @@ TxnId BlockReader::GetTransactionIdFromDataEntry(
   std::string_view key = GetKeyFromDataEntry(data_entry_offset);
   std::string_view value = GetValueFromDataEntry(data_entry_offset);
 
-  uint64_t start_txnid_offset = data_entry_offset + sizeof(uint8_t) +
-                                sizeof(uint32_t) + key.size() +
-                                sizeof(uint32_t) + value.size();
+  uint64_t start_txnid_offset =
+      data_entry_offset + sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
+      (value.empty() ? 0 : sizeof(uint32_t) + value.size());
 
   return *reinterpret_cast<const TxnId *>(&buffer_[start_txnid_offset]);
 }

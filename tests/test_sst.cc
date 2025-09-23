@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <cmath>
 #include <filesystem>
-#include <iostream>
 #include <memory>
 #include <random>
 #include <thread>
@@ -322,12 +321,13 @@ TEST(TableTest, TableReaderIterator) {
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key_found = iterator->GetKey();
     std::string_view value_found = iterator->GetValue();
+    TxnId txn_id = iterator->GetTransactionId();
 
     // Order of key/value in iterator must be sorted
     EXPECT_EQ(key_found, list_key_value[total_elems].first);
     EXPECT_EQ(value_found, list_key_value[total_elems].second);
 
-    EXPECT_EQ(value_found, db->Get(key_found, 0 /*txn_id*/));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
 
     total_elems++;
   }
@@ -336,12 +336,13 @@ TEST(TableTest, TableReaderIterator) {
   for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
     std::string_view key_found = iterator->GetKey();
     std::string_view value_found = iterator->GetValue();
+    TxnId txn_id = iterator->GetTransactionId();
 
     // Order of key/value in iterator must be sorted
     EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
     EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
 
-    EXPECT_EQ(value_found, db->Get(key_found, 0 /*txn_id*/));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
 
     last_elem_index--;
   }

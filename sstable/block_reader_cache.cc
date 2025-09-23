@@ -11,12 +11,12 @@ namespace sstable {
 const BlockReader *BlockReaderCache::GetBlockReader(
     std::pair<SSTId, BlockOffset> block_info) const {
   std::shared_lock rlock(mutex_);
-  auto block_reader_iterator = block_reader_cache_.find(block_info);
-  if (block_reader_iterator == block_reader_cache_.end()) {
+  auto iterator = block_reader_cache_.find(block_info);
+  if (iterator == block_reader_cache_.end()) {
     return nullptr;
   }
 
-  return block_reader_iterator->second.get();
+  return iterator->second.get();
 }
 
 void BlockReaderCache::AddNewBlockReader(
