@@ -134,7 +134,7 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
   block_reader_iterator_.reset(new BlockReaderIterator(new_block_reader.get()));
 
   // Insert new blockreader into cache
-  block_reader_cache_->AddNewBlockReader({block_info.first, block_info.second},
+  block_reader_cache_->AddNewBlockReader({table_id, block_info.first},
                                          std::move(new_block_reader));
 }
 
