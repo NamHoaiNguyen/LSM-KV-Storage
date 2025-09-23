@@ -95,14 +95,14 @@ public:
   // ok
   std::string_view GetLargestKey() const;
 
-  uint64_t GetFileSize() const;
-
   // For testing
   BlockBuilder *GetBlockData();
 
   io::WriteOnlyFile *GetWriteOnlyFileObject();
 
   const std::vector<BlockIndex> &GetBlockIndex();
+
+  uint64_t GetFileSize() const;
 
 private:
   void EncodeExtraInfo();
@@ -146,6 +146,8 @@ private:
   std::string table_largest_key_;
 
   const db::Config *config_;
+
+  uint64_t file_size_;
 };
 
 } // namespace sstable

@@ -7,6 +7,8 @@
 #include "sstable/table_builder.h"
 
 // libC++
+#include <atomic>
+#include <cstdint>
 #include <memory>
 #include <set>
 #include <string>
@@ -19,6 +21,8 @@ namespace db {
 struct SSTMetadata {
   SSTId table_id;
 
+  std::string filename;
+
   int level;
 
   uint64_t file_size;
@@ -28,6 +32,8 @@ struct SSTMetadata {
   std::string smallest_key;
 
   std::string largest_key;
+
+  std::atomic<uint64_t> ref_count;
 };
 
 class VersionEdit {

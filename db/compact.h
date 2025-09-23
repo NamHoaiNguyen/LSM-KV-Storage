@@ -10,12 +10,23 @@
 
 namespace kvs {
 
+class BaseIterator;
+
+namespace sstable {
+class BlockReaderCache;
+class TableReaderCache;
+} // namespace sstable
+
 namespace db {
+
+class DBImpl;
 
 // KEY RULE: Compact is only triggerd by LATEST version
 class Compact {
 public:
-  Compact(const Version *version, VersionEdit *version_edit);
+  Compact(const sstable::BlockReaderCache *block_reader_cache,
+          const sstable::TableReaderCache *table_reader_cache,
+          const Version *version, DBImpl *db);
 
   ~Compact() = default;
 
@@ -34,6 +45,8 @@ public:
 private:
   void DoL0L1Compact();
 
+  std::unique_ptr<kvs::BaseIterator> CreateMergeIterator();
+
   // Find all overlapping sst files at level
   std::pair<std::string_view, std::string_view> GetOverlappingSSTLvl0();
 
@@ -49,9 +62,15 @@ private:
   // Execute compaction based on compact info
   void DoCompactJob();
 
+  bool ShouldPickEntry();
+
+  const sstable::BlockReaderCache *block_reader_cache_;
+
+  const sstable::TableReaderCache *table_reader_cache_;
+
   const Version *version_;
 
-  VersionEdit *version_edit_;
+  DBImpl *db_;
 
   // NO need to acquire lock to protect this data structure. Because
   // new version is created when there is a change(create new SST, delete old
