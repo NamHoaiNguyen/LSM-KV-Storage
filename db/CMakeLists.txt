@@ -10,6 +10,8 @@ add_library(db
   memtable_iterator.h
   memtable.cc
   memtable.h
+  merge_iterator.cc
+  merge_iterator.h
   skiplist_iterator.cc
   skiplist_iterator.h
   skiplist_node.cc
