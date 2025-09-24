@@ -6,6 +6,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace kvs {
@@ -54,9 +55,10 @@ public:
   GetStatus GetKey(std::string_view key, TxnId txn_id, SSTId table_id,
                    uint64_t file_size) const;
 
-  // For testing
-  const std::deque<std::unique_ptr<Version>> &GetVersions() const;
+  const std::unordered_map<uint64_t, std::unique_ptr<Version>> &
+  GetVersions() const;
 
+  // For testing
   const Version *GetLatestVersion() const;
 
   const Config *const GetConfig();
@@ -66,7 +68,8 @@ private:
   // referenced to anymore
   std::atomic<uint64_t> next_version_id_;
 
-  std::deque<std::unique_ptr<Version>> versions_;
+  // std::deque<std::unique_ptr<Version>> versions_;
+  std::unordered_map<uint64_t, std::unique_ptr<Version>> versions_;
 
   std::unique_ptr<Version> latest_version_;
 

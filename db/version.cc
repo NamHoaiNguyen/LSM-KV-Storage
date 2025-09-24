@@ -113,7 +113,7 @@ uint64_t Version::GetRefCount() const {
 
 // For testing
 const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-Version::GetSstMetadata() const {
+Version::GetSSTMetadata() const {
   return levels_sst_info_;
 }
 

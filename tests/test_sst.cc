@@ -174,7 +174,7 @@ TEST(TableTest, CreateTable) {
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       &level_sst_info =
-          db->GetVersionManager()->GetLatestVersion()->GetSstMetadata();
+          db->GetVersionManager()->GetLatestVersion()->GetSSTMetadata();
   EXPECT_EQ(level_sst_info[0].size(), 1);
 
   EXPECT_EQ(level_sst_info[0][0]->smallest_key, smallest_key);
@@ -226,10 +226,10 @@ TEST(TableTest, BasicTableReader) {
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       &version_sst_metadata =
-          db->GetVersionManager()->GetLatestVersion()->GetSstMetadata();
+          db->GetVersionManager()->GetLatestVersion()->GetSSTMetadata();
 
   EXPECT_EQ(
-      db->GetVersionManager()->GetLatestVersion()->GetSstMetadata()[0].size(),
+      db->GetVersionManager()->GetLatestVersion()->GetSSTMetadata()[0].size(),
       1);
 
   auto table_reader = CreateAndSetupDataForTableReader(

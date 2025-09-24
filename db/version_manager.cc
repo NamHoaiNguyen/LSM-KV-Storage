@@ -26,19 +26,24 @@ VersionManager::VersionManager(
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
-  // for (const auto &sst_metadata : versions_->GetSstMetadata()) {
-  //   // Decrease refcount of each SST file that version is referring to
-  //   // each time this version is removed.
-  //   sst_metadata->ref_count--;
+  auto it = versions_.find(version_id);
+  if (it == versions_.end()) {
+    return;
+  }
 
-  //   // TODO(namnh) : Remove obsolete file if its refcount = 0
-  // }
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &sst_metadata =
+      it->second->GetSSTMetadata();
+  for (int level = 0; level < sst_metadata.size(); level++) {
+    for (int file_index = 0; file_index < sst_metadata[level].size();
+         file_index++) {
+      // Decrease number of version that is refering to a file when an obsolete
+      // version is deleted
+      sst_metadata[level][file_index]->ref_count--;
+    }
+  }
+  // TODO(namnh) : Remove obsolete file if its refcount = 0
 
-  versions_.erase(std::remove_if(versions_.begin(), versions_.end(),
-                                 [version_id](const auto &version) {
-                                   return version->GetVersionId() == version_id;
-                                 }),
-                  versions_.end());
+  versions_.erase(it);
 }
 
 void VersionManager::CreateLatestVersion() {
@@ -111,14 +116,14 @@ void VersionManager::ApplyNewChanges(
       static_cast<double>(latest_version_sst_info[0].size()) /
       static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
 
-  // new version becomes latest version
-  versions_.push_front(std::move(latest_version_));
-  // Decreate ref count of old version
-  assert(versions_.front()->GetRefCount() > 0);
-  versions_.front()->DecreaseRefCount();
-  latest_version_ = std::move(new_version);
-  // Each new version created has its refcount = 1
-  latest_version_->IncreaseRefCount();
+  // // new version becomes latest version
+  // versions_.push_front(std::move(latest_version_));
+  // // Decreate ref count of old version
+  // assert(versions_.front()->GetRefCount() > 0);
+  // versions_.front()->DecreaseRefCount();
+  // latest_version_ = std::move(new_version);
+  // // Each new version created has its refcount = 1
+  // latest_version_->IncreaseRefCount();
 }
 
 GetStatus VersionManager::GetKey(std::string_view key, TxnId txn_id,
@@ -137,15 +142,15 @@ bool VersionManager::NeedSSTCompaction() const {
   return latest_version_->NeedCompaction();
 }
 
-const std::deque<std::unique_ptr<Version>> &
-VersionManager::GetVersions() const {
-  std::scoped_lock lock(mutex_);
-  return versions_;
-}
-
 const Version *VersionManager::GetLatestVersion() const {
   std::scoped_lock lock(mutex_);
   return latest_version_.get();
+}
+
+const std::unordered_map<uint64_t, std::unique_ptr<Version>> &
+VersionManager::GetVersions() const {
+  std::scoped_lock lock(mutex_);
+  return versions_;
 }
 
 const Config *const VersionManager::GetConfig() { return config_; }
