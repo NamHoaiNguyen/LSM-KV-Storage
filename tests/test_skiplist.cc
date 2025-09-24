@@ -4,9 +4,13 @@
 #include "db/skiplist_iterator.h"
 #include "db/status.h"
 
+#include <algorithm>
 #include <memory>
+#include <unordered_set>
 
 namespace kvs {
+
+namespace db {
 
 TEST(SkipListTest, BasicOperations) {
   auto skip_list = std::make_unique<db::SkipList>();
@@ -54,13 +58,18 @@ TEST(SkipListTest, DuplicatePut) {
 TEST(SkipListTest, BatchOperations) {
   auto skip_list = std::make_unique<db::SkipList>();
   const int num_keys = 100000;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> distr(0, 100); // Range: 0 to 100
 
   std::vector<std::pair<std::string, std::string>> pairs;
   std::vector<std::string_view> keys_view;
   std::string key{}, value{};
   for (int i = 0; i < num_keys; i++) {
-    key = "key" + std::to_string(i);
-    value = "value" + std::to_string(i);
+    int randomNumber = distr(gen);
+
+    key = "key" + std::to_string(randomNumber);
+    value = "value" + std::to_string(randomNumber);
 
     pairs.push_back({key, value});
   }
@@ -74,6 +83,8 @@ TEST(SkipListTest, BatchOperations) {
   for (const auto &pair : pairs) {
     keys_view.push_back(pair.first);
   }
+
+  // skip_list->PrintSkipList();
 
   std::vector<std::pair<std::string, db::GetStatus>> get_res;
   get_res = skip_list->BatchGet(keys_view, 0 /*txn_id*/);
@@ -129,35 +140,66 @@ TEST(SkipListTest, GetAllPrefixes) {
 TEST(SkipListTest, LargeScalePutAndGet) {
   auto skip_list = std::make_unique<db::SkipList>();
 
-  const int num_keys = 100;
+  const int num_keys = 100000;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> distr(0, 100); // Range: 0 to 100
+
+  std::vector<std::pair<std::string, std::string>> pairs;
   std::string key{}, value{};
   for (int i = 0; i < num_keys; i++) {
-    key = "key" + std::to_string(i);
-    value = "value" + std::to_string(i);
+    int randomNumber = distr(gen);
+
+    key = "key" + std::to_string(randomNumber);
+    value = "value" + std::to_string(randomNumber);
     skip_list->Put(key, value, 0);
+
+    pairs.push_back({key, value});
   }
 
   for (int i = 0; i < num_keys; i++) {
-    key = "key" + std::to_string(i);
-    value = "value" + std::to_string(i);
+    GetStatus status = skip_list->Get(pairs[i].first, 0);
 
-    EXPECT_TRUE(skip_list->Get(key, 0).type == db::ValueType::PUT);
-    EXPECT_EQ(skip_list->Get(key, 0).value, value);
+    EXPECT_TRUE(status.type == db::ValueType::PUT);
+    EXPECT_EQ(status.value, pairs[i].second);
   }
 
-  // Update
+  // put same key but different values
   for (int i = 0; i < num_keys; i++) {
-    key = "key" + std::to_string(i);
+    key = pairs[i].first;
     value = "value" + std::to_string(i + num_keys);
     skip_list->Put(key, value, 0);
+
+    pairs.push_back({key, value});
   }
 
-  for (int i = 0; i < num_keys; i++) {
-    key = "key" + std::to_string(i);
+  std::reverse(pairs.begin(), pairs.end());
+
+  std::unordered_set<std::string> seen;
+  std::vector<std::pair<std::string, std::string>> result;
+
+  for (const auto &p : pairs) {
+    // Only keep the key that appear first
+    if (seen.find(p.first) == seen.end()) {
+      result.push_back(p);
+      seen.insert(p.first);
+    }
+  }
+
+  for (int i = 0; i < 2 * num_keys; i++) {
+    // Skiplist now contains multiple same keys but different values.
+    // But it should only return the latest key/value put pair
+    key = pairs[i].first;
     value = "value" + std::to_string(i + num_keys);
 
-    EXPECT_TRUE(skip_list->Get(key, 0).type == db::ValueType::PUT);
-    EXPECT_EQ(skip_list->Get(key, 0).value, value);
+    GetStatus status = skip_list->Get(key, 0);
+
+    EXPECT_TRUE(status.type == db::ValueType::PUT);
+    bool found =
+        std::any_of(result.begin(), result.end(), [status](const auto &val) {
+          return status.value == val.second;
+        });
+    EXPECT_TRUE(found);
   }
 }
 
@@ -226,5 +268,7 @@ TEST(SkipListTest, Iterator) {
     count++;
   }
 }
+
+} // namespace db
 
 } // namespace kvs

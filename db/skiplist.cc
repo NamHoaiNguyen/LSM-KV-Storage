@@ -101,13 +101,6 @@ void SkipList::Put_(std::string_view key, std::optional<std::string_view> value,
   std::shared_ptr<SkipListNode> current = FindLowerBoundNode(key, &updates);
 
   if (value_type == ValueType::PUT) {
-    if (current && current->key_ == key) {
-      // If key which is being found exists, just update value
-      current_size_ += value.value().size() - current->value_.value().size();
-      current->value_ = (value) ? std::make_optional<std::string>(value.value())
-                                : std::nullopt;
-      return;
-    }
     // Update new size of skiplist
     current_size_ += key.size() + value.value().size();
   } else if (value_type == ValueType::DELETED) {
