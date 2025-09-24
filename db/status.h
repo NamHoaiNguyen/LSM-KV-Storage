@@ -23,6 +23,9 @@ struct GetStatus {
 
   ~GetStatus() = default;
 
+  GetStatus(const GetStatus &) = default;
+  GetStatus &operator=(GetStatus &) = default;
+
   GetStatus(GetStatus &&) = default;
   GetStatus &operator=(GetStatus &&) = default;
 
