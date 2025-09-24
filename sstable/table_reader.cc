@@ -39,7 +39,8 @@ CreateAndSetupDataForTableReader(std::string &&filename, SSTId table_id,
   table_reader_data->read_file_object =
       std::make_unique<io::LinuxReadOnlyFile>(table_reader_data->filename);
   if (!table_reader_data->read_file_object->Open()) {
-    return nullptr;
+    // return nullptr;
+    throw std::runtime_error("Can't open file");
   }
 
   // Decode block index

@@ -33,8 +33,8 @@ public:
     block_reader_iterator_ = std::move(other.block_reader_iterator_);
     block_reader_cache_ = other.block_reader_cache_;
     table_reader_ = other.table_reader_;
-    other.block_reader_cache_ = nullptr;
-    other.table_reader_ = nullptr;
+    // other.block_reader_cache_ = nullptr;
+    // other.table_reader_ = nullptr;
   }
 
   TableReaderIterator &operator=(TableReaderIterator &&other) {
@@ -42,8 +42,8 @@ public:
     block_reader_iterator_ = std::move(other.block_reader_iterator_);
     block_reader_cache_ = other.block_reader_cache_;
     table_reader_ = other.table_reader_;
-    other.block_reader_cache_ = nullptr;
-    other.table_reader_ = nullptr;
+    // other.block_reader_cache_ = nullptr;
+    // other.table_reader_ = nullptr;
     return *this;
   }
 

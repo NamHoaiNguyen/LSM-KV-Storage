@@ -10,6 +10,10 @@
 #include <algorithm>
 #include <cassert>
 
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
 namespace kvs {
 
 namespace db {
@@ -39,6 +43,10 @@ void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
       // Decrease number of version that is refering to a file when an obsolete
       // version is deleted
       sst_metadata[level][file_index]->ref_count--;
+      if (sst_metadata[level][file_index]->ref_count == 0) {
+        fs::path file_path(sst_metadata[level][file_index]->filename);
+        fs::remove(file_path);
+      }
     }
   }
   // TODO(namnh) : Remove obsolete file if its refcount = 0
@@ -116,14 +124,13 @@ void VersionManager::ApplyNewChanges(
       static_cast<double>(latest_version_sst_info[0].size()) /
       static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
 
-  // // new version becomes latest version
-  // versions_.push_front(std::move(latest_version_));
-  // // Decreate ref count of old version
-  // assert(versions_.front()->GetRefCount() > 0);
-  // versions_.front()->DecreaseRefCount();
-  // latest_version_ = std::move(new_version);
-  // // Each new version created has its refcount = 1
-  // latest_version_->IncreaseRefCount();
+  // new version becomes latest version
+  latest_version_->DecreaseRefCount();
+  versions_.insert({new_verions_id, std::move(latest_version_)});
+  // Decreate ref count of old version
+  latest_version_ = std::move(new_version);
+  // Each new version created has its refcount = 1
+  latest_version_->IncreaseRefCount();
 }
 
 GetStatus VersionManager::GetKey(std::string_view key, TxnId txn_id,

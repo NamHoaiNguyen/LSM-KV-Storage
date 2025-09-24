@@ -53,9 +53,7 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
   block_largest_key_ = std::string(key);
   table_largest_key_ = std::string(key);
 
-  file_size_ += sizeof(uint8_t) + sizeof(uint32_t) + key.size() +
-                (value.data() ? sizeof(uint32_t) + value.size() : 0) +
-                sizeof(TxnId);
+  file_size_ += key.size() + (value.data() ? +value.size() : 0);
 
   if (block_data_->GetBlockSize() >= config_->GetSSTBlockSize()) {
     FlushBlock();
@@ -151,8 +149,8 @@ void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
   block_index_buffer_.insert(block_index_buffer_.end(), block_length_buff,
                              block_length_buff + sizeof(uint64_t));
 
-  file_size_ += sizeof(uint32_t) + first_key.size() + sizeof(uint32_t) +
-                last_key.size() + 2 * sizeof(uint64_t);
+  // file_size_ += sizeof(uint32_t) + first_key.size() + sizeof(uint32_t) +
+  //               last_key.size() + 2 * sizeof(uint64_t);
 }
 
 void TableBuilder::Finish() {
@@ -241,6 +239,8 @@ const std::vector<BlockIndex> &TableBuilder::GetBlockIndex() {
 }
 
 uint64_t TableBuilder::GetFileSize() const { return current_offset_ + 1; }
+
+uint64_t TableBuilder::GetDataSize() const { return file_size_ + 1; }
 
 } // namespace sstable
 

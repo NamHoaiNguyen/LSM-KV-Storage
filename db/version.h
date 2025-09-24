@@ -53,8 +53,9 @@ public:
   Version &operator=(Version &) = delete;
 
   // Move constructor/assignment
-  Version(Version &&) = default;
-  Version &operator=(Version &&) = default;
+  Version(Version &&other) = default;
+
+  Version &operator=(Version &&other) = default;
 
   void IncreaseRefCount() const;
 
@@ -90,7 +91,8 @@ public:
   GetSSTMetadata() const;
 
 private:
-  const uint64_t version_id_;
+  // const uint64_t version_id_;
+  uint64_t version_id_;
 
   // TODO(namnh) : do I need to protect this one ?
   // If using unique_ptr, each version has its own data SST info.

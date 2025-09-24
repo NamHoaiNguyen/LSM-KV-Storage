@@ -27,12 +27,12 @@ public:
   BlockReaderIterator(BlockReaderIterator &&other) {
     block_reader_ = other.block_reader_;
     current_offset_index_ = other.current_offset_index_;
-    other.block_reader_ = nullptr;
+    // other.block_reader_ = nullptr;
   }
   BlockReaderIterator &operator=(BlockReaderIterator &&other) {
     block_reader_ = other.block_reader_;
     current_offset_index_ = other.current_offset_index_;
-    other.block_reader_ = nullptr;
+    // other.block_reader_ = nullptr;
     return *this;
   }
 

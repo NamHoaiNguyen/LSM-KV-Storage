@@ -97,8 +97,20 @@ public:
   BlockReader &operator=(BlockReader &) = delete;
 
   // Move constructor/assignment
-  BlockReader(BlockReader &&) = default;
-  BlockReader &operator=(BlockReader &&) = default;
+  BlockReader(BlockReader &&other) {
+    buffer_ = std::move(other.buffer_);
+    total_data_entries_ = other.total_data_entries_;
+    offset_section_ = other.offset_section_;
+    data_entries_offset_info_ = std::move(other.data_entries_offset_info_);
+  };
+  BlockReader &operator=(BlockReader &&other) {
+    buffer_ = std::move(other.buffer_);
+    total_data_entries_ = other.total_data_entries_;
+    offset_section_ = other.offset_section_;
+    data_entries_offset_info_ = std::move(other.data_entries_offset_info_);
+
+    return *this;
+  }
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 

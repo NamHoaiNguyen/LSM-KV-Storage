@@ -26,7 +26,7 @@ class Compact {
 public:
   Compact(const sstable::BlockReaderCache *block_reader_cache,
           const sstable::TableReaderCache *table_reader_cache,
-          const Version *version, DBImpl *db);
+          const Version *version, VersionEdit *version_edit, DBImpl *db);
 
   ~Compact() = default;
 
@@ -48,7 +48,9 @@ private:
   std::unique_ptr<kvs::BaseIterator> CreateMergeIterator();
 
   // Find all overlapping sst files at level
-  std::pair<std::string_view, std::string_view> GetOverlappingSSTLvl0();
+  std::pair<std::string_view, std::string_view>
+  GetOverlappingSSTLvl0(std::string_view smallest_key,
+                        std::string_view largest_key, int oldest_sst_index);
 
   void GetOverlappingSSTOtherLvls(int level, std::string_view smallest_key,
                                   std::string_view largest_key);
@@ -62,7 +64,7 @@ private:
   // Execute compaction based on compact info
   void DoCompactJob();
 
-  bool ShouldPickEntry();
+  bool ShouldPickEntry(std::string_view last_current_key, std::string_view key);
 
   const sstable::BlockReaderCache *block_reader_cache_;
 
@@ -77,6 +79,10 @@ private:
   // SST after compaction). So, each version has its own this data structure.
   // Note: These are also files that be deleted after finish compaction
   std::vector<const SSTMetadata *> files_need_compaction_[2];
+
+  int level_to_compact_;
+
+  VersionEdit *version_edit_;
 };
 
 } // namespace db

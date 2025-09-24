@@ -104,6 +104,8 @@ public:
 
   uint64_t GetFileSize() const;
 
+  uint64_t GetDataSize() const;
+
 private:
   void EncodeExtraInfo();
 

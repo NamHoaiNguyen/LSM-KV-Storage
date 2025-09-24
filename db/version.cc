@@ -6,6 +6,8 @@
 #include "io/base_file.h"
 #include "sstable/table_reader.h"
 
+#include <iostream>
+
 namespace kvs {
 
 namespace db {
@@ -19,6 +21,32 @@ Version::Version(uint64_t version_id, const Config *config,
       thread_pool_(thread_pool), version_manager_(version_manager) {
   assert(config_ && thread_pool_ && version_manager_);
 }
+
+// Version::Version(Version &&other) {
+//   version_id_ = other.version_id_;
+//   levels_sst_info_ = std::move(other.levels_sst_info_);
+//   compaction_level_ = other.compaction_level_;
+//   compaction_score_ = other.compaction_score_;
+//   levels_score_ = std::move(levels_score_);
+//   ref_count_.store(other.ref_count_.load());
+//   config_ = other.config_;
+//   thread_pool_ = other.thread_pool_;
+//   version_manager_ = other.version_manager_;
+// }
+
+// Version &Version::operator=(Version &&other) {
+//   version_id_ = other.version_id_;
+//   levels_sst_info_ = std::move(other.levels_sst_info_);
+//   compaction_level_ = other.compaction_level_;
+//   compaction_score_ = other.compaction_score_;
+//   levels_score_ = std::move(levels_score_);
+//   ref_count_.store(other.ref_count_.load());
+//   config_ = other.config_;
+//   thread_pool_ = other.thread_pool_;
+//   version_manager_ = other.version_manager_;
+
+//   return *this;
+// }
 
 void Version::IncreaseRefCount() const {
   std::scoped_lock lock(ref_count_mutex_);
@@ -39,6 +67,10 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
 
   // Search in SSTs lvl0
   // Files are saved from oldest-to-newest
+  if (levels_sst_info_.size() != config_->GetSSTNumLvels()) {
+    std::cout << "namnh check size of levels_sst_info_" << std::endl;
+  }
+
   for (const auto &sst : std::views::reverse(levels_sst_info_[0])) {
     if (key < sst->smallest_key || key > sst->largest_key) {
       continue;
@@ -50,6 +82,25 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
         version_manager_->GetKey(key, txn_id, sst->table_id, sst->file_size);
     if (status.type != db::ValueType::NOT_FOUND) {
       break;
+    }
+  }
+
+  if (levels_sst_info_.size() != config_->GetSSTNumLvels()) {
+    std::cout << "namnh check size of levels_sst_info_" << std::endl;
+  }
+
+  // Continue search in deeper level
+  for (int level = 1; level < levels_sst_info_.size(); level++) {
+    for (const auto &sst : levels_sst_info_[level]) {
+      if (key < sst->smallest_key || key > sst->largest_key) {
+        continue;
+      }
+
+      status =
+          version_manager_->GetKey(key, txn_id, sst->table_id, sst->file_size);
+      if (status.type != db::ValueType::NOT_FOUND) {
+        break;
+      }
     }
   }
 
