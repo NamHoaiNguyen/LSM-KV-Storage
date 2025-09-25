@@ -16,7 +16,7 @@ Version::Version(uint64_t version_id, const Config *config,
                  kvs::ThreadPool *thread_pool, VersionManager *version_manager)
     : version_id_(version_id), levels_sst_info_(config->GetSSTNumLvels()),
       // compact_(std::make_unique<Compact>(this)),
-      compaction_level_(0), compaction_score_(0),
+      compaction_level_(0), compaction_score_(0), ref_count_(0),
       levels_score_(config->GetSSTNumLvels(), 0), config_(config),
       thread_pool_(thread_pool), version_manager_(version_manager) {
   assert(config_ && thread_pool_ && version_manager_);
@@ -55,6 +55,7 @@ void Version::IncreaseRefCount() const {
 
 void Version::DecreaseRefCount() const {
   std::scoped_lock lock(ref_count_mutex_);
+  assert(ref_count_ >= 1);
   ref_count_--;
   if (ref_count_ == 0) {
     thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
@@ -92,9 +93,9 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   // Continue search in deeper level
   for (int level = 1; level < levels_sst_info_.size(); level++) {
     for (const auto &sst : levels_sst_info_[level]) {
-      if (key < sst->smallest_key || key > sst->largest_key) {
-        continue;
-      }
+      // if (key < sst->smallest_key || key > sst->largest_key) {
+      //   continue;
+      // }
 
       status =
           version_manager_->GetKey(key, txn_id, sst->table_id, sst->file_size);

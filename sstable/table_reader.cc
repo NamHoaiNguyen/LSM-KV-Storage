@@ -5,6 +5,8 @@
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
 
+#include <iostream>
+
 namespace {
 
 uint64_t GetDataEntryOffset(uint64_t offset_section, int entry_index,
@@ -181,7 +183,8 @@ std::pair<BlockOffset, BlockSize>
 TableReader::GetBlockOffsetAndSize(std::string_view key) const {
   // Find the block that have smallest largest key that >= key
   int left = 0;
-  int right = block_index_.size();
+  // TODO(namnh) : recheck constraint
+  int right = block_index_.size() - 1;
 
   while (left < right) {
     int mid = left + (right - left) / 2;
@@ -194,6 +197,10 @@ TableReader::GetBlockOffsetAndSize(std::string_view key) const {
 
   BlockOffset block_offset = block_index_[right].GetBlockStartOffset();
   BlockSize block_size = block_index_[right].GetBlockSize();
+
+  if (block_size == 0) {
+    std::cout << "namnh debug block size " << std::endl;
+  }
 
   return {block_offset, block_size};
 }
@@ -212,6 +219,10 @@ TableReader::CreateAndSetupDataForBlockReader(BlockOffset offset,
     return nullptr;
   }
 
+  if (bytes_read == 0) {
+    std::cout << "namnh debug CreateAndSetupDataForBlockReader" << std::endl;
+  }
+
   int64_t last_block_offset = block_reader_data->buffer.size() - 1;
   // 16 last bytes of lock contain metadata info(num entries + starting offset
   // of offset section)
@@ -219,6 +230,11 @@ TableReader::CreateAndSetupDataForBlockReader(BlockOffset offset,
       &block_reader_data->buffer[last_block_offset - 15]);
   block_reader_data->offset_section = *reinterpret_cast<uint64_t *>(
       &block_reader_data->buffer[last_block_offset - 7]);
+
+  if (block_reader_data->total_data_entries == 0) {
+    std::cout << "namnh debug block_reader_data->total_data_entries == 0"
+              << std::endl;
+  }
 
   for (uint64_t i = 0; i < block_reader_data->total_data_entries; i++) {
     block_reader_data->data_entries_offset_info.emplace_back(GetDataEntryOffset(

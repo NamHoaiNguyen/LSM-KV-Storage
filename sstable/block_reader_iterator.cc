@@ -79,11 +79,12 @@ void BlockReaderIterator::Seek(std::string_view key) {
     return;
   }
 
-  uint64_t left = 0;
-  uint64_t right = block_reader_->total_data_entries_;
+  int64_t left = 0;
+  // TODO(namnh) : recheck constraint
+  int64_t right = block_reader_->total_data_entries_ - 1;
 
   while (left < right) {
-    uint64_t mid = left + (right - left) / 2;
+    int64_t mid = left + (right - left) / 2;
     uint64_t data_entry_offset = block_reader_->data_entries_offset_info_[mid];
     std::string_view key_found =
         block_reader_->GetKeyFromDataEntry(data_entry_offset);

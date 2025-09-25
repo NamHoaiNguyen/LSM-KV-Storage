@@ -232,7 +232,7 @@ void DBImpl::ExecuteBackgroundCompaction() {
   auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
                                            table_reader_cache_.get(), version,
                                            version_edit.get(), this);
-  // compact->PickCompact();
+  compact->PickCompact();
   version->DecreaseRefCount();
 
   // Apply compact version edit(changes) to create new version

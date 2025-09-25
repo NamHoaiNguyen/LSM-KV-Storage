@@ -150,6 +150,9 @@ private:
   const db::Config *config_;
 
   uint64_t file_size_;
+
+  // Check that table if finished flushing or not
+  bool is_finished_{false};
 };
 
 } // namespace sstable

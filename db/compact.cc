@@ -261,8 +261,9 @@ void Compact::DoCompactJob() {
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
-    if (key.empty() || value.empty()) {
-      continue;
+    assert(!key.empty() && !value.empty());
+    if (key == "key999999") {
+      std::cout << "namnh debug key999999" << std::endl;
     }
 
     db::ValueType type = iterator->GetType();
@@ -277,6 +278,18 @@ void Compact::DoCompactJob() {
     // Update last_current_key
     last_current_key = key;
 
+    if (!new_sst) {
+      new_sst_id = db_->GetNextSSTId();
+      filename = db_->GetConfig()->GetSavedDataPath() +
+                 std::to_string(new_sst_id) + ".sst";
+      new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
+                                                        db_->GetConfig());
+
+      if (!new_sst->Open()) {
+        return;
+      }
+    }
+
     new_sst->AddEntry(key, value, txn_id, type);
     // TODO(namnh) : Should have a seperate config for size of sst
     if (new_sst->GetDataSize() >= db_->GetConfig()->GetPerMemTableSizeLimit()) {
@@ -287,18 +300,30 @@ void Compact::DoCompactJob() {
                                  new_sst->GetFileSize(),
                                  new_sst->GetSmallestKey(),
                                  new_sst->GetLargestKey(), std::move(filename));
-      if (iterator->IsValid()) {
-        // If still have data, it means that a new SST will be created
-        new_sst_id = db_->GetNextSSTId();
-        filename = db_->GetConfig()->GetSavedDataPath() +
-                   std::to_string(new_sst_id) + ".sst";
-        new_sst.reset(
-            new sstable::TableBuilder(std::move(filename), db_->GetConfig()));
-        if (!new_sst->Open()) {
-          return;
-        }
-      }
+      // if (iterator->IsValid()) {
+      //   // If still have data, it means that a new SST will be created
+      //   new_sst_id = db_->GetNextSSTId();
+      //   filename = db_->GetConfig()->GetSavedDataPath() +
+      //              std::to_string(new_sst_id) + ".sst";
+      //   new_sst.reset(
+      //       new sstable::TableBuilder(std::move(filename),
+      //       db_->GetConfig()));
+      //   if (!new_sst->Open()) {
+      //     return;
+      //   }
+      // }
+      new_sst.reset();
     }
+  }
+
+  // Flush remaining
+  if (new_sst) {
+    new_sst->Finish();
+    filename = db_->GetConfig()->GetSavedDataPath() +
+               std::to_string(new_sst_id) + ".sst";
+    version_edit_->AddNewFiles(new_sst_id, 1 /*level*/, new_sst->GetFileSize(),
+                               new_sst->GetSmallestKey(),
+                               new_sst->GetLargestKey(), std::move(filename));
   }
 
   // All files that need to be compacted should be deleted after all

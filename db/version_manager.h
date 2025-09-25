@@ -66,7 +66,7 @@ public:
 private:
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
   // referenced to anymore
-  std::atomic<uint64_t> next_version_id_;
+  std::atomic<uint64_t> next_version_id_{0};
 
   // std::deque<std::unique_ptr<Version>> versions_;
   std::unordered_map<uint64_t, std::unique_ptr<Version>> versions_;

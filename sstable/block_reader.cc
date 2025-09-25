@@ -4,6 +4,7 @@
 #include "io/linux_file.h"
 
 #include <cassert>
+#include <iostream>
 
 namespace kvs {
 
@@ -20,11 +21,12 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
   db::GetStatus status;
 
   // Binary search key in block based on offset
-  uint64_t left = 0;
-  uint64_t right = total_data_entries_;
+  int64_t left = 0;
+  // TODO(namnh) : recheck constraint
+  int64_t right = total_data_entries_ - 1;
 
   while (left <= right) {
-    uint64_t mid = left + (right - left) / 2;
+    int64_t mid = left + (right - left) / 2;
 
     // Get value type of data entry
     uint64_t data_entry_offset = GetDataEntryOffset(mid);
@@ -57,6 +59,10 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
     }
   }
 
+  if (status.type == db::ValueType::NOT_FOUND && key == "key999000") {
+    std::cout << "namnh debug" << std::endl;
+  }
+
   return status;
 }
 
@@ -64,6 +70,7 @@ uint64_t BlockReader::GetDataEntryOffset(int entry_index) const {
   // Starting offset of offset entry at index (entry_index) (th)
   uint64_t offset_entry = offset_section_ + entry_index * 2 * sizeof(uint64_t);
 
+  assert(offset_entry < buffer_.size());
   const uint64_t data_entry_offset =
       *reinterpret_cast<const uint64_t *>(&buffer_[offset_entry]);
 
@@ -72,6 +79,8 @@ uint64_t BlockReader::GetDataEntryOffset(int entry_index) const {
 
 db::ValueType
 BlockReader::GetValueTypeFromDataEntry(uint64_t data_entry_offset) const {
+  assert(data_entry_offset < buffer_.size());
+
   Byte value_type_byte = buffer_[data_entry_offset];
   db::ValueType value_type =
       *reinterpret_cast<const db::ValueType *>(&value_type_byte);

@@ -10,6 +10,7 @@
 
 // libC++
 #include <cassert>
+#include <iostream>
 
 namespace kvs {
 
@@ -34,6 +35,10 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
                             TxnId txn_id, db::ValueType value_type) {
   assert(key.data() && value.data() && value_type != db::ValueType::INVALID &&
          txn_id != INVALID_TXN_ID);
+
+  if (key == "key999999") {
+    std::cout << "namnh debug Value of key999999" << std::endl;
+  }
 
   if (table_smallest_key_.empty()) {
     table_smallest_key_ = std::string(key);
@@ -62,6 +67,12 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
 
 void TableBuilder::FlushBlock() {
   assert(write_file_object_);
+
+  // TODO(namnh, IMPORATANCE) : recheck this logic
+  if (block_data_->GetDataView().empty()) {
+    // Dont add new entry if data_buffer doesn't have any data
+    return;
+  }
 
   // Starting offset of block
   const uint64_t block_starting_offset = current_offset_;
@@ -154,6 +165,10 @@ void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
 }
 
 void TableBuilder::Finish() {
+  // if (is_finished_) {
+  //   return;
+  // }
+
   // Flush remaining data to
   FlushBlock();
 
@@ -183,6 +198,8 @@ void TableBuilder::Finish() {
 
   // Ensure that data is persisted to disk from page cache
   write_file_object_->Flush();
+
+  is_finished_ = true;
 }
 
 void TableBuilder::EncodeExtraInfo() {
@@ -240,7 +257,7 @@ const std::vector<BlockIndex> &TableBuilder::GetBlockIndex() {
 
 uint64_t TableBuilder::GetFileSize() const { return current_offset_ + 1; }
 
-uint64_t TableBuilder::GetDataSize() const { return file_size_ + 1; }
+uint64_t TableBuilder::GetDataSize() const { return file_size_; }
 
 } // namespace sstable
 

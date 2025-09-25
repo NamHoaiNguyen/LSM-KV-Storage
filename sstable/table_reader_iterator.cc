@@ -38,9 +38,9 @@ bool TableReaderIterator::IsValid() {
 }
 
 void TableReaderIterator::Next() {
-  if (!block_reader_iterator_) {
-    return;
-  }
+  // if (!block_reader_iterator_) {
+  //   return;
+  // }
 
   block_reader_iterator_->Next();
   if (block_reader_iterator_->IsValid()) {

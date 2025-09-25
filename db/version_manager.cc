@@ -11,6 +11,7 @@
 #include <cassert>
 
 #include <filesystem>
+#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -31,6 +32,11 @@ VersionManager::VersionManager(
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
   auto it = versions_.find(version_id);
+
+  // for (const auto &elem : versions_) {
+  //   std::cout << "namnh check version_id in map " << elem.first << std::endl;
+  // }
+
   if (it == versions_.end()) {
     return;
   }
@@ -108,6 +114,11 @@ void VersionManager::ApplyNewChanges(
     }
   }
 
+  // sort from newest to oldest with lvl 0 sst
+  std::sort(
+      latest_version_sst_info[0].begin(), latest_version_sst_info[0].end(),
+      [](const auto &a, const auto &b) { return a->table_id > b->table_id; });
+
   // Apply new SST files that are created for new verison
   const std::vector<std::shared_ptr<SSTMetadata>> &added_files =
       version_edit->GetImmutableNewFiles();
@@ -125,9 +136,11 @@ void VersionManager::ApplyNewChanges(
       static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
 
   // new version becomes latest version
-  latest_version_->DecreaseRefCount();
-  versions_.insert({new_verions_id, std::move(latest_version_)});
+  const Version *latest_verion_copy = latest_version_.get();
+  versions_.insert(
+      {latest_verion_copy->GetVersionId(), std::move(latest_version_)});
   // Decreate ref count of old version
+  latest_verion_copy->DecreaseRefCount();
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
   latest_version_->IncreaseRefCount();

@@ -53,9 +53,10 @@ public:
   Version &operator=(Version &) = delete;
 
   // Move constructor/assignment
-  Version(Version &&other) = default;
-
-  Version &operator=(Version &&other) = default;
+  // Version(Version &&other) = default;
+  // Version &operator=(Version &&other) = default;
+  Version(Version &&other) = delete;
+  Version &operator=(Version &&other) = delete;
 
   void IncreaseRefCount() const;
 
