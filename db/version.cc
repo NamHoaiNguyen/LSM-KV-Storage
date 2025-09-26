@@ -111,11 +111,11 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
 
 int Version::FindFilesAtLevel(int level, std::string_view key) {
   size_t left = 0;
-  size_t right = levels_sst_info[level].size() - 1;
+  size_t right = levels_sst_info_[level].size() - 1;
 
   while (left < right) {
     size_t mid = left + (right - left) / 2;
-    if (levels_sst_info_[mid].largest_key >= key) {
+    if (levels_sst_info_[level][mid]->largest_key >= key) {
       right = mid;
     } else {
       left = mid + 1;

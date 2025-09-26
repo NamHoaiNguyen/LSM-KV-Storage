@@ -6,7 +6,6 @@ namespace db {
 
 VersionEdit::VersionEdit(int num_levels) : new_files_(num_levels) {}
 
-
 void VersionEdit::AddNewFiles(SSTId table_id, int level, uint64_t file_size,
                               std::string_view smallest_key,
                               std::string_view largest_key,
@@ -20,7 +19,7 @@ void VersionEdit::AddNewFiles(SSTId table_id, int level, uint64_t file_size,
   sst_metadata->largest_key = std::string(largest_key);
   sst_metadata->ref_count = 0;
 
-  new_files[sst_metadata->level]_.push_back(std::move(sst_metadata));
+  new_files_[sst_metadata->level].push_back(std::move(sst_metadata));
 }
 
 void VersionEdit::RemoveFiles(int level, SSTId sst_id) {

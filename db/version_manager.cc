@@ -136,24 +136,25 @@ void VersionManager::ApplyNewChanges(
     }
 
     if (level == 0) {
-       latest_version_sst_info[level].insert(
-          latest_version_sst_info[level].end(),
-          added_files[level].begin(), added_files[level].end(),
-       );
-       continue;
+      latest_version_sst_info[level].insert(
+          latest_version_sst_info[level].end(), added_files[level].begin(),
+          added_files[level].end());
+      continue;
     }
 
-    // With level >= 1. add new file and sort based on smallest key in ascending order
-    const std::vector<std::shared_ptr<SSTMetadata>>& added_files_at_level =
+    // With level >= 1. add new file and sort based on smallest key in ascending
+    // order
+    const std::vector<std::shared_ptr<SSTMetadata>> &added_files_at_level =
         added_files[level];
     std::vector<std::shared_ptr<SSTMetadata>> new_sst_files;
-    new_sst_files.reserve(latest_version_sst_info[level].size() + added_files_at_level.size());
+    new_sst_files.reserve(latest_version_sst_info[level].size() +
+                          added_files_at_level.size());
 
-    std::merge(latest_version_sst_info[level].begin(), latest_version_sst_info[level].end(),
-               added_files[level].begin(), added_files[level].end(),
-               std::back_inserter(new_sst_files),
-               [](const auto& a, const auto& b){
-                  return a.smallest_key < b.smallest_ley;
+    std::merge(latest_version_sst_info[level].begin(),
+               latest_version_sst_info[level].end(), added_files[level].begin(),
+               added_files[level].end(), std::back_inserter(new_sst_files),
+               [](const auto &a, const auto &b) {
+                 return a->smallest_key < b->smallest_key;
                });
     // Assign back
     latest_version_sst_info[level] = std::move(new_sst_files);

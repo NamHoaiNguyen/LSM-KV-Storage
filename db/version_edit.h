@@ -38,7 +38,7 @@ struct SSTMetadata {
 
 class VersionEdit {
 public:
-  explicit VersionEdit(int num_levels)
+  explicit VersionEdit(int num_levels);
 
   ~VersionEdit() = default;
 
@@ -59,14 +59,15 @@ public:
 
   const std::set<std::pair<SSTId, int>> &GetImmutableDeletedFiles();
 
-  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &GetImmutableNewFiles();
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
+  GetImmutableNewFiles();
 
 private:
   // SST id + level
   std::set<std::pair<SSTId, int>> deleted_files_;
 
   // std::vector<std::shared_ptr<SSTMetadata>> new_files_;
-  std::vector<std::vector<std::shared_ptr<<SSTMetadata>> new_files_
+  std::vector<std::vector<std::shared_ptr<SSTMetadata>>> new_files_;
 };
 
 } // namespace db
