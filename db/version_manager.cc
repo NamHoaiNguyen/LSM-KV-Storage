@@ -114,11 +114,6 @@ void VersionManager::ApplyNewChanges(
     }
   }
 
-  // sort from newest to oldest with lvl 0 sst
-  std::sort(
-      latest_version_sst_info[0].begin(), latest_version_sst_info[0].end(),
-      [](const auto &a, const auto &b) { return a->table_id > b->table_id; });
-
   // Apply new SST files that are created for new verison
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &added_files =
       version_edit->GetImmutableNewFiles();
@@ -135,6 +130,9 @@ void VersionManager::ApplyNewChanges(
       continue;
     }
 
+    std::for_each(added_files[level].begin(), added_files[level].end(),
+                  [](const auto &elem) { return elem->ref_count++; });
+
     if (level == 0) {
       latest_version_sst_info[level].insert(
           latest_version_sst_info[level].end(), added_files[level].begin(),
@@ -150,6 +148,7 @@ void VersionManager::ApplyNewChanges(
     new_sst_files.reserve(latest_version_sst_info[level].size() +
                           added_files_at_level.size());
 
+    // Merge 2 sorted vector
     std::merge(latest_version_sst_info[level].begin(),
                latest_version_sst_info[level].end(), added_files[level].begin(),
                added_files[level].end(), std::back_inserter(new_sst_files),

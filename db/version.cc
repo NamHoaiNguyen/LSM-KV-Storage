@@ -66,55 +66,54 @@ void Version::DecreaseRefCount() const {
 GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
 
-  // Search in SSTs lvl0
-  // Files are saved from oldest-to-newest
-  if (levels_sst_info_.size() != config_->GetSSTNumLvels()) {
-    std::cout << "namnh check size of levels_sst_info_" << std::endl;
-  }
-
-  for (const auto &sst : std::views::reverse(levels_sst_info_[0])) {
+  std::vector<std::shared_ptr<SSTMetadata>> sst_lvl0_candidates_;
+  for (const auto &sst : levels_sst_info_[0]) {
+    // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs
+    // that maybe contain the key
     if (key < sst->smallest_key || key > sst->largest_key) {
       continue;
     }
 
     // TODO(namnh) : Implement bloom filter
+    sst_lvl0_candidates_.push_back(sst);
+  }
 
-    status =
-        version_manager_->GetKey(key, txn_id, sst->table_id, sst->file_size);
+  for (const auto &candidate : sst_lvl0_candidates_) {
+    status = version_manager_->GetKey(key, txn_id, candidate->table_id,
+                                      candidate->file_size);
     if (status.type != db::ValueType::NOT_FOUND) {
-      // break;
       return status;
     }
   }
 
-  if (levels_sst_info_.size() != config_->GetSSTNumLvels()) {
-    std::cout << "namnh check size of levels_sst_info_" << std::endl;
-  }
-
-  // Continue search in deeper level
+  // If key is not found in SSTs lvl0, continue lookup in deeper levels
   for (int level = 1; level < levels_sst_info_.size(); level++) {
-    for (const auto &sst : levels_sst_info_[level]) {
-      // if (key < sst->smallest_key || key > sst->largest_key) {
-      //   continue;
-      // }
+    // With level >= 1, because overlapping key doesn't happen and each file is
+    // sorted based on smallest key(and largest key), we can use binary search
+    // to quickly determine the file candidate to lookup
+    std::shared_ptr<SSTMetadata> file_candidate = FindFilesAtLevel(level, key);
+    if (!file_candidate) {
+      continue;
+    }
 
-      status =
-          version_manager_->GetKey(key, txn_id, sst->table_id, sst->file_size);
-      if (status.type != db::ValueType::NOT_FOUND) {
-        break;
-      }
+    // TODO(namnh) : Implement bloom filter
+    status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
+                                      file_candidate->file_size);
+    if (status.type != db::ValueType::NOT_FOUND) {
+      return status;
     }
   }
 
   return status;
 }
 
-int Version::FindFilesAtLevel(int level, std::string_view key) {
-  size_t left = 0;
-  size_t right = levels_sst_info_[level].size() - 1;
+std::shared_ptr<SSTMetadata>
+Version::FindFilesAtLevel(int level, std::string_view key) const {
+  int64_t left = 0;
+  int64_t right = levels_sst_info_[level].size() - 1;
 
   while (left < right) {
-    size_t mid = left + (right - left) / 2;
+    int64_t mid = left + (right - left) / 2;
     if (levels_sst_info_[level][mid]->largest_key >= key) {
       right = mid;
     } else {
@@ -122,7 +121,14 @@ int Version::FindFilesAtLevel(int level, std::string_view key) {
     }
   }
 
-  return right;
+  if (right < 0) {
+    return nullptr;
+  }
+
+  return levels_sst_info_[level][right]->smallest_key <= key &&
+                 key <= levels_sst_info_[level][right]->largest_key
+             ? levels_sst_info_[level][right]
+             : nullptr;
 }
 
 bool Version::NeedCompaction() const {

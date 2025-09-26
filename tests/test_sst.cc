@@ -114,7 +114,7 @@ TEST(TableTest, BasicEncode) {
   auto config = std::make_unique<db::Config>(true /*is_testing*/);
   config->LoadConfig();
 
-  std::string filename = "/home/hoainam/self/biggg/LSM-KV-Storage/data/1.sst";
+  std::string filename = "/home/hoainam/self/biggg/lsm-kv-storage/data/1.sst";
   auto table = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                        config.get());
   table->GetWriteOnlyFileObject()->Open();

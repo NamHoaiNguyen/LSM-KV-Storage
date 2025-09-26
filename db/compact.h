@@ -54,8 +54,9 @@ private:
   GetOverlappingSSTLvl0(std::string_view smallest_key,
                         std::string_view largest_key, int oldest_sst_index);
 
-  void GetOverlappingSSTOtherLvls(int level, std::string_view smallest_key,
-                                  std::string_view largest_key);
+  // Find all SSTs at next level that overllap with previous level
+  void GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
+                                std::string_view largest_key);
 
   // Find starting index of file in level_sst_infos_ that overlaps with
   // the fiels to be compacted from upper level

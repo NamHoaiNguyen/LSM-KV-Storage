@@ -31,17 +31,9 @@ Compact::Compact(const sstable::BlockReaderCache *block_reader_cache,
 }
 
 void Compact::PickCompact() {
-  // TODO(namnh) : Do we need to acquire lock ?
-  // What happen if when compact is executing, new SST file appears ?
   if (!version_) {
     return;
   }
-
-  // if (version_->levels_sst_info_[0].empty()) {
-  //   // TODO(namnh) : check that higher level need to merge or not ?
-  //   // DoFullCompact();
-  //   return;
-  // }
 
   if (!version_->GetLevelToCompact()) {
     return;
@@ -82,8 +74,8 @@ void Compact::DoL0L1Compact() {
       GetOverlappingSSTLvl0(smallest_key, largest_key, oldest_sst_index);
 
   // Get overlapping lvl1 sst files
-  GetOverlappingSSTOtherLvls(1 /*level*/, smallest_key_final /*smallest_key*/,
-                             largest_key_final /*largest_key*/);
+  GetOverlappingSSTNextLvl(1 /*level*/, smallest_key_final /*smallest_key*/,
+                           largest_key_final /*largest_key*/);
   // Execute compaction
   DoCompactJob();
 }
@@ -132,17 +124,16 @@ Compact::GetOverlappingSSTLvl0(std::string_view smallest_key,
   }
 
   if (ShouldIterateAgain) {
+    // Because smallest key and/or smallest key is updated, need another call to
+    // get all overlapping SST lvl0 files
     GetOverlappingSSTLvl0(smallest_key, largest_key, oldest_sst_index);
   }
-
-  // assert(files_need_compaction_[0].size() <= 6);
 
   return {smallest_key, largest_key};
 }
 
-void Compact::GetOverlappingSSTOtherLvls(int level,
-                                         std::string_view smallest_key,
-                                         std::string_view largest_key) {
+void Compact::GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
+                                       std::string_view largest_key) {
   std::optional<size_t> starting_file_index =
       FindNonOverlappingFiles(level, smallest_key, largest_key);
 
@@ -168,10 +159,6 @@ void Compact::GetOverlappingSSTOtherLvls(int level,
 std::optional<size_t>
 Compact::FindNonOverlappingFiles(int level, std::string_view smallest_key,
                                  std::string_view largest_key) {
-  // We don't need to lock. Because all of sst files are
-  // immutable.
-  // TODO(namnh) : Recheck above
-
   assert(level >= 1);
   if (version_->levels_sst_info_[level].empty()) {
     return std::nullopt;
@@ -262,10 +249,11 @@ void Compact::DoCompactJob() {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
     assert(!key.empty() && !value.empty());
-
     db::ValueType type = iterator->GetType();
     TxnId txn_id = iterator->GetTransactionId();
-    assert(type == db::ValueType::PUT || type == db::ValueType::DELETED);
+    assert(!key.empty() && !value.empty() &&
+           (type == db::ValueType::PUT || type == db::ValueType::DELETED) &&
+           txn_id != INVALID_TXN_ID);
 
     // Filter
     if (!ShouldPickEntry(last_current_key, key)) {
@@ -297,24 +285,14 @@ void Compact::DoCompactJob() {
                                  new_sst->GetFileSize(),
                                  new_sst->GetSmallestKey(),
                                  new_sst->GetLargestKey(), std::move(filename));
-      // if (iterator->IsValid()) {
-      //   // If still have data, it means that a new SST will be created
-      //   new_sst_id = db_->GetNextSSTId();
-      //   filename = db_->GetConfig()->GetSavedDataPath() +
-      //              std::to_string(new_sst_id) + ".sst";
-      //   new_sst.reset(
-      //       new sstable::TableBuilder(std::move(filename),
-      //       db_->GetConfig()));
-      //   if (!new_sst->Open()) {
-      //     return;
-      //   }
-      // }
+      // TableBuilder finishes it job. Free to prepare for another TableBuilder
+      // if need
       new_sst.reset();
     }
   }
 
-  // Flush remaining
   if (new_sst) {
+    // Flush remaining datas
     new_sst->Finish();
     filename = db_->GetConfig()->GetSavedDataPath() +
                std::to_string(new_sst_id) + ".sst";
@@ -335,6 +313,7 @@ void Compact::DoCompactJob() {
 
 bool Compact::ShouldPickEntry(std::string_view last_current_key,
                               std::string_view key) {
+  // TODO(namnh) : update logic in case key is deleted
   if (last_current_key.empty()) {
     return true;
   }

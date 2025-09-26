@@ -92,7 +92,8 @@ public:
   GetSSTMetadata() const;
 
 private:
-  int FindFilesAtLevel(int level, std::string_view key);
+  std::shared_ptr<SSTMetadata> FindFilesAtLevel(int level,
+                                                std::string_view key) const;
   // const uint64_t version_id_;
   uint64_t version_id_;
 

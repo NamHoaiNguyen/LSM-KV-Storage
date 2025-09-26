@@ -161,7 +161,7 @@ TEST(VersionTest, ConcurrencyPut) {
 
   db->ForceFlushMemTable();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(15000));
 
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
@@ -386,8 +386,9 @@ TEST(VersionTest, FreeObsoleteVersions) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  const int nums_elem_each_thread = 1000000;
+  ClearAllSstFiles(config);
 
+  const int nums_elem_each_thread = 1000000;
   unsigned int num_read_threads = 10;
   unsigned int num_write_threads = 10;
 
@@ -441,7 +442,7 @@ TEST(VersionTest, FreeObsoleteVersions) {
   db->ForceFlushMemTable();
 
   // Sleep to wait all older versions is not referenced anymore
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(15000));
 
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
   // All older versions that aren't refered to anymore should be cleared
