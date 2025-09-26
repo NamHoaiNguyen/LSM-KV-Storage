@@ -23,7 +23,7 @@ public:
   BlockReaderIterator(const BlockReaderIterator &) = delete;
   BlockReaderIterator &operator=(BlockReaderIterator &) = delete;
 
-  // Move constructor/assignment
+  // No move allowed
   BlockReaderIterator(BlockReaderIterator &&other) = delete;
   BlockReaderIterator &operator=(BlockReaderIterator &&other) = delete;
 

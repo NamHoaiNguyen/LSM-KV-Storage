@@ -27,9 +27,8 @@ public:
   TableReaderIterator(const TableReaderIterator &) = delete;
   TableReaderIterator &operator=(TableReaderIterator &) = delete;
 
-  // Move constructor/assignment
+  // No move allowed
   TableReaderIterator(TableReaderIterator &&other) = delete;
-
   TableReaderIterator &operator=(TableReaderIterator &&other) = delete;
 
   std::string_view GetKey() override;

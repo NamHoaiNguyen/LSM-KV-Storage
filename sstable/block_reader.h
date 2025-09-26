@@ -95,7 +95,7 @@ public:
   BlockReader(const BlockReader &) = default;
   BlockReader &operator=(BlockReader &) = default;
 
-  // Move constructor/assignment
+  // No move allowed
   BlockReader(BlockReader &&other) = delete;
   BlockReader &operator=(BlockReader &&other) = delete;
 

@@ -19,19 +19,31 @@ namespace kvs {
 namespace db {
 
 struct SSTMetadata {
-  SSTId table_id;
+  SSTMetadata(SSTId table_id_, int level_, uint64_t file_size_,
+              std::string_view smallest_key_, std::string_view largest_key_,
+              std::string &&filename_);
 
-  std::string filename;
+  ~SSTMetadata() = default;
 
-  int level;
+  // No copy allowed
+  SSTMetadata(const SSTMetadata &) = delete;
+  SSTMetadata &operator=(SSTMetadata &) = delete;
 
-  uint64_t file_size;
+  // No move allowed
+  SSTMetadata(SSTMetadata &&) = delete;
+  SSTMetadata &operator=(SSTMetadata &&) = delete;
 
-  // TODO(namnh) : These two fields maybe are used in the future.(for table
-  // cache)
-  std::string smallest_key;
+  const SSTId table_id;
 
-  std::string largest_key;
+  const std::string filename;
+
+  const int level;
+
+  const uint64_t file_size;
+
+  const std::string smallest_key;
+
+  const std::string largest_key;
 
   std::atomic<uint64_t> ref_count;
 };

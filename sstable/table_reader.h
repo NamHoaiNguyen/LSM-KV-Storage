@@ -89,7 +89,7 @@ public:
   TableReader(const TableReader &) = delete;
   TableReader &operator=(TableReader &) = delete;
 
-  // Move constructor/assignment
+  // No move allowed
   TableReader(TableReader &&) = delete;
   TableReader &operator=(TableReader &&) = delete;
 
