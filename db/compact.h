@@ -19,6 +19,8 @@ class TableReaderCache;
 
 namespace db {
 
+class MergeIterator;
+
 class DBImpl;
 
 // KEY RULE: Compact is only triggerd by LATEST version
@@ -45,7 +47,7 @@ public:
 private:
   void DoL0L1Compact();
 
-  std::unique_ptr<kvs::BaseIterator> CreateMergeIterator();
+  std::unique_ptr<MergeIterator> CreateMergeIterator();
 
   // Find all overlapping sst files at level
   std::pair<std::string_view, std::string_view>

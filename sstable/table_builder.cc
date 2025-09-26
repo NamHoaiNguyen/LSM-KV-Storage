@@ -36,10 +36,6 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
   assert(key.data() && value.data() && value_type != db::ValueType::INVALID &&
          txn_id != INVALID_TXN_ID);
 
-  if (key == "key999999") {
-    std::cout << "namnh debug Value of key999999" << std::endl;
-  }
-
   if (table_smallest_key_.empty()) {
     table_smallest_key_ = std::string(key);
   }

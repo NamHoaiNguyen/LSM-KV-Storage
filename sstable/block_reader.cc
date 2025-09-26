@@ -30,6 +30,7 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
 
     // Get value type of data entry
     uint64_t data_entry_offset = GetDataEntryOffset(mid);
+    assert(data_entry_offset == data_entries_offset_info_[mid]);
     db::ValueType value_type = GetValueTypeFromDataEntry(data_entry_offset);
     assert(value_type == db::ValueType::PUT ||
            value_type == db::ValueType::DELETED);
@@ -57,10 +58,6 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
 
       right = mid - 1;
     }
-  }
-
-  if (status.type == db::ValueType::NOT_FOUND && key == "key999000") {
-    std::cout << "namnh debug" << std::endl;
   }
 
   return status;

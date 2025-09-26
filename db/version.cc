@@ -82,7 +82,8 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     status =
         version_manager_->GetKey(key, txn_id, sst->table_id, sst->file_size);
     if (status.type != db::ValueType::NOT_FOUND) {
-      break;
+      // break;
+      return status;
     }
   }
 

@@ -197,7 +197,7 @@ Compact::FindNonOverlappingFiles(int level, std::string_view smallest_key,
   return right;
 }
 
-std::unique_ptr<kvs::BaseIterator> Compact::CreateMergeIterator() {
+std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
   std::string filename;
@@ -205,7 +205,7 @@ std::unique_ptr<kvs::BaseIterator> Compact::CreateMergeIterator() {
 
   for (int level = 0; level < 2; level++) {
     for (int i = 0; i < files_need_compaction_[level].size(); i++) {
-      filename = files_need_compaction_[level][i]->filename;
+      // filename = files_need_compaction_[level][i]->filename;
       table_id = files_need_compaction_[level][i]->table_id;
       // Find table in cache
       const sstable::TableReader *table_reader =
@@ -257,14 +257,11 @@ void Compact::DoCompactJob() {
     return;
   }
 
-  std::unique_ptr<kvs::BaseIterator> iterator = CreateMergeIterator();
+  std::unique_ptr<MergeIterator> iterator = CreateMergeIterator();
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
     assert(!key.empty() && !value.empty());
-    if (key == "key999999") {
-      std::cout << "namnh debug key999999" << std::endl;
-    }
 
     db::ValueType type = iterator->GetType();
     TxnId txn_id = iterator->GetTransactionId();
