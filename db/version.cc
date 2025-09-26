@@ -22,39 +22,9 @@ Version::Version(uint64_t version_id, const Config *config,
   assert(config_ && thread_pool_ && version_manager_);
 }
 
-// Version::Version(Version &&other) {
-//   version_id_ = other.version_id_;
-//   levels_sst_info_ = std::move(other.levels_sst_info_);
-//   compaction_level_ = other.compaction_level_;
-//   compaction_score_ = other.compaction_score_;
-//   levels_score_ = std::move(levels_score_);
-//   ref_count_.store(other.ref_count_.load());
-//   config_ = other.config_;
-//   thread_pool_ = other.thread_pool_;
-//   version_manager_ = other.version_manager_;
-// }
-
-// Version &Version::operator=(Version &&other) {
-//   version_id_ = other.version_id_;
-//   levels_sst_info_ = std::move(other.levels_sst_info_);
-//   compaction_level_ = other.compaction_level_;
-//   compaction_score_ = other.compaction_score_;
-//   levels_score_ = std::move(levels_score_);
-//   ref_count_.store(other.ref_count_.load());
-//   config_ = other.config_;
-//   thread_pool_ = other.thread_pool_;
-//   version_manager_ = other.version_manager_;
-
-//   return *this;
-// }
-
-void Version::IncreaseRefCount() const {
-  std::scoped_lock lock(ref_count_mutex_);
-  ref_count_++;
-}
+void Version::IncreaseRefCount() const { ref_count_++; }
 
 void Version::DecreaseRefCount() const {
-  std::scoped_lock lock(ref_count_mutex_);
   assert(ref_count_ >= 1);
   ref_count_--;
   if (ref_count_ == 0) {
@@ -181,10 +151,7 @@ size_t Version::GetNumberSSTFilesAtLevel(int level) const {
 
 uint64_t Version::GetVersionId() const { return version_id_; }
 
-uint64_t Version::GetRefCount() const {
-  std::scoped_lock lock(ref_count_mutex_);
-  return ref_count_;
-}
+uint64_t Version::GetRefCount() const { return ref_count_.load(); }
 
 // For testing
 const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &

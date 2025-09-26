@@ -53,8 +53,6 @@ public:
   Version &operator=(Version &) = delete;
 
   // Move constructor/assignment
-  // Version(Version &&other) = default;
-  // Version &operator=(Version &&other) = default;
   Version(Version &&other) = delete;
   Version &operator=(Version &&other) = delete;
 
@@ -94,8 +92,7 @@ public:
 private:
   std::shared_ptr<SSTMetadata> FindFilesAtLevel(int level,
                                                 std::string_view key) const;
-  // const uint64_t version_id_;
-  uint64_t version_id_;
+  const uint64_t version_id_;
 
   // TODO(namnh) : do I need to protect this one ?
   // If using unique_ptr, each version has its own data SST info.
@@ -122,9 +119,6 @@ private:
   kvs::ThreadPool *thread_pool_;
 
   VersionManager *version_manager_;
-
-  // Mutex to protect ref_count_
-  mutable std::mutex ref_count_mutex_;
 };
 
 } // namespace db

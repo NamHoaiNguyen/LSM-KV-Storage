@@ -15,7 +15,6 @@
 
 // libC++
 #include <cassert>
-#include <iostream>
 
 namespace kvs {
 
@@ -204,7 +203,7 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
         auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
             std::move(filename), table_id, file_size);
         if (!new_table_reader) {
-          continue;
+          return nullptr;
         }
         // create iterator for new table
         table_reader_iterators.emplace_back(
@@ -245,6 +244,10 @@ void Compact::DoCompactJob() {
   }
 
   std::unique_ptr<MergeIterator> iterator = CreateMergeIterator();
+  if (!iterator) {
+    return;
+  }
+
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();

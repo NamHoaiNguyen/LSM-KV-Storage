@@ -37,8 +37,8 @@ public:
   Compact &operator=(Compact &) = delete;
 
   // Move constructor/assignment
-  Compact(Compact &&) = default;
-  Compact &operator=(Compact &&) = default;
+  Compact(Compact &&) = delete;
+  Compact &operator=(Compact &&) = delete;
 
   // sst_lvl0_size works like a snapshot of SSTInfo size at the time that
   // compact is triggered

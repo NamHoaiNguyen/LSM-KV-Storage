@@ -11,7 +11,6 @@
 #include <cassert>
 
 #include <filesystem>
-#include <iostream>
 
 namespace fs = std::filesystem;
 
@@ -33,10 +32,6 @@ void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
   auto it = versions_.find(version_id);
 
-  // for (const auto &elem : versions_) {
-  //   std::cout << "namnh check version_id in map " << elem.first << std::endl;
-  // }
-
   if (it == versions_.end()) {
     return;
   }
@@ -50,12 +45,13 @@ void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
       // version is deleted
       sst_metadata[level][file_index]->ref_count--;
       if (sst_metadata[level][file_index]->ref_count == 0) {
+        // If ref count of a SST file = 0, it means that versions refer to it no
+        // more. Time to say goodbye!
         fs::path file_path(sst_metadata[level][file_index]->filename);
         fs::remove(file_path);
       }
     }
   }
-  // TODO(namnh) : Remove obsolete file if its refcount = 0
 
   versions_.erase(it);
 }
@@ -107,7 +103,7 @@ void VersionManager::ApplyNewChanges(
         continue;
       }
 
-      // Increase refcount of SST metadata
+      // Increase refcount of SST metadata each time a new version is created
       sst_info->ref_count++;
 
       latest_version_sst_info[level].push_back(sst_info);
@@ -117,13 +113,7 @@ void VersionManager::ApplyNewChanges(
   // Apply new SST files that are created for new verison
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &added_files =
       version_edit->GetImmutableNewFiles();
-  // for (const auto &file : added_files) {
-  //   // Increase refcount of SST metadata(= 1)
-  //   file->ref_count++;
-  //   assert(file->ref_count == 1);
 
-  //   latest_version_sst_info[file->level].push_back(file);
-  // }
   // Merge two sorted file
   for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
     if (added_files[level].empty()) {

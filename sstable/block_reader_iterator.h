@@ -24,17 +24,8 @@ public:
   BlockReaderIterator &operator=(BlockReaderIterator &) = delete;
 
   // Move constructor/assignment
-  BlockReaderIterator(BlockReaderIterator &&other) {
-    block_reader_ = other.block_reader_;
-    current_offset_index_ = other.current_offset_index_;
-    // other.block_reader_ = nullptr;
-  }
-  BlockReaderIterator &operator=(BlockReaderIterator &&other) {
-    block_reader_ = other.block_reader_;
-    current_offset_index_ = other.current_offset_index_;
-    // other.block_reader_ = nullptr;
-    return *this;
-  }
+  BlockReaderIterator(BlockReaderIterator &&other) = delete;
+  BlockReaderIterator &operator=(BlockReaderIterator &&other) = delete;
 
   std::string_view GetKey() override;
 

@@ -35,8 +35,8 @@ public:
   BlockReaderCache &operator=(BlockReaderCache &) = delete;
 
   // Move constructor/assignment
-  BlockReaderCache(BlockReaderCache &&) = default;
-  BlockReaderCache &operator=(BlockReaderCache &&) = default;
+  BlockReaderCache(BlockReaderCache &&) = delete;
+  BlockReaderCache &operator=(BlockReaderCache &&) = delete;
 
   const BlockReader *
   GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;

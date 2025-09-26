@@ -271,23 +271,14 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
   GetStatus status;
   std::string key, value;
 
-  int total_miss_key = 0;
   for (int i = 0; i < total_elems; i++) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
     std::optional<std::string> value_found = db->Get(key, 0 /*txn_id*/);
-    // EXPECT_TRUE(value_found);
-    if (!value_found) {
-      std::cout << "Value of key " << key << std::endl;
-      total_miss_key++;
-    }
-    // EXPECT_TRUE(status.value != std::nullopt);
-    // EXPECT_EQ(status.value.value(), value);
+    EXPECT_TRUE(value_found);
+    EXPECT_EQ(value_found.value(), value);
   }
-
-  std::cout << "Total miss key = " << total_miss_key << std::endl;
-  EXPECT_TRUE(total_miss_key == 0);
 
   ClearAllSstFiles(config);
 }

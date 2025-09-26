@@ -34,8 +34,8 @@ public:
   TableReaderCache &operator=(TableReaderCache &) = delete;
 
   // Move constructor/assignment
-  TableReaderCache(TableReaderCache &&) = default;
-  TableReaderCache &operator=(TableReaderCache &&) = default;
+  TableReaderCache(TableReaderCache &&) = delete;
+  TableReaderCache &operator=(TableReaderCache &&) = delete;
 
   db::GetStatus GetKeyFromTableCache(
       std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,

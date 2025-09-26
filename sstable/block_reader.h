@@ -27,7 +27,6 @@ struct BlockReaderData {
 
   // Move constructor/assignment
   BlockReaderData(BlockReaderData &&) = default;
-
   BlockReaderData &operator=(BlockReaderData &&) = default;
 
   // Total data entries in a block
@@ -93,35 +92,18 @@ public:
   ~BlockReader() = default;
 
   // No copy allowed
-  BlockReader(const BlockReader &) = delete;
-  BlockReader &operator=(BlockReader &) = delete;
+  BlockReader(const BlockReader &) = default;
+  BlockReader &operator=(BlockReader &) = default;
 
   // Move constructor/assignment
-  BlockReader(BlockReader &&other) {
-    buffer_ = std::move(other.buffer_);
-    total_data_entries_ = other.total_data_entries_;
-    offset_section_ = other.offset_section_;
-    data_entries_offset_info_ = std::move(other.data_entries_offset_info_);
-  };
-  BlockReader &operator=(BlockReader &&other) {
-    buffer_ = std::move(other.buffer_);
-    total_data_entries_ = other.total_data_entries_;
-    offset_section_ = other.offset_section_;
-    data_entries_offset_info_ = std::move(other.data_entries_offset_info_);
-
-    return *this;
-  }
+  BlockReader(BlockReader &&other) = delete;
+  BlockReader &operator=(BlockReader &&other) = delete;
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
   friend class BlockReaderIterator;
 
 private:
-  // Get starting offset of data entry at index entry_index(th) base on
-  // offset_section(starting offset of offset section)
-  // See block data format above
-  uint64_t GetDataEntryOffset(int entry_index) const;
-
   // Get type of key base on data_entry_offset(starting offset of data entry)
   // See block data format above
   db::ValueType GetValueTypeFromDataEntry(uint64_t data_entry_offset) const;
@@ -137,16 +119,16 @@ private:
   // All of below objects are non-const to be moveable. But we need them to be
   // immutable. So, ALL of methods in this class MUST BE const to avoid these
   // data member be accidentaly updated
-  std::vector<Byte> buffer_;
+  const std::vector<Byte> buffer_;
 
   // Total data entries in a block
-  uint64_t total_data_entries_;
+  const uint64_t total_data_entries_;
 
   // Starting offset of offset section
-  uint64_t offset_section_;
+  const uint64_t offset_section_;
 
   // Contain starting offset of each data entries
-  std::vector<uint64_t> data_entries_offset_info_;
+  const std::vector<uint64_t> data_entries_offset_info_;
 };
 
 } // namespace sstable

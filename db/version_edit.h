@@ -66,7 +66,6 @@ private:
   // SST id + level
   std::set<std::pair<SSTId, int>> deleted_files_;
 
-  // std::vector<std::shared_ptr<SSTMetadata>> new_files_;
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>> new_files_;
 };
 

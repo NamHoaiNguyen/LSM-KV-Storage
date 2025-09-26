@@ -41,8 +41,7 @@ CreateAndSetupDataForTableReader(std::string &&filename, SSTId table_id,
   table_reader_data->read_file_object =
       std::make_unique<io::LinuxReadOnlyFile>(table_reader_data->filename);
   if (!table_reader_data->read_file_object->Open()) {
-    // return nullptr;
-    throw std::runtime_error("Can't open file");
+    return nullptr;
   }
 
   // Decode block index
@@ -182,12 +181,11 @@ TableReader::SearchKey(std::string_view key, TxnId txn_id,
 std::pair<BlockOffset, BlockSize>
 TableReader::GetBlockOffsetAndSize(std::string_view key) const {
   // Find the block that have smallest largest key that >= key
-  int left = 0;
-  // TODO(namnh) : recheck constraint
-  int right = block_index_.size() - 1;
+  int64_t left = 0;
+  int64_t right = block_index_.size() - 1;
 
   while (left < right) {
-    int mid = left + (right - left) / 2;
+    int64_t mid = left + (right - left) / 2;
     if (block_index_[mid].GetLargestKey() >= key) {
       right = mid;
     } else {

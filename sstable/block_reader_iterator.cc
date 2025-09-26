@@ -80,7 +80,6 @@ void BlockReaderIterator::Seek(std::string_view key) {
   }
 
   int64_t left = 0;
-  // TODO(namnh) : recheck constraint
   int64_t right = block_reader_->total_data_entries_ - 1;
 
   while (left < right) {

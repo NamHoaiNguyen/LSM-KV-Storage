@@ -21,7 +21,7 @@ TableBuilder::TableBuilder(std::string &&filename, const db::Config *config)
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), total_block_entries_(0),
-      file_size_(0), config_(config) {}
+      data_size_(0), config_(config) {}
 
 bool TableBuilder::Open() {
   if (!write_file_object_) {
@@ -54,7 +54,7 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
   block_largest_key_ = std::string(key);
   table_largest_key_ = std::string(key);
 
-  file_size_ += key.size() + (value.data() ? +value.size() : 0);
+  data_size_ += key.size() + (value.data() ? value.size() : 0);
 
   if (block_data_->GetBlockSize() >= config_->GetSSTBlockSize()) {
     FlushBlock();
@@ -64,9 +64,8 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
 void TableBuilder::FlushBlock() {
   assert(write_file_object_);
 
-  // TODO(namnh, IMPORATANCE) : recheck this logic
   if (block_data_->GetDataView().empty()) {
-    // Dont add new entry if data_buffer doesn't have any data
+    // Don't add new entry if data_buffer doesn't have any data
     return;
   }
 
@@ -98,11 +97,6 @@ void TableBuilder::FlushBlock() {
   AddIndexBlockEntry(block_smallest_key_, block_largest_key_,
                      block_starting_offset,
                      current_offset_ - block_starting_offset);
-
-  // Cache block index
-  block_index_.emplace_back(block_smallest_key_, block_largest_key_,
-                            block_starting_offset,
-                            current_offset_ - block_starting_offset);
 
   // Increase number of total block entries of table
   total_block_entries_++;
@@ -161,10 +155,6 @@ void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
 }
 
 void TableBuilder::Finish() {
-  // if (is_finished_) {
-  //   return;
-  // }
-
   // Flush remaining data to
   FlushBlock();
 
@@ -194,8 +184,6 @@ void TableBuilder::Finish() {
 
   // Ensure that data is persisted to disk from page cache
   write_file_object_->Flush();
-
-  is_finished_ = true;
 }
 
 void TableBuilder::EncodeExtraInfo() {
@@ -247,13 +235,9 @@ io::WriteOnlyFile *TableBuilder::GetWriteOnlyFileObject() {
   return write_file_object_.get();
 }
 
-const std::vector<BlockIndex> &TableBuilder::GetBlockIndex() {
-  return block_index_;
-}
-
 uint64_t TableBuilder::GetFileSize() const { return current_offset_ + 1; }
 
-uint64_t TableBuilder::GetDataSize() const { return file_size_; }
+uint64_t TableBuilder::GetDataSize() const { return data_size_; }
 
 } // namespace sstable
 
