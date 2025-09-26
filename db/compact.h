@@ -10,12 +10,25 @@
 
 namespace kvs {
 
+class BaseIterator;
+
+namespace sstable {
+class BlockReaderCache;
+class TableReaderCache;
+} // namespace sstable
+
 namespace db {
+
+class MergeIterator;
+
+class DBImpl;
 
 // KEY RULE: Compact is only triggerd by LATEST version
 class Compact {
 public:
-  Compact(const Version *version, VersionEdit *version_edit);
+  Compact(const sstable::BlockReaderCache *block_reader_cache,
+          const sstable::TableReaderCache *table_reader_cache,
+          const Version *version, VersionEdit *version_edit, DBImpl *db);
 
   ~Compact() = default;
 
@@ -24,8 +37,8 @@ public:
   Compact &operator=(Compact &) = delete;
 
   // Move constructor/assignment
-  Compact(Compact &&) = default;
-  Compact &operator=(Compact &&) = default;
+  Compact(Compact &&) = delete;
+  Compact &operator=(Compact &&) = delete;
 
   // sst_lvl0_size works like a snapshot of SSTInfo size at the time that
   // compact is triggered
@@ -34,11 +47,16 @@ public:
 private:
   void DoL0L1Compact();
 
-  // Find all overlapping sst files at level
-  std::pair<std::string_view, std::string_view> GetOverlappingSSTLvl0();
+  std::unique_ptr<MergeIterator> CreateMergeIterator();
 
-  void GetOverlappingSSTOtherLvls(int level, std::string_view smallest_key,
-                                  std::string_view largest_key);
+  // Find all overlapping sst files at level
+  std::pair<std::string_view, std::string_view>
+  GetOverlappingSSTLvl0(std::string_view smallest_key,
+                        std::string_view largest_key, int oldest_sst_index);
+
+  // Find all SSTs at next level that overllap with previous level
+  void GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
+                                std::string_view largest_key);
 
   // Find starting index of file in level_sst_infos_ that overlaps with
   // the fiels to be compacted from upper level
@@ -49,15 +67,25 @@ private:
   // Execute compaction based on compact info
   void DoCompactJob();
 
+  bool ShouldPickEntry(std::string_view last_current_key, std::string_view key);
+
+  const sstable::BlockReaderCache *block_reader_cache_;
+
+  const sstable::TableReaderCache *table_reader_cache_;
+
   const Version *version_;
 
-  VersionEdit *version_edit_;
+  DBImpl *db_;
 
   // NO need to acquire lock to protect this data structure. Because
   // new version is created when there is a change(create new SST, delete old
   // SST after compaction). So, each version has its own this data structure.
   // Note: These are also files that be deleted after finish compaction
   std::vector<const SSTMetadata *> files_need_compaction_[2];
+
+  int level_to_compact_;
+
+  VersionEdit *version_edit_;
 };
 
 } // namespace db

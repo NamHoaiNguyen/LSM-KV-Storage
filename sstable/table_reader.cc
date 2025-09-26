@@ -5,6 +5,8 @@
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
 
+#include <iostream>
+
 namespace {
 
 uint64_t GetDataEntryOffset(uint64_t offset_section, int entry_index,
@@ -179,11 +181,11 @@ TableReader::SearchKey(std::string_view key, TxnId txn_id,
 std::pair<BlockOffset, BlockSize>
 TableReader::GetBlockOffsetAndSize(std::string_view key) const {
   // Find the block that have smallest largest key that >= key
-  int left = 0;
-  int right = block_index_.size();
+  int64_t left = 0;
+  int64_t right = block_index_.size() - 1;
 
   while (left < right) {
-    int mid = left + (right - left) / 2;
+    int64_t mid = left + (right - left) / 2;
     if (block_index_[mid].GetLargestKey() >= key) {
       right = mid;
     } else {

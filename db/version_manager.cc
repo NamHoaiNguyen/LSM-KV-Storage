@@ -2,12 +2,17 @@
 
 #include "common/thread_pool.h"
 #include "db/config.h"
+#include "db/version.h"
 #include "sstable/block_reader_cache.h"
 #include "sstable/table_reader_cache.h"
 
 // libC++
 #include <algorithm>
 #include <cassert>
+
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace kvs {
 
@@ -25,11 +30,30 @@ VersionManager::VersionManager(
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
-  versions_.erase(std::remove_if(versions_.begin(), versions_.end(),
-                                 [version_id](const auto &version) {
-                                   return version->GetVersionId() == version_id;
-                                 }),
-                  versions_.end());
+  auto it = versions_.find(version_id);
+
+  if (it == versions_.end()) {
+    return;
+  }
+
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &sst_metadata =
+      it->second->GetSSTMetadata();
+  for (int level = 0; level < sst_metadata.size(); level++) {
+    for (int file_index = 0; file_index < sst_metadata[level].size();
+         file_index++) {
+      // Decrease number of version that is refering to a file when an obsolete
+      // version is deleted
+      sst_metadata[level][file_index]->ref_count--;
+      if (sst_metadata[level][file_index]->ref_count == 0) {
+        // If ref count of a SST file = 0, it means that versions refer to it no
+        // more. Time to say goodbye!
+        fs::path file_path(sst_metadata[level][file_index]->filename);
+        fs::remove(file_path);
+      }
+    }
+  }
+
+  versions_.erase(it);
 }
 
 void VersionManager::CreateLatestVersion() {
@@ -47,8 +71,9 @@ void VersionManager::ApplyNewChanges(
   assert(version_edit);
   assert(latest_version_);
 
-  auto new_version = std::make_unique<Version>(++next_version_id_, config_,
-                                               thread_pool_, this);
+  uint64_t new_verions_id = ++next_version_id_;
+  auto new_version =
+      std::make_unique<Version>(new_verions_id, config_, thread_pool_, this);
 
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
@@ -78,15 +103,50 @@ void VersionManager::ApplyNewChanges(
         continue;
       }
 
+      // Increase refcount of SST metadata each time a new version is created
+      sst_info->ref_count++;
+
       latest_version_sst_info[level].push_back(sst_info);
     }
   }
 
   // Apply new SST files that are created for new verison
-  const std::vector<std::shared_ptr<SSTMetadata>> &added_files =
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &added_files =
       version_edit->GetImmutableNewFiles();
-  for (const auto &file : added_files) {
-    latest_version_sst_info[file->level].push_back(file);
+
+  // Merge two sorted file
+  for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
+    if (added_files[level].empty()) {
+      continue;
+    }
+
+    std::for_each(added_files[level].begin(), added_files[level].end(),
+                  [](const auto &elem) { return elem->ref_count++; });
+
+    if (level == 0) {
+      latest_version_sst_info[level].insert(
+          latest_version_sst_info[level].end(), added_files[level].begin(),
+          added_files[level].end());
+      continue;
+    }
+
+    // With level >= 1. add new file and sort based on smallest key in ascending
+    // order
+    const std::vector<std::shared_ptr<SSTMetadata>> &added_files_at_level =
+        added_files[level];
+    std::vector<std::shared_ptr<SSTMetadata>> new_sst_files;
+    new_sst_files.reserve(latest_version_sst_info[level].size() +
+                          added_files_at_level.size());
+
+    // Merge 2 sorted vector
+    std::merge(latest_version_sst_info[level].begin(),
+               latest_version_sst_info[level].end(), added_files[level].begin(),
+               added_files[level].end(), std::back_inserter(new_sst_files),
+               [](const auto &a, const auto &b) {
+                 return a->smallest_key < b->smallest_key;
+               });
+    // Assign back
+    latest_version_sst_info[level] = std::move(new_sst_files);
   }
 
   // Update level 0' score
@@ -95,10 +155,11 @@ void VersionManager::ApplyNewChanges(
       static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
 
   // new version becomes latest version
-  versions_.push_front(std::move(latest_version_));
+  const Version *latest_verion_copy = latest_version_.get();
+  versions_.insert(
+      {latest_verion_copy->GetVersionId(), std::move(latest_version_)});
   // Decreate ref count of old version
-  assert(versions_.front()->GetRefCount() > 0);
-  versions_.front()->DecreaseRefCount();
+  latest_verion_copy->DecreaseRefCount();
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
   latest_version_->IncreaseRefCount();
@@ -120,15 +181,15 @@ bool VersionManager::NeedSSTCompaction() const {
   return latest_version_->NeedCompaction();
 }
 
-const std::deque<std::unique_ptr<Version>> &
-VersionManager::GetVersions() const {
-  std::scoped_lock lock(mutex_);
-  return versions_;
-}
-
 const Version *VersionManager::GetLatestVersion() const {
   std::scoped_lock lock(mutex_);
   return latest_version_.get();
+}
+
+const std::unordered_map<uint64_t, std::unique_ptr<Version>> &
+VersionManager::GetVersions() const {
+  std::scoped_lock lock(mutex_);
+  return versions_;
 }
 
 const Config *const VersionManager::GetConfig() { return config_; }

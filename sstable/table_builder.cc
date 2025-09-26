@@ -10,6 +10,7 @@
 
 // libC++
 #include <cassert>
+#include <iostream>
 
 namespace kvs {
 
@@ -20,7 +21,7 @@ TableBuilder::TableBuilder(std::string &&filename, const db::Config *config)
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),
       min_txnid_(UINT64_MAX), max_txnid_(0), total_block_entries_(0),
-      config_(config) {}
+      data_size_(0), config_(config) {}
 
 bool TableBuilder::Open() {
   if (!write_file_object_) {
@@ -53,6 +54,8 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
   block_largest_key_ = std::string(key);
   table_largest_key_ = std::string(key);
 
+  data_size_ += key.size() + (value.data() ? value.size() : 0);
+
   if (block_data_->GetBlockSize() >= config_->GetSSTBlockSize()) {
     FlushBlock();
   }
@@ -60,6 +63,11 @@ void TableBuilder::AddEntry(std::string_view key, std::string_view value,
 
 void TableBuilder::FlushBlock() {
   assert(write_file_object_);
+
+  if (block_data_->GetDataView().empty()) {
+    // Don't add new entry if data_buffer doesn't have any data
+    return;
+  }
 
   // Starting offset of block
   const uint64_t block_starting_offset = current_offset_;
@@ -89,11 +97,6 @@ void TableBuilder::FlushBlock() {
   AddIndexBlockEntry(block_smallest_key_, block_largest_key_,
                      block_starting_offset,
                      current_offset_ - block_starting_offset);
-
-  // Cache block index
-  block_index_.emplace_back(block_smallest_key_, block_largest_key_,
-                            block_starting_offset,
-                            current_offset_ - block_starting_offset);
 
   // Increase number of total block entries of table
   total_block_entries_++;
@@ -146,6 +149,9 @@ void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
   // Insert length of block data
   block_index_buffer_.insert(block_index_buffer_.end(), block_length_buff,
                              block_length_buff + sizeof(uint64_t));
+
+  // file_size_ += sizeof(uint32_t) + first_key.size() + sizeof(uint32_t) +
+  //               last_key.size() + 2 * sizeof(uint64_t);
 }
 
 void TableBuilder::Finish() {
@@ -229,11 +235,9 @@ io::WriteOnlyFile *TableBuilder::GetWriteOnlyFileObject() {
   return write_file_object_.get();
 }
 
-const std::vector<BlockIndex> &TableBuilder::GetBlockIndex() {
-  return block_index_;
-}
-
 uint64_t TableBuilder::GetFileSize() const { return current_offset_ + 1; }
+
+uint64_t TableBuilder::GetDataSize() const { return data_size_; }
 
 } // namespace sstable
 

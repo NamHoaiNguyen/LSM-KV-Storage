@@ -89,9 +89,9 @@ public:
   TableReader(const TableReader &) = delete;
   TableReader &operator=(TableReader &) = delete;
 
-  // Move constructor/assignment
-  TableReader(TableReader &&) = default;
-  TableReader &operator=(TableReader &&) = default;
+  // No move allowed
+  TableReader(TableReader &&) = delete;
+  TableReader &operator=(TableReader &&) = delete;
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id,
                           const sstable::BlockReaderCache *block_reader_cache,
@@ -115,16 +115,16 @@ private:
   // All of below objects are non-const to be moveable. But we need them to be
   // immutable. So, ALL of methods in this class MUST BE const to avoid these
   // data member be accidentaly updated
-  std::string filename_;
+  const std::string filename_;
 
-  SSTId table_id_;
+  const SSTId table_id_;
 
   // Size of SST file
-  uint64_t file_size_;
+  const uint64_t file_size_;
 
-  TxnId min_transaction_id_;
+  const TxnId min_transaction_id_;
 
-  TxnId max_transaction_id_;
+  const TxnId max_transaction_id_;
 
   // Contain starting offset and size of each block in table
   // It is not const, because const object prevent moveable

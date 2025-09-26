@@ -15,12 +15,18 @@ TableReaderCache::TableReaderCache(const db::Config *config) : config_(config) {
 
 const TableReader *TableReaderCache::GetTableReader(SSTId table_id) const {
   std::shared_lock rlock(mutex_);
-  auto table_reader_iterator = table_readers_map_.find(table_id);
-  if (table_reader_iterator == table_readers_map_.end()) {
+  auto table_reader_iterator = table_readers_cache_.find(table_id);
+  if (table_reader_iterator == table_readers_cache_.end()) {
     return nullptr;
   }
 
   return table_reader_iterator->second.get();
+}
+
+void TableReaderCache::AddNewTableReader(
+    SSTId table_id, std::unique_ptr<TableReader> table_reader) const {
+  std::scoped_lock rwlock(mutex_);
+  table_readers_cache_.insert({table_id, std::move(table_reader)});
 }
 
 db::GetStatus TableReaderCache::GetKeyFromTableCache(
@@ -57,11 +63,8 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   status = new_table_reader->SearchKey(key, txn_id, block_reader_cache,
                                        new_table_reader.get());
 
-  {
-    // Insert table into cache
-    std::scoped_lock rwlock(mutex_);
-    table_readers_map_.insert({table_id, std::move(new_table_reader)});
-  }
+  // Insert table into cache
+  AddNewTableReader(table_id, std::move(new_table_reader));
 
   return status;
 }

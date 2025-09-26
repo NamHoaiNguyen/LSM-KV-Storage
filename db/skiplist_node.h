@@ -17,7 +17,7 @@ namespace db {
 class SkipListNode : public std::enable_shared_from_this<SkipListNode> {
 public:
   SkipListNode(std::string_view key, std::optional<std::string_view> value,
-               int num_level, ValueType value_type);
+               TxnId txn_id, int num_level, ValueType value_type);
 
   ~SkipListNode() = default;
 

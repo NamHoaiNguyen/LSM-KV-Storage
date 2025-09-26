@@ -138,7 +138,7 @@ void DBImpl::FlushMemTableJob() {
   std::latch all_done(immutable_memtables_.size());
 
   std::vector<std::shared_ptr<SSTMetadata>> new_ssts_info;
-  auto version_edit = std::make_unique<VersionEdit>();
+  auto version_edit = std::make_unique<VersionEdit>(config_->GetSSTNumLvels());
 
   {
     std::scoped_lock rwlock(mutex_);
@@ -228,14 +228,17 @@ void DBImpl::ExecuteBackgroundCompaction() {
   }
 
   version->IncreaseRefCount();
-  auto version_edit = std::make_unique<VersionEdit>();
-  auto compact = std::make_unique<Compact>(version, version_edit.get());
+  auto version_edit = std::make_unique<VersionEdit>(config_->GetSSTNumLvels());
+  auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
+                                           table_reader_cache_.get(), version,
+                                           version_edit.get(), this);
   compact->PickCompact();
   version->DecreaseRefCount();
 
   // Apply compact version edit(changes) to create new version
   version_manager_->ApplyNewChanges(std::move(version_edit));
 
+  background_compaction_scheduled_ = false;
   // Compaction can create many files, so maybe we need another compaction round
   MaybeScheduleCompaction();
 }

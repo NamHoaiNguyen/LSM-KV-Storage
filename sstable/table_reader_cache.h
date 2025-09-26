@@ -34,12 +34,15 @@ public:
   TableReaderCache &operator=(TableReaderCache &) = delete;
 
   // Move constructor/assignment
-  TableReaderCache(TableReaderCache &&) = default;
-  TableReaderCache &operator=(TableReaderCache &&) = default;
+  TableReaderCache(TableReaderCache &&) = delete;
+  TableReaderCache &operator=(TableReaderCache &&) = delete;
 
   db::GetStatus GetKeyFromTableCache(
       std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
       const sstable::BlockReaderCache *block_reader_cache) const;
+
+  void AddNewTableReader(SSTId table_id,
+                         std::unique_ptr<TableReader> table_reader) const;
 
   const TableReader *GetTableReader(SSTId table_id) const;
 
@@ -47,7 +50,7 @@ private:
   const db::Config *config_;
 
   mutable std::unordered_map<SSTId, std::unique_ptr<TableReader>>
-      table_readers_map_;
+      table_readers_cache_;
 
   mutable std::shared_mutex mutex_;
 };

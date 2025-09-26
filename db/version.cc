@@ -6,6 +6,8 @@
 #include "io/base_file.h"
 #include "sstable/table_reader.h"
 
+#include <iostream>
+
 namespace kvs {
 
 namespace db {
@@ -14,19 +16,16 @@ Version::Version(uint64_t version_id, const Config *config,
                  kvs::ThreadPool *thread_pool, VersionManager *version_manager)
     : version_id_(version_id), levels_sst_info_(config->GetSSTNumLvels()),
       // compact_(std::make_unique<Compact>(this)),
-      compaction_level_(0), compaction_score_(0),
+      compaction_level_(0), compaction_score_(0), ref_count_(0),
       levels_score_(config->GetSSTNumLvels(), 0), config_(config),
       thread_pool_(thread_pool), version_manager_(version_manager) {
   assert(config_ && thread_pool_ && version_manager_);
 }
 
-void Version::IncreaseRefCount() const {
-  std::scoped_lock lock(ref_count_mutex_);
-  ref_count_++;
-}
+void Version::IncreaseRefCount() const { ref_count_++; }
 
 void Version::DecreaseRefCount() const {
-  std::scoped_lock lock(ref_count_mutex_);
+  assert(ref_count_ >= 1);
   ref_count_--;
   if (ref_count_ == 0) {
     thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
@@ -37,23 +36,69 @@ void Version::DecreaseRefCount() const {
 GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
 
-  // Search in SSTs lvl0
-  // Files are saved from oldest-to-newest
-  for (const auto &sst : std::views::reverse(levels_sst_info_[0])) {
+  std::vector<std::shared_ptr<SSTMetadata>> sst_lvl0_candidates_;
+  for (const auto &sst : levels_sst_info_[0]) {
+    // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs
+    // that maybe contain the key
     if (key < sst->smallest_key || key > sst->largest_key) {
       continue;
     }
 
     // TODO(namnh) : Implement bloom filter
+    sst_lvl0_candidates_.push_back(sst);
+  }
 
-    status =
-        version_manager_->GetKey(key, txn_id, sst->table_id, sst->file_size);
+  for (const auto &candidate : sst_lvl0_candidates_) {
+    status = version_manager_->GetKey(key, txn_id, candidate->table_id,
+                                      candidate->file_size);
     if (status.type != db::ValueType::NOT_FOUND) {
-      break;
+      return status;
+    }
+  }
+
+  // If key is not found in SSTs lvl0, continue lookup in deeper levels
+  for (int level = 1; level < levels_sst_info_.size(); level++) {
+    // With level >= 1, because overlapping key doesn't happen and each file is
+    // sorted based on smallest key(and largest key), we can use binary search
+    // to quickly determine the file candidate to lookup
+    std::shared_ptr<SSTMetadata> file_candidate = FindFilesAtLevel(level, key);
+    if (!file_candidate) {
+      continue;
+    }
+
+    // TODO(namnh) : Implement bloom filter
+    status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
+                                      file_candidate->file_size);
+    if (status.type != db::ValueType::NOT_FOUND) {
+      return status;
     }
   }
 
   return status;
+}
+
+std::shared_ptr<SSTMetadata>
+Version::FindFilesAtLevel(int level, std::string_view key) const {
+  int64_t left = 0;
+  int64_t right = levels_sst_info_[level].size() - 1;
+
+  while (left < right) {
+    int64_t mid = left + (right - left) / 2;
+    if (levels_sst_info_[level][mid]->largest_key >= key) {
+      right = mid;
+    } else {
+      left = mid + 1;
+    }
+  }
+
+  if (right < 0) {
+    return nullptr;
+  }
+
+  return levels_sst_info_[level][right]->smallest_key <= key &&
+                 key <= levels_sst_info_[level][right]->largest_key
+             ? levels_sst_info_[level][right]
+             : nullptr;
 }
 
 bool Version::NeedCompaction() const {
@@ -106,14 +151,11 @@ size_t Version::GetNumberSSTFilesAtLevel(int level) const {
 
 uint64_t Version::GetVersionId() const { return version_id_; }
 
-uint64_t Version::GetRefCount() const {
-  std::scoped_lock lock(ref_count_mutex_);
-  return ref_count_;
-}
+uint64_t Version::GetRefCount() const { return ref_count_.load(); }
 
 // For testing
 const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-Version::GetSstMetadata() const {
+Version::GetSSTMetadata() const {
   return levels_sst_info_;
 }
 

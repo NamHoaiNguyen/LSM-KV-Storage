@@ -10,8 +10,9 @@ SkipList::SkipList(int max_level)
     : current_level_(1), max_level_(max_level),
       gen_(std::mt19937(std::random_device()())), current_size_(0),
       dist_level_(std::uniform_int_distribution<>(0, 1)),
-      head_(std::make_shared<SkipListNode>(
-          "" /*key*/, "" /*value*/, current_level_, ValueType::NOT_FOUND)) {}
+      head_(std::make_shared<SkipListNode>("" /*key*/, "" /*value*/,
+                                           0 /*txn_id*/, current_level_,
+                                           ValueType::NOT_FOUND)) {}
 
 // Return random number of levels that a node is inserted
 int SkipList::GetRandomLevel() {
@@ -110,7 +111,7 @@ void SkipList::Put_(std::string_view key, std::optional<std::string_view> value,
 
   int new_level = GetRandomLevel();
   auto new_node =
-      std::make_shared<SkipListNode>(key, value, new_level, value_type);
+      std::make_shared<SkipListNode>(key, value, txn_id, new_level, value_type);
   if (new_level > current_level_) {
     for (int level = current_level_; level < new_level; ++level) {
       updates[level] = head_;

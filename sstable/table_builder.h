@@ -71,8 +71,8 @@ public:
   TableBuilder &operator=(TableBuilder &) = default;
 
   // Move constructor/assignment
-  TableBuilder(TableBuilder &&) = default;
-  TableBuilder &operator=(TableBuilder &&) = default;
+  TableBuilder(TableBuilder &&) = delete;
+  TableBuilder &operator=(TableBuilder &&) = delete;
 
   bool Open();
 
@@ -95,14 +95,14 @@ public:
   // ok
   std::string_view GetLargestKey() const;
 
-  uint64_t GetFileSize() const;
-
   // For testing
   BlockBuilder *GetBlockData();
 
   io::WriteOnlyFile *GetWriteOnlyFileObject();
 
-  const std::vector<BlockIndex> &GetBlockIndex();
+  uint64_t GetFileSize() const;
+
+  uint64_t GetDataSize() const;
 
 private:
   void EncodeExtraInfo();
@@ -110,7 +110,7 @@ private:
   void AddIndexBlockEntry(std::string_view first_key, std::string_view last_key,
                           uint64_t block_start_offset, uint64_t block_length);
 
-  std::string filename_;
+  const std::string filename_;
 
   std::unique_ptr<io::WriteOnlyFile> write_file_object_;
 
@@ -125,8 +125,6 @@ private:
 
   // Current offthat in file that is written to
   uint64_t current_offset_;
-
-  std::vector<BlockIndex> block_index_;
 
   std::vector<Byte> block_index_buffer_;
 
@@ -146,6 +144,9 @@ private:
   std::string table_largest_key_;
 
   const db::Config *config_;
+
+  // Total size of JUST data part(size of all key/value pairs)
+  uint64_t data_size_;
 };
 
 } // namespace sstable

@@ -53,8 +53,8 @@ public:
   Version &operator=(Version &) = delete;
 
   // Move constructor/assignment
-  Version(Version &&) = default;
-  Version &operator=(Version &&) = default;
+  Version(Version &&other) = delete;
+  Version &operator=(Version &&other) = delete;
 
   void IncreaseRefCount() const;
 
@@ -87,9 +87,11 @@ public:
 
   // For testing
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-  GetSstMetadata() const;
+  GetSSTMetadata() const;
 
 private:
+  std::shared_ptr<SSTMetadata> FindFilesAtLevel(int level,
+                                                std::string_view key) const;
   const uint64_t version_id_;
 
   // TODO(namnh) : do I need to protect this one ?
@@ -117,9 +119,6 @@ private:
   kvs::ThreadPool *thread_pool_;
 
   VersionManager *version_manager_;
-
-  // Mutex to protect ref_count_
-  mutable std::mutex ref_count_mutex_;
 };
 
 } // namespace db
