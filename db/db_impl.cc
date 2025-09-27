@@ -56,15 +56,13 @@ DBImpl::DBImpl(bool is_testing)
       version_manager_(std::make_unique<VersionManager>(
           this, table_reader_cache_.get(), block_reader_cache_.get(),
           config_.get(), thread_pool_)) {}
-// manifest_write_object_(std::make_unique<io::LinuxWriteOnlyFile>(
-//     config_->GetSavedDataPath() + kManifestFileName)) {}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
   thread_pool_ = nullptr;
 }
 
-bool DBImpl::LoadDB() {
+void DBImpl::LoadDB() {
   config_->LoadConfig();
   // TODO(namnh) : remove after finish recovering flow
   compact_pointer_.resize(config_->GetSSTNumLvels());
@@ -74,10 +72,8 @@ bool DBImpl::LoadDB() {
   manifest_write_object_ = std::make_unique<io::LinuxWriteOnlyFile>(
       config_->GetSavedDataPath() + kManifestFileName);
   if (!manifest_write_object_->Open()) {
-    return false;
+    return;
   }
-
-  return true;
 }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {

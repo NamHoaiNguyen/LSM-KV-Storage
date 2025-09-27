@@ -59,7 +59,7 @@ public:
 
   uint64_t GetNextSSTId();
 
-  bool LoadDB();
+  void LoadDB();
 
   const Config *const GetConfig();
 
