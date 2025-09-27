@@ -36,8 +36,6 @@ public:
 
   bool Flush() override;
 
-  ssize_t Append(DynamicBuffer &&buffer, uint64_t offset) override;
-
   // append data from buffer starting from offset
   ssize_t Append(std::span<const Byte> buffer, uint64_t offset) override;
 

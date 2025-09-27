@@ -55,11 +55,6 @@ bool LinuxWriteOnlyFile::Open() {
 }
 
 // append
-ssize_t LinuxWriteOnlyFile::Append(DynamicBuffer &&buffer, uint64_t offset) {
-  return Append_(buffer.data(), buffer.size(), offset);
-}
-
-// append
 ssize_t LinuxWriteOnlyFile::Append(std::span<const Byte> buffer,
                                    uint64_t offset) {
   return Append_(buffer.data(), buffer.size(), offset);
