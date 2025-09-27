@@ -277,7 +277,7 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
     EXPECT_EQ(value_found.value(), value);
   }
 
-  // ClearAllSstFiles(config);
+  ClearAllSstFiles(config);
 }
 
 TEST(VersionTest, ConcurrencyPutAndGet) {
