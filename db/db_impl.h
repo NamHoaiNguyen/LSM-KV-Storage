@@ -22,6 +22,10 @@ namespace mvcc {
 class TransactionManager;
 } // namespace mvcc
 
+namespace io {
+class LinuxWriteOnlyFile;
+} // namespace io
+
 namespace sstable {
 class TableBuilder;
 class TableReaderCache;
@@ -72,11 +76,15 @@ public:
 
   const sstable::BlockReaderCache *GetBlockReaderCache() const;
 
+  void AddChangesToManifest(const VersionEdit *version_edit);
+
 private:
   void FlushMemTableJob();
 
   void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
                     VersionEdit *version_edit, std::latch &work_done);
+
+  // void AddChangesToManifest(const VersionEdit *version_edit);
 
   void MaybeScheduleCompaction();
 
@@ -117,6 +125,8 @@ private:
   std::unique_ptr<sstable::BlockReaderCache> block_reader_cache_;
 
   std::unique_ptr<VersionManager> version_manager_;
+
+  std::unique_ptr<io::LinuxWriteOnlyFile> manifest_write_object_;
 
   // Mutex to protect some critical data structures
   // (immutable_memtables_ list, levels_sst_info_)

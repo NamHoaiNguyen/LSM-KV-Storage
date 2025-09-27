@@ -26,11 +26,11 @@ public:
 
   virtual bool Open() = 0;
 
-  //  Append new data at offset
-  virtual ssize_t Append(DynamicBuffer &&buffer, uint64_t offset) = 0;
-
-  //  Append new data at offset
+  // Append new data at offset
   virtual ssize_t Append(std::span<const Byte> buffer, uint64_t offset) = 0;
+
+  // Append new data at the end of the file
+  virtual ssize_t AppendAtLast(std::span<const Byte> buffer) = 0;
 };
 
 class ReadOnlyFile {

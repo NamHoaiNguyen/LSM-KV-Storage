@@ -69,16 +69,23 @@ public:
   // Add files that need to be deleted in new version
   void RemoveFiles(int level, SSTId sst_id);
 
-  const std::set<std::pair<SSTId, int>> &GetImmutableDeletedFiles();
+  // Set Next table Number
+  void SetNextTableId(uint64_t next_table_id);
+
+  const std::set<std::pair<SSTId, int>> &GetImmutableDeletedFiles() const;
 
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-  GetImmutableNewFiles();
+  GetImmutableNewFiles() const;
+
+  uint64_t GetNextTableId() const;
 
 private:
   // SST id + level
   std::set<std::pair<SSTId, int>> deleted_files_;
 
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>> new_files_;
+
+  uint64_t next_table_id_{0};
 };
 
 } // namespace db

@@ -27,12 +27,19 @@ void VersionEdit::RemoveFiles(int level, SSTId sst_id) {
   deleted_files_.insert({sst_id, level});
 }
 
-const std::set<std::pair<SSTId, int>> &VersionEdit::GetImmutableDeletedFiles() {
+void VersionEdit::SetNextTableId(uint64_t next_table_id) {
+  next_table_id_ = next_table_id;
+}
+
+uint64_t VersionEdit::GetNextTableId() const { return next_table_id_; }
+
+const std::set<std::pair<SSTId, int>> &
+VersionEdit::GetImmutableDeletedFiles() const {
   return deleted_files_;
 }
 
 const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
-VersionEdit::GetImmutableNewFiles() {
+VersionEdit::GetImmutableNewFiles() const {
   return new_files_;
 }
 

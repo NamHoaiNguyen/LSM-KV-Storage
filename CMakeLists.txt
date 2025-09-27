@@ -17,6 +17,7 @@ add_subdirectory(db)
 add_subdirectory(io)
 add_subdirectory(mvcc)
 add_subdirectory(sstable)
+add_subdirectory(third_party)
 # add_subdirectory(storage)
 
 # add_executable(lsm_kv_storage main.cc)

@@ -33,7 +33,9 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
     num_sst_files_info += sst_file_info.size();
   }
 
-  return (num_sst_files == num_sst_files_info) ? true : false;
+  return (num_sst_files == num_sst_files_info + 1 /*include manifest file*/)
+             ? true
+             : false;
 }
 
 void ClearAllSstFiles(const Config *config) {
@@ -50,7 +52,6 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   db->LoadDB();
 
   const Config *const config = db->GetConfig();
-  ClearAllSstFiles(config);
 
   // That number of key/value pairs is enough to create a new sst
   const int nums_elem = 10000000;
@@ -95,7 +96,6 @@ TEST(VersionTest, CreateMultipleVersions) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  ClearAllSstFiles(config);
 
   // That number of key/value pairs will create a new sst
   const int nums_elem = 10000000;
@@ -121,7 +121,6 @@ TEST(VersionTest, ConcurrencyPut) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  ClearAllSstFiles(config);
 
   const int nums_elem_each_thread = 1000000;
 
@@ -172,7 +171,6 @@ TEST(VersionTest, GetFromSST) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  ClearAllSstFiles(config);
 
   // That number of key/value pairs will create a new sst
   const int nums_elem = 1000000;
@@ -213,7 +211,6 @@ TEST(VersionTest, ConcurrencyPutSingleGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  ClearAllSstFiles(config);
 
   const int nums_elem_each_thread = 100000;
 
@@ -287,7 +284,6 @@ TEST(VersionTest, ConcurrencyPutAndGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  ClearAllSstFiles(config);
 
   const int nums_elem_each_thread = 100000;
 
@@ -377,7 +373,6 @@ TEST(VersionTest, FreeObsoleteVersions) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
-  ClearAllSstFiles(config);
 
   const int nums_elem_each_thread = 1000000;
   unsigned int num_read_threads = 10;

@@ -40,7 +40,9 @@ bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
     num_sst_files_info += sst_file_info.size();
   }
 
-  return (num_sst_files == num_sst_files_info) ? true : false;
+  return (num_sst_files == num_sst_files_info + 1 /*include manifest file*/)
+             ? true
+             : false;
 }
 
 void ClearAllSstFiles(const db::Config *config) {
