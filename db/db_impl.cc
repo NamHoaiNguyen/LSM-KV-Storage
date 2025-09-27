@@ -1,6 +1,7 @@
 #include "db/db_impl.h"
 
 #include "common/base_iterator.h"
+#include "common/macros.h"
 #include "common/thread_pool.h"
 #include "db/compact.h"
 #include "db/config.h"
@@ -13,8 +14,12 @@
 #include "db/version_edit.h"
 #include "db/version_manager.h"
 #include "io/base_file.h"
+#include "io/linux_file.h"
 #include "mvcc/transaction.h"
 #include "mvcc/transaction_manager.h"
+#include "rapidjson/document.h"
+#include "rapidjson/stringbuffer.h"
+#include "rapidjson/writer.h"
 #include "sstable/block_builder.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
@@ -26,8 +31,14 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 #include <numeric>
 #include <ranges>
+
+namespace {
+constexpr std::string kManifestFileName = "MANIFEST";
+}
 
 namespace kvs {
 
@@ -45,18 +56,28 @@ DBImpl::DBImpl(bool is_testing)
       version_manager_(std::make_unique<VersionManager>(
           this, table_reader_cache_.get(), block_reader_cache_.get(),
           config_.get(), thread_pool_)) {}
+// manifest_write_object_(std::make_unique<io::LinuxWriteOnlyFile>(
+//     config_->GetSavedDataPath() + kManifestFileName)) {}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
   thread_pool_ = nullptr;
 }
 
-void DBImpl::LoadDB() {
+bool DBImpl::LoadDB() {
   config_->LoadConfig();
   // TODO(namnh) : remove after finish recovering flow
   compact_pointer_.resize(config_->GetSSTNumLvels());
   version_manager_->CreateLatestVersion();
   // TODO(namnh) : Read ALL of SST files and init there info
+  std::string manifest_path = config_->GetSavedDataPath() + kManifestFileName;
+  manifest_write_object_ = std::make_unique<io::LinuxWriteOnlyFile>(
+      config_->GetSavedDataPath() + kManifestFileName);
+  if (!manifest_write_object_->Open()) {
+    return false;
+  }
+
+  return true;
 }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
@@ -152,6 +173,10 @@ void DBImpl::FlushMemTableJob() {
   // Wait until all workers have finished
   all_done.wait();
 
+  // Apply versionEdit to manifest and fsync to persist data
+  version_edit->SetNextTableId(GetNextSSTId());
+  AddChangesToManifest(version_edit.get());
+
   // Not until this point that latest version is visible
   version_manager_->ApplyNewChanges(std::move(version_edit));
 
@@ -206,6 +231,95 @@ void DBImpl::CreateNewSST(
   work_done.count_down();
 }
 
+void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
+  rapidjson::Document doc;
+  doc.SetObject();
+
+  rapidjson::Document::AllocatorType &allocator = doc.GetAllocator();
+
+  // Add string
+  doc.AddMember("next_table_id", version_edit->GetNextTableId(), allocator);
+
+  // List of new files created
+  rapidjson::Value new_files_array(rapidjson::kArrayType);
+  // List of delete files
+  rapidjson::Value delete_files_array(rapidjson::kArrayType);
+
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &new_files_list =
+      version_edit->GetImmutableNewFiles();
+  const std::set<std::pair<SSTId, int>> &delete_files_list =
+      version_edit->GetImmutableDeletedFiles();
+
+  for (int level = 0; level < new_files_list.size(); level++) {
+    for (const auto &new_file : new_files_list[level]) {
+      rapidjson::Value new_file_obj(rapidjson::kObjectType);
+
+      // Encode table id
+      new_file_obj.AddMember("id", new_file->table_id, allocator);
+
+      // Encode file level
+      new_file_obj.AddMember("level", new_file->level, allocator);
+
+      // Encode file size
+      new_file_obj.AddMember("size", new_file->file_size, allocator);
+
+      // Encode smallest key
+      rapidjson::Value smallest_key_value;
+      smallest_key_value.SetString(
+          new_file->smallest_key.data(),
+          static_cast<rapidjson::SizeType>(new_file->smallest_key.size()),
+          allocator);
+      new_file_obj.AddMember("smallest_key", smallest_key_value, allocator);
+
+      // Encode largest key
+      rapidjson::Value largest_key_value;
+      largest_key_value.SetString(
+          new_file->largest_key.data(),
+          static_cast<rapidjson::SizeType>(new_file->largest_key.size()),
+          allocator);
+      new_file_obj.AddMember("largest_key", largest_key_value, allocator);
+
+      // Add file object to array
+      new_files_array.PushBack(new_file_obj, allocator);
+    }
+  }
+
+  for (int level = 0; level < new_files_list.size(); level++) {
+    for (const auto &delete_file : delete_files_list) {
+      rapidjson::Value delete_file_obj(rapidjson::kObjectType);
+
+      // Encode table id
+      delete_file_obj.AddMember("id", delete_file.first, allocator);
+      // Encode file level
+      delete_file_obj.AddMember("level", delete_file.second, allocator);
+
+      // Add file object to array
+      delete_files_array.PushBack(delete_file_obj, allocator);
+    }
+  }
+
+  // Add new_files_array to root
+  if (!new_files_array.Empty()) {
+    doc.AddMember("new_files", new_files_array, allocator);
+  }
+
+  if (!delete_files_array.Empty()) {
+    // Add delete_files_array to root
+    doc.AddMember("delete_files", delete_files_array, allocator);
+  }
+
+  // Serialize to string
+  rapidjson::StringBuffer buffer;
+  rapidjson::Writer<rapidjson::StringBuffer> writer(buffer);
+  doc.Accept(writer);
+
+  std::span<const Byte> bytes(
+      reinterpret_cast<const uint8_t *>(buffer.GetString()), buffer.GetSize());
+
+  // TODO(namnh, IMPORTANT) : What if append fail ?
+  manifest_write_object_->AppendAtLast(bytes);
+}
+
 void DBImpl::MaybeScheduleCompaction() {
   if (background_compaction_scheduled_) {
     // only 1 compaction happens at a moment. This condition is highest
@@ -234,6 +348,10 @@ void DBImpl::ExecuteBackgroundCompaction() {
                                            version_edit.get(), this);
   compact->PickCompact();
   version->DecreaseRefCount();
+
+  // Apply versionEdit to manifest and fsync to persist data
+  version_edit->SetNextTableId(GetNextSSTId());
+  AddChangesToManifest(version_edit.get());
 
   // Apply compact version edit(changes) to create new version
   version_manager_->ApplyNewChanges(std::move(version_edit));

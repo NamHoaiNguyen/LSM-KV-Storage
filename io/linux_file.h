@@ -41,6 +41,8 @@ public:
   // append data from buffer starting from offset
   ssize_t Append(std::span<const Byte> buffer, uint64_t offset) override;
 
+  ssize_t AppendAtLast(std::span<const Byte> buffer) override;
+
 private:
   ssize_t Append_(const uint8_t *buffer, size_t size, uint64_t offset);
 

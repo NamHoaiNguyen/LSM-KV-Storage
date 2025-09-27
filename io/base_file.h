@@ -31,6 +31,8 @@ public:
 
   //  Append new data at offset
   virtual ssize_t Append(std::span<const Byte> buffer, uint64_t offset) = 0;
+
+  virtual ssize_t AppendAtLast(std::span<const Byte> buffer) = 0;
 };
 
 class ReadOnlyFile {

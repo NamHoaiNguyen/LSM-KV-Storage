@@ -20,7 +20,7 @@ namespace io {
 // ==========================Start LinuxWriteOnlyFile==========================
 
 LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string_view filename)
-    : filename_(filename) {}
+    : filename_(std::string(filename)) {}
 
 LinuxWriteOnlyFile::~LinuxWriteOnlyFile() { Close(); }
 
@@ -63,6 +63,16 @@ ssize_t LinuxWriteOnlyFile::Append(DynamicBuffer &&buffer, uint64_t offset) {
 ssize_t LinuxWriteOnlyFile::Append(std::span<const Byte> buffer,
                                    uint64_t offset) {
   return Append_(buffer.data(), buffer.size(), offset);
+}
+
+ssize_t LinuxWriteOnlyFile::AppendAtLast(std::span<const Byte> buffer) {
+  off64_t size = ::lseek(fd_, 0, SEEK_END);
+  if (size == -1) {
+    return -1;
+  }
+
+  return Append_(buffer.data(), buffer.size(),
+                 (size == 0) ? 0 : static_cast<uint64_t>(size));
 }
 
 ssize_t LinuxWriteOnlyFile::Append_(const uint8_t *buffer, size_t size,
