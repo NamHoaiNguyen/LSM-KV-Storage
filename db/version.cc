@@ -16,7 +16,6 @@ namespace db {
 Version::Version(uint64_t version_id, const Config *config,
                  kvs::ThreadPool *thread_pool, VersionManager *version_manager)
     : version_id_(version_id), levels_sst_info_(config->GetSSTNumLvels()),
-      // compact_(std::make_unique<Compact>(this)),
       compaction_level_(0), compaction_score_(0), ref_count_(0),
       levels_score_(config->GetSSTNumLvels(), 0), config_(config),
       thread_pool_(thread_pool), version_manager_(version_manager) {

@@ -68,12 +68,13 @@ TEST(DBTest, RecoverDB) {
     for (size_t i = 0; i < nums_elem; i++) {
       if (i == nums_elem / 2) {
         all_writes_done.count_down();
-        return;
+        break;
       }
 
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       db->Put(key, value, 0 /*txn_id*/);
+      // all_writes_done.count_down();
     }
   };
 
@@ -88,7 +89,9 @@ TEST(DBTest, RecoverDB) {
   // std::this_thread::sleep_for(std::chrono::milliseconds(20000));
 
   // // Force clearing all immutable memtables
-  // db->ForceFlushMemTable();
+  db->ForceFlushMemTable();
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   // Simulatte db is crashed
   db.reset();
@@ -119,6 +122,7 @@ TEST(DBTest, RecoverDB) {
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
       if (key_found) {
+        EXPECT_TRUE(i <= nums_elem / 2);
         EXPECT_EQ(key_found.value(), value);
       }
     }

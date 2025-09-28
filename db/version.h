@@ -60,6 +60,7 @@ public:
 
   void DecreaseRefCount() const;
 
+  // Get Key from version
   GetStatus Get(std::string_view key, TxnId txn_id) const;
 
   bool NeedCompaction() const;
@@ -94,12 +95,6 @@ private:
                                                 std::string_view key) const;
   const uint64_t version_id_;
 
-  // TODO(namnh) : do I need to protect this one ?
-  // If using unique_ptr, each version has its own data SST info.
-  // In other words, SST info of each version is immutable for other versions.
-  // Whereas, if using shared_ptr, there MUST be a lock mechanism to protect
-  // SSTMetadata data structure
-  // std::vector<std::vector<std::unique_ptr<SSTMetadata>>> levels_sst_info_;
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>> levels_sst_info_;
 
   // Level that need to compact

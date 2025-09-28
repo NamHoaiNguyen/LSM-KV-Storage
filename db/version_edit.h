@@ -66,6 +66,8 @@ public:
                    std::string_view smallest_key, std::string_view largest_key,
                    std::string &&filename);
 
+  void AddNewFiles(std::shared_ptr<SSTMetadata> sst_metadata);
+
   // Add files that need to be deleted in new version
   void RemoveFiles(SSTId sst_id, int level);
 

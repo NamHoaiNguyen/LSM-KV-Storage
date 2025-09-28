@@ -54,6 +54,8 @@ void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   versions_.erase(it);
 }
 
+// void VersionManager::RemoveObsoleteFiles(std::unique_ptr<VersionE)
+
 void VersionManager::CreateLatestVersion() {
   if (!latest_version_) {
     latest_version_ = std::make_unique<Version>(++next_version_id_, config_,
@@ -107,7 +109,33 @@ void VersionManager::InitVersionWhenLoadingDb(
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
   latest_version_->IncreaseRefCount();
+
+  const std::set<std::pair<SSTId, int>> deleted_files =
+      version_edit->GetImmutableDeletedFiles();
+  for (const auto &file : deleted_files) {
+    std::string filename =
+        config_->GetSavedDataPath() + std::to_string(file.first) + ".sst";
+    fs::path file_path(filename);
+    fs::remove(file_path);
+  }
+
+  // Remove obsolete SST files
+  thread_pool_->Enqueue(
+      [version_edit_ = std::move(version_edit), config_ = this->config_]() {
+        const std::set<std::pair<SSTId, int>> deleted_files =
+            version_edit_->GetImmutableDeletedFiles();
+        for (const auto &file : deleted_files) {
+          std::string filename =
+              config_->GetSavedDataPath() + std::to_string(file.first) + ".sst";
+          fs::path file_path(filename);
+          if (fs::exists(file_path) && fs::is_regular_file(file_path)) {
+            fs::remove(file_path);
+          }
+        }
+      });
 }
+
+// }
 
 void VersionManager::CreateNewVersion(
     std::unique_ptr<VersionEdit> version_edit) {
@@ -189,10 +217,10 @@ void VersionManager::CreateNewVersion(
     // Assign back
     latest_version_sst_info[level] = std::move(new_sst_files);
 
-    // Update level's score
-    latest_levels_score[level] =
-        static_cast<double>(latest_version_sst_info[level].size()) /
-        static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
+    // // Update level's score
+    // latest_levels_score[level] =
+    //     static_cast<double>(latest_version_sst_info[level].size()) /
+    //     static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
   }
 
   // Update level 0' score

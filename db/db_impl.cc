@@ -34,7 +34,6 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 #include <numeric>
 #include <ranges>
 
@@ -42,7 +41,9 @@ namespace fs = std::filesystem;
 
 namespace {
 constexpr std::string kManifestFileName = "MANIFEST";
-}
+
+constexpr int kDefaultParseManifestBufferSize = 8192; //
+} // namespace
 
 namespace kvs {
 
@@ -67,9 +68,10 @@ DBImpl::~DBImpl() {
 }
 
 void DBImpl::LoadDB() {
+  // Load config
   config_->LoadConfig();
-  // TODO(namnh) : remove after finish recovering flow
-  // version_manager_->CreateLatestVersion();
+
+  // Load MANIFEST
   std::string manifest_path = config_->GetSavedDataPath() + kManifestFileName;
   manifest_write_object_ = std::make_unique<io::LinuxWriteOnlyFile>(
       config_->GetSavedDataPath() + kManifestFileName);
@@ -77,20 +79,10 @@ void DBImpl::LoadDB() {
     return;
   }
 
+  // Recover
   std::unique_ptr<VersionEdit> version_edit = Recover(manifest_path);
   if (!version_edit) {
     return;
-  }
-
-  // Remove all deleted file in version_edit
-  // TODO(namnh) : Put this flow into another thread
-  const std::set<std::pair<SSTId, int>> deleted_files =
-      version_edit->GetImmutableDeletedFiles();
-  for (const auto &file : deleted_files) {
-    std::string filename =
-        config_->GetSavedDataPath() + std::to_string(file.first) + ".sst";
-    fs::path file_path(filename);
-    fs::remove(file_path);
   }
 
   // Apply version edit to create new version
@@ -107,7 +99,7 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
     return nullptr;
   }
 
-  char buffer[8192]; // 8KB buffer
+  char buffer[kDefaultParseManifestBufferSize];
   rapidjson::FileReadStream is(fp, buffer, sizeof(buffer));
   rapidjson::Document doc;
 
@@ -115,6 +107,13 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
   uint64_t table_id = 0, file_size = 0;
   int level = 0;
   std::string smallest_key, largest_key, filename;
+
+  // In MANIFEST file, there are many SST files that was added before then are
+  // deleted when needing no more. These files, therefore, shouldn't be added in
+  // list to recheck when parsing "delete_files". When meeting a table id in
+  // delete_files, and that table id also is in this map, remove it from this
+  // map. So this table won't be added into VersionEdit.
+  std::unordered_map<SSTId, std::shared_ptr<SSTMetadata>> filter_add_files;
 
   while (true) {
     doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(is);
@@ -143,8 +142,10 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
         filename =
             config_->GetSavedDataPath() + std::to_string(table_id) + ".sst";
 
-        version_edit->AddNewFiles(table_id, level, file_size, smallest_key,
-                                  largest_key, std::move(filename));
+        auto sst_metadata = std::make_shared<SSTMetadata>(
+            table_id, level, file_size, smallest_key, largest_key,
+            std::move(filename));
+        filter_add_files.insert({table_id, sst_metadata});
       }
     }
 
@@ -154,17 +155,28 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
         table_id = file["id"].GetInt64();
         level = file["level"].GetInt();
 
+        auto iterator = filter_add_files.find(table_id);
+        if (iterator != filter_add_files.end()) {
+          // If found in map
+          filter_add_files.erase(iterator);
+        }
+
         version_edit->RemoveFiles(table_id, level);
       }
-    }
-
-    if (feof(fp)) {
-      break;
     }
   }
 
   // Close
   fclose(fp);
+
+  // Push all data from filter_add_files into VersionEdit
+  for (const auto &sst_metadata : filter_add_files) {
+    version_edit->AddNewFiles(sst_metadata.second);
+  }
+
+  // Clear map when finishing
+  filter_add_files.clear();
+
   return version_edit;
 }
 
