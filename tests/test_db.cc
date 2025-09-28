@@ -66,16 +66,11 @@ TEST(DBTest, RecoverDB) {
     std::string key, value;
 
     for (size_t i = 0; i < nums_elem; i++) {
-      if (i == nums_elem / 2) {
-        all_writes_done.count_down();
-        break;
-      }
-
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       db->Put(key, value, 0 /*txn_id*/);
-      // all_writes_done.count_down();
     }
+    all_writes_done.count_down();
   };
 
   std::vector<std::thread> threads;
@@ -85,34 +80,26 @@ TEST(DBTest, RecoverDB) {
 
   all_writes_done.wait();
 
-  // Let threads put some data in db
-  // std::this_thread::sleep_for(std::chrono::milliseconds(20000));
-
   // // Force clearing all immutable memtables
   db->ForceFlushMemTable();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+  // Wait a little bit time
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
-  // Simulatte db is crashed
+  // Restarting a new db instance
   db.reset();
   for (auto &thread : threads) {
     thread.join();
   }
   threads.clear();
 
-  // std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-
   // Check recovery
   db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
   const Config *const config = db->GetConfig();
 
-  // Number of SST files in directory should be equal to number of SST files in
-  // version after reloading
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
-
   std::latch all_reads_done(num_threads);
-  auto get_op = [&db, &config, nums_elem = nums_elem_each_thread,
+  auto get_op = [&db, nums_elem = nums_elem_each_thread,
                  &all_reads_done](int index) {
     std::string key, value;
     std::optional<std::string> key_found;
@@ -121,10 +108,8 @@ TEST(DBTest, RecoverDB) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
-      if (key_found) {
-        EXPECT_TRUE(i <= nums_elem / 2);
-        EXPECT_EQ(key_found.value(), value);
-      }
+      EXPECT_TRUE(key_found);
+      EXPECT_EQ(key_found.value(), value);
     }
     all_reads_done.count_down();
   };
@@ -139,6 +124,10 @@ TEST(DBTest, RecoverDB) {
   for (auto &thread : threads) {
     thread.join();
   }
+
+  // Number of SST files in directory should be equal to number of SST files in
+  // version after reloading
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
   ClearAllSstFiles(config);
 }

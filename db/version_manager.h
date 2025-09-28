@@ -44,9 +44,6 @@ public:
 
   void RemoveObsoleteVersion(uint64_t version_id);
 
-  // TODO(namnh) : Remove this after implementing starting DB flow
-  void CreateLatestVersion();
-
   // Create latest version and apply new SSTs metadata
   void ApplyNewChanges(std::unique_ptr<VersionEdit> version_edit);
 

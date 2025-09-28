@@ -42,7 +42,7 @@ namespace fs = std::filesystem;
 namespace {
 constexpr std::string kManifestFileName = "MANIFEST";
 
-constexpr int kDefaultParseManifestBufferSize = 8192; //
+constexpr int kDefaultParseManifestBufferSize = 8192; // 8KB buffer
 } // namespace
 
 namespace kvs {
@@ -384,7 +384,6 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
     }
   }
 
-  // for (int level = 0; level < new_files_list.size(); level++) {
   for (const auto &delete_file : delete_files_list) {
     rapidjson::Value delete_file_obj(rapidjson::kObjectType);
 
@@ -396,7 +395,6 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
     // Add file object to array
     delete_files_array.PushBack(delete_file_obj, allocator);
   }
-  // }
 
   // Add new_files_array to root
   if (!new_files_array.Empty()) {

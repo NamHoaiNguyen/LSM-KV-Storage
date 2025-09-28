@@ -54,16 +54,6 @@ void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   versions_.erase(it);
 }
 
-// void VersionManager::RemoveObsoleteFiles(std::unique_ptr<VersionE)
-
-void VersionManager::CreateLatestVersion() {
-  if (!latest_version_) {
-    latest_version_ = std::make_unique<Version>(++next_version_id_, config_,
-                                                thread_pool_, this);
-    latest_version_->IncreaseRefCount();
-  }
-}
-
 void VersionManager::ApplyNewChanges(
     std::unique_ptr<VersionEdit> version_edit) {
   std::scoped_lock lock(mutex_);
@@ -104,6 +94,17 @@ void VersionManager::InitVersionWhenLoadingDb(
     latest_levels_score[level] =
         static_cast<double>(latest_version_sst_info[0].size()) /
         static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
+
+    if (level >= 1) {
+      // All SST files level >=1 must be sorted base on smallest key.
+      // Note : Because files levels >= 1 don't overlap with each other, so use
+      // smallest_key for condition to sort is enough
+      std::sort(latest_version_sst_info[level].begin(),
+                latest_version_sst_info[level].end(),
+                [](const auto &a, const auto &b) {
+                  return a->smallest_key < b->smallest_key;
+                });
+    }
   }
 
   latest_version_ = std::move(new_version);
@@ -134,8 +135,6 @@ void VersionManager::InitVersionWhenLoadingDb(
         }
       });
 }
-
-// }
 
 void VersionManager::CreateNewVersion(
     std::unique_ptr<VersionEdit> version_edit) {
