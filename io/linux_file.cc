@@ -10,6 +10,7 @@
 
 // C libs
 #include <fcntl.h>
+#include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -46,7 +47,16 @@ bool LinuxWriteOnlyFile::Open() {
   // TODO(namnh) : Recheck
   chmod(filename_.c_str(), 0644);
 
-  fd_ = ::open(filename_.c_str(), O_TRUNC | O_WRONLY | O_CREAT, 0644);
+  bool should_create = (access(filename_.c_str(), F_OK) == 0) ? false : true;
+
+  int flags = 0;
+  if (should_create) {
+    flags |= O_TRUNC | O_WRONLY | O_CREAT;
+  } else {
+    flags |= O_WRONLY;
+  }
+
+  fd_ = ::open(filename_.c_str(), flags, 0644);
   if (fd_ == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -63,6 +73,7 @@ ssize_t LinuxWriteOnlyFile::Append(std::span<const Byte> buffer,
 ssize_t LinuxWriteOnlyFile::AppendAtLast(std::span<const Byte> buffer) {
   off64_t size = ::lseek(fd_, 0, SEEK_END);
   if (size == -1) {
+    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return -1;
   }
 

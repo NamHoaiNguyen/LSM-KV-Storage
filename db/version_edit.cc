@@ -23,7 +23,11 @@ void VersionEdit::AddNewFiles(SSTId table_id, int level, uint64_t file_size,
   new_files_[sst_metadata->level].push_back(std::move(sst_metadata));
 }
 
-void VersionEdit::RemoveFiles(int level, SSTId sst_id) {
+void VersionEdit::AddNewFiles(std::shared_ptr<SSTMetadata> sst_metadata) {
+  new_files_[sst_metadata->level].push_back(sst_metadata);
+}
+
+void VersionEdit::RemoveFiles(SSTId sst_id, int level) {
   deleted_files_.insert({sst_id, level});
 }
 

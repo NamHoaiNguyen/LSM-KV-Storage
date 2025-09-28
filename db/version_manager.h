@@ -44,9 +44,6 @@ public:
 
   void RemoveObsoleteVersion(uint64_t version_id);
 
-  // TODO(namnh) : Remove this after implementing starting DB flow
-  void CreateLatestVersion();
-
   // Create latest version and apply new SSTs metadata
   void ApplyNewChanges(std::unique_ptr<VersionEdit> version_edit);
 
@@ -64,6 +61,10 @@ public:
   const Config *const GetConfig();
 
 private:
+  void InitVersionWhenLoadingDb(std::unique_ptr<VersionEdit> version_edit);
+
+  void CreateNewVersion(std::unique_ptr<VersionEdit> version_edit);
+
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
   // referenced to anymore
   std::atomic<uint64_t> next_version_id_{0};

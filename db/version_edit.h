@@ -66,8 +66,10 @@ public:
                    std::string_view smallest_key, std::string_view largest_key,
                    std::string &&filename);
 
+  void AddNewFiles(std::shared_ptr<SSTMetadata> sst_metadata);
+
   // Add files that need to be deleted in new version
-  void RemoveFiles(int level, SSTId sst_id);
+  void RemoveFiles(SSTId sst_id, int level);
 
   // Set Next table Number
   void SetNextTableId(uint64_t next_table_id);

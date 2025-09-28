@@ -6,3 +6,4 @@ add_library(mvcc
 )
 
 target_include_directories(mvcc PUBLIC ${CMAKE_SOURCE_DIR})
+target_link_libraries(mvcc PRIVATE RapidJSON)

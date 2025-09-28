@@ -6,6 +6,7 @@
 #include "io/base_file.h"
 #include "sstable/table_reader.h"
 
+#include <algorithm>
 #include <iostream>
 
 namespace kvs {
@@ -15,7 +16,6 @@ namespace db {
 Version::Version(uint64_t version_id, const Config *config,
                  kvs::ThreadPool *thread_pool, VersionManager *version_manager)
     : version_id_(version_id), levels_sst_info_(config->GetSSTNumLvels()),
-      // compact_(std::make_unique<Compact>(this)),
       compaction_level_(0), compaction_score_(0), ref_count_(0),
       levels_score_(config->GetSSTNumLvels(), 0), config_(config),
       thread_pool_(thread_pool), version_manager_(version_manager) {
@@ -44,9 +44,15 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
       continue;
     }
 
-    // TODO(namnh) : Implement bloom filter
+    // TODO(namnh) : Implement bloom filter for level = 0
     sst_lvl0_candidates_.push_back(sst);
   }
+
+  // Sort in descending order based on table_id. Because we need to search from
+  // newset to oldest
+  std::sort(
+      sst_lvl0_candidates_.begin(), sst_lvl0_candidates_.end(),
+      [](const auto &a, const auto &b) { return a->table_id > b->table_id; });
 
   for (const auto &candidate : sst_lvl0_candidates_) {
     status = version_manager_->GetKey(key, txn_id, candidate->table_id,
@@ -66,7 +72,7 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
       continue;
     }
 
-    // TODO(namnh) : Implement bloom filter
+    // TODO(namnh) : Implement bloom filter for level >= 1
     status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
                                       file_candidate->file_size);
     if (status.type != db::ValueType::NOT_FOUND) {
