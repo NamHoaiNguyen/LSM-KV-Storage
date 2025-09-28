@@ -46,7 +46,9 @@ void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
         // If ref count of a SST file = 0, it means that versions refer to it no
         // more. Time to say goodbye!
         fs::path file_path(sst_metadata[level][file_index]->filename);
-        fs::remove(file_path);
+        if (fs::exists(file_path) && fs::is_regular_file(file_path)) {
+          fs::remove(file_path);
+        }
       }
     }
   }
@@ -110,15 +112,6 @@ void VersionManager::InitVersionWhenLoadingDb(
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
   latest_version_->IncreaseRefCount();
-
-  const std::set<std::pair<SSTId, int>> deleted_files =
-      version_edit->GetImmutableDeletedFiles();
-  for (const auto &file : deleted_files) {
-    std::string filename =
-        config_->GetSavedDataPath() + std::to_string(file.first) + ".sst";
-    fs::path file_path(filename);
-    fs::remove(file_path);
-  }
 
   // Remove obsolete SST files
   thread_pool_->Enqueue(

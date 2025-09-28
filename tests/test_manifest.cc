@@ -17,6 +17,15 @@ namespace kvs {
 
 namespace db {
 
+void ClearAllSstFiles(const Config *config) {
+  // clear all SST files created for next test
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      fs::remove(entry.path());
+    }
+  }
+}
+
 TEST(VersionTest, BasicEncodeManifest) {
   auto db = std::make_unique<DBImpl>(true /*is_testing*/);
   db->LoadDB();
@@ -70,6 +79,7 @@ TEST(VersionTest, BasicEncodeManifest) {
                         read_buffer.size());
 
   EXPECT_EQ(encoded_result, expected);
+  ClearAllSstFiles(config);
 }
 
 } // namespace db

@@ -84,7 +84,7 @@ TEST(DBTest, RecoverDB) {
   db->ForceFlushMemTable();
 
   // Wait a little bit time
-  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   // Restarting a new db instance
   db.reset();
