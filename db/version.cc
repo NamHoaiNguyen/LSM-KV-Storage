@@ -6,6 +6,7 @@
 #include "io/base_file.h"
 #include "sstable/table_reader.h"
 
+#include <algorithm>
 #include <iostream>
 
 namespace kvs {
@@ -47,6 +48,11 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     // TODO(namnh) : Implement bloom filter
     sst_lvl0_candidates_.push_back(sst);
   }
+
+  // Sort in ascending order based on table_id
+  std::sort(
+      sst_lvl0_candidates_.begin(), sst_lvl0_candidates_.end(),
+      [](const auto &a, const auto &b) { return a->table_id < b->table_id; });
 
   for (const auto &candidate : sst_lvl0_candidates_) {
     status = version_manager_->GetKey(key, txn_id, candidate->table_id,

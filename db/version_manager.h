@@ -64,6 +64,10 @@ public:
   const Config *const GetConfig();
 
 private:
+  void InitVersionWhenLoadingDb(std::unique_ptr<VersionEdit> version_edit);
+
+  void CreateNewVersion(std::unique_ptr<VersionEdit> version_edit);
+
   // TODO(namnh) : we need a ref-count mechanism to delist version that isn't
   // referenced to anymore
   std::atomic<uint64_t> next_version_id_{0};

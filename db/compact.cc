@@ -308,8 +308,8 @@ void Compact::DoCompactJob() {
   for (int level = 0; level < 2; level++) {
     for (int i = 0; i < files_need_compaction_[level].size(); i++) {
       // assert(files_need_compaction_[level][i]->level == 0);
-      version_edit_->RemoveFiles(files_need_compaction_[level][i]->level,
-                                 files_need_compaction_[level][i]->table_id);
+      version_edit_->RemoveFiles(files_need_compaction_[level][i]->table_id,
+                                 files_need_compaction_[level][i]->level);
     }
   }
 }

@@ -35,14 +35,27 @@ TEST(VersionTest, BasicEncodeManifest) {
     version_edit->AddNewFiles(table_id, level, file_size, smallest_key,
                               largest_key, std::move(filename));
   }
-  version_edit->SetNextTableId(4);
+
+  const int num_deleted_files = 2;
+  for (int i = num_added_files + 1; i <= num_added_files + num_deleted_files;
+       i++) {
+    SSTId table_id = i;
+    int level = i % 2;
+
+    version_edit->RemoveFiles(table_id, level);
+  }
+
+  version_edit->SetNextTableId(6);
   db->AddChangesToManifest(version_edit.get());
 
   std::string expected =
-      R"({"next_table_id":4,"new_files":[)"
+      R"({"next_table_id":6,"new_files":[)"
       R"({"id":2,"level":0,"size":200000,"smallest_key":"key2","largest_key":"key200000"},)"
       R"({"id":1,"level":1,"size":100000,"smallest_key":"key1","largest_key":"key100000"},)"
-      R"({"id":3,"level":1,"size":300000,"smallest_key":"key3","largest_key":"key300000"}]})";
+      R"({"id":3,"level":1,"size":300000,"smallest_key":"key3","largest_key":"key300000"}],)"
+      R"("delete_files":[)"
+      R"({"id":4,"level":0},)"
+      R"({"id":5,"level":1}]})";
 
   auto read_manifest_object = std::make_unique<io::LinuxReadOnlyFile>(
       config->GetSavedDataPath() + "MANIFEST");

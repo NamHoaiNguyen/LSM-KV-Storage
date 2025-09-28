@@ -21,6 +21,7 @@ foreach(test_file ${TEST_SOURCES})
         sstable
         # storage
         db
+        RapidJSON
     )
 
     add_test(NAME ${test_name} COMMAND ${test_name})

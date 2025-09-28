@@ -3,16 +3,28 @@
 
 #include "common/macros.h"
 #include "db/version.h"
+#include <rapidjson/filereadstream.h>
 
+// libC++
+#include <algorithm>
+#include <cassert>
+#include <cmath>
 #include <condition_variable>
+#include <fstream>
 #include <functional>
+#include <iostream>
 #include <memory>
+#include <numeric>
 #include <optional>
+#include <ranges>
 #include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <thread>
 #include <vector>
+
+// posix lib
+#include <cstdio>
 
 namespace kvs {
 
@@ -79,6 +91,8 @@ public:
   void AddChangesToManifest(const VersionEdit *version_edit);
 
 private:
+  std::unique_ptr<VersionEdit> Recover(std::string_view manifest_path);
+
   void FlushMemTableJob();
 
   void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
@@ -109,8 +123,6 @@ private:
   std::vector<const BaseMemTable *> flushing_memtables_;
 
   std::unique_ptr<mvcc::TransactionManager> txn_manager_;
-
-  std::vector<std::string> compact_pointer_;
 
   std::unique_ptr<Config> config_;
 

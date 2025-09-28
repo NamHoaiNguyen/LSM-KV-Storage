@@ -1,32 +1,144 @@
 #include <gtest/gtest.h>
 
+#include "db/config.h"
 #include "db/db_impl.h"
 #include "db/memtable.h"
 #include "db/skiplist.h"
+#include "db/version_manager.h"
 
+// libC++
+#include <filesystem>
 #include <memory>
+
+namespace fs = std::filesystem;
 
 namespace kvs {
 
-// struct DBStore {
-//   // Used to extend lifetime of DBImpl instance
-//   std::unique_ptr<db::DBImpl> db;
-// };
+namespace db {
 
-TEST(DBTest, BasicOperations) {
-  // auto db = std::make_unique<db::DBImpl>();
+bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
+  int num_sst_files = 0;
+  int num_sst_files_info = 0;
 
-  // db->Put("apple", "value1", 12345);
-  // db->Put("apply", "success", 9876);
-  // db->Put("zoodiac", "drident", 32);
-  // db->Put("thunder", "colossus", 4294967295);
-  // db->Put("tearlament", "reinoheart", 85);
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      num_sst_files++;
+    }
+  }
 
-  // DBStore *db_store = new DBStore;
-  // db_store->db = std::move(db);
+  for (const auto &sst_file_info :
+       db->GetVersionManager()->GetLatestVersion()->GetImmutableSSTMetadata()) {
+    num_sst_files_info += sst_file_info.size();
+  }
 
-  // std::this_thread::sleep_for(std::chrono::milliseconds(300));
-  // delete db_store;
+  return (num_sst_files == num_sst_files_info + 1 /*include manifest file*/)
+             ? true
+             : false;
 }
+
+void ClearAllSstFiles(const Config *config) {
+  // clear all SST files created for next test
+  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+    if (fs::is_regular_file(entry.status())) {
+      fs::remove(entry.path());
+    }
+  }
+}
+
+TEST(DBTest, RecoverDB) {
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB();
+
+  const int nums_elem_each_thread = 1000000;
+  unsigned int num_threads = std::thread::hardware_concurrency();
+  if (num_threads == 0) {
+    // std::thread::hardware_concurrency() might return 0 if sys info not
+    // available
+    num_threads = 10;
+  }
+  num_threads = 24;
+  const int total_elems = nums_elem_each_thread * num_threads;
+
+  std::latch all_writes_done(num_threads);
+
+  auto put_op = [&db, nums_elem = nums_elem_each_thread,
+                 &all_writes_done](int index) {
+    std::string key, value;
+
+    for (size_t i = 0; i < nums_elem; i++) {
+      if (i == nums_elem / 2) {
+        all_writes_done.count_down();
+        return;
+      }
+
+      key = "key" + std::to_string(nums_elem * index + i);
+      value = "value" + std::to_string(nums_elem * index + i);
+      db->Put(key, value, 0 /*txn_id*/);
+    }
+  };
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(put_op, i);
+  }
+
+  all_writes_done.wait();
+
+  // Let threads put some data in db
+  // std::this_thread::sleep_for(std::chrono::milliseconds(20000));
+
+  // // Force clearing all immutable memtables
+  // db->ForceFlushMemTable();
+
+  // Simulatte db is crashed
+  db.reset();
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
+
+  // std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
+  // Check recovery
+  db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB();
+  const Config *const config = db->GetConfig();
+
+  // Number of SST files in directory should be equal to number of SST files in
+  // version after reloading
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+
+  std::latch all_reads_done(num_threads);
+  auto get_op = [&db, &config, nums_elem = nums_elem_each_thread,
+                 &all_reads_done](int index) {
+    std::string key, value;
+    std::optional<std::string> key_found;
+
+    for (size_t i = 0; i < nums_elem; i++) {
+      key = "key" + std::to_string(nums_elem * index + i);
+      value = "value" + std::to_string(nums_elem * index + i);
+      key_found = db->Get(key, 0 /*txn_id*/);
+      if (key_found) {
+        EXPECT_EQ(key_found.value(), value);
+      }
+    }
+    all_reads_done.count_down();
+  };
+
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(get_op, i);
+  }
+
+  // Wait until all threads finish
+  all_reads_done.wait();
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+
+  ClearAllSstFiles(config);
+}
+
+} // namespace db
 
 } // namespace kvs

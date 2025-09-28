@@ -9,7 +9,6 @@
 // libC++
 #include <algorithm>
 #include <cassert>
-
 #include <filesystem>
 
 namespace fs = std::filesystem;
@@ -31,7 +30,6 @@ VersionManager::VersionManager(
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
   std::scoped_lock lock(mutex_);
   auto it = versions_.find(version_id);
-
   if (it == versions_.end()) {
     return;
   }
@@ -69,8 +67,50 @@ void VersionManager::ApplyNewChanges(
   std::scoped_lock lock(mutex_);
 
   assert(version_edit);
-  assert(latest_version_);
 
+  if (!latest_version_) {
+    InitVersionWhenLoadingDb(std::move(version_edit));
+    return;
+  }
+
+  CreateNewVersion(std::move(version_edit));
+}
+
+void VersionManager::InitVersionWhenLoadingDb(
+    std::unique_ptr<VersionEdit> version_edit) {
+  uint64_t new_verions_id = ++next_version_id_;
+  auto new_version =
+      std::make_unique<Version>(new_verions_id, config_, thread_pool_, this);
+
+  std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
+      &latest_version_sst_info = new_version->GetSSTMetadata();
+  std::vector<double> &latest_levels_score = new_version->GetLevelsScore();
+
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &add_files =
+      version_edit->GetImmutableNewFiles();
+
+  for (int level = 0; level < add_files.size(); level++) {
+    for (const auto &sst_info : add_files[level]) {
+      // Increase refcount of SST metadata each time a new version is
+      // created
+      sst_info->ref_count++;
+
+      latest_version_sst_info[level].push_back(sst_info);
+    }
+
+    // Calcuate score ranking of each level
+    latest_levels_score[level] =
+        static_cast<double>(latest_version_sst_info[0].size()) /
+        static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
+  }
+
+  latest_version_ = std::move(new_version);
+  // Each new version created has its refcount = 1
+  latest_version_->IncreaseRefCount();
+}
+
+void VersionManager::CreateNewVersion(
+    std::unique_ptr<VersionEdit> version_edit) {
   uint64_t new_verions_id = ++next_version_id_;
   auto new_version =
       std::make_unique<Version>(new_verions_id, config_, thread_pool_, this);
@@ -93,8 +133,8 @@ void VersionManager::ApplyNewChanges(
   // Apply all ssts info of previous version
   for (int level = 0; level < config_->GetSSTNumLvels(); level++) {
     for (const auto &sst_info : old_version_sst_info[level]) {
-      // Get score ranking from previous version(to know which level should be
-      // compacted)
+      // Get score ranking from previous version(to know which level should
+      // be compacted)
       latest_levels_score[level] = old_levels_score[level];
 
       // If file are in list of should be deleted file, skip
@@ -103,7 +143,8 @@ void VersionManager::ApplyNewChanges(
         continue;
       }
 
-      // Increase refcount of SST metadata each time a new version is created
+      // Increase refcount of SST metadata each time a new version is
+      // created
       sst_info->ref_count++;
 
       latest_version_sst_info[level].push_back(sst_info);
@@ -130,8 +171,8 @@ void VersionManager::ApplyNewChanges(
       continue;
     }
 
-    // With level >= 1. add new file and sort based on smallest key in ascending
-    // order
+    // With level >= 1. add new file and sort based on smallest key in
+    // ascending order
     const std::vector<std::shared_ptr<SSTMetadata>> &added_files_at_level =
         added_files[level];
     std::vector<std::shared_ptr<SSTMetadata>> new_sst_files;
@@ -147,6 +188,11 @@ void VersionManager::ApplyNewChanges(
                });
     // Assign back
     latest_version_sst_info[level] = std::move(new_sst_files);
+
+    // Update level's score
+    latest_levels_score[level] =
+        static_cast<double>(latest_version_sst_info[level].size()) /
+        static_cast<double>(config_->GetLvl0SSTCompactionTrigger());
   }
 
   // Update level 0' score

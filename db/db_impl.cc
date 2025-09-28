@@ -18,6 +18,7 @@
 #include "mvcc/transaction.h"
 #include "mvcc/transaction_manager.h"
 #include "rapidjson/document.h"
+#include "rapidjson/filereadstream.h"
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/writer.h"
 #include "sstable/block_builder.h"
@@ -31,10 +32,13 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <numeric>
 #include <ranges>
+
+namespace fs = std::filesystem;
 
 namespace {
 constexpr std::string kManifestFileName = "MANIFEST";
@@ -65,15 +69,103 @@ DBImpl::~DBImpl() {
 void DBImpl::LoadDB() {
   config_->LoadConfig();
   // TODO(namnh) : remove after finish recovering flow
-  compact_pointer_.resize(config_->GetSSTNumLvels());
-  version_manager_->CreateLatestVersion();
-  // TODO(namnh) : Read ALL of SST files and init there info
+  // version_manager_->CreateLatestVersion();
   std::string manifest_path = config_->GetSavedDataPath() + kManifestFileName;
   manifest_write_object_ = std::make_unique<io::LinuxWriteOnlyFile>(
       config_->GetSavedDataPath() + kManifestFileName);
   if (!manifest_write_object_->Open()) {
     return;
   }
+
+  std::unique_ptr<VersionEdit> version_edit = Recover(manifest_path);
+  if (!version_edit) {
+    return;
+  }
+
+  // Remove all deleted file in version_edit
+  // TODO(namnh) : Put this flow into another thread
+  const std::set<std::pair<SSTId, int>> deleted_files =
+      version_edit->GetImmutableDeletedFiles();
+  for (const auto &file : deleted_files) {
+    std::string filename =
+        config_->GetSavedDataPath() + std::to_string(file.first) + ".sst";
+    fs::path file_path(filename);
+    fs::remove(file_path);
+  }
+
+  // Apply version edit to create new version
+  version_manager_->ApplyNewChanges(std::move(version_edit));
+}
+
+std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
+  if (manifest_path.empty()) {
+    return nullptr;
+  }
+
+  FILE *fp = fopen(manifest_path.data(), "r");
+  if (!fp) {
+    return nullptr;
+  }
+
+  char buffer[8192]; // 8KB buffer
+  rapidjson::FileReadStream is(fp, buffer, sizeof(buffer));
+  rapidjson::Document doc;
+
+  auto version_edit = std::make_unique<VersionEdit>(config_->GetSSTNumLvels());
+  uint64_t table_id = 0, file_size = 0;
+  int level = 0;
+  std::string smallest_key, largest_key, filename;
+
+  while (true) {
+    doc.ParseStream<rapidjson::kParseStopWhenDoneFlag>(is);
+    if (doc.HasParseError()) {
+      if (feof(fp)) {
+        break; // reached EOF cleanly
+      }
+      return nullptr;
+    }
+
+    // Parse next_table_id
+    if (doc.HasMember("next_table_id") && doc["next_table_id"].IsInt64()) {
+      // Update next id used for new table
+      next_sstable_id_ = doc["next_table_id"].GetInt64();
+    }
+
+    // Parse new_files array
+    if (doc.HasMember("new_files") && doc["new_files"].IsArray()) {
+      for (auto &file : doc["new_files"].GetArray()) {
+        table_id = file["id"].GetInt64();
+        level = file["level"].GetInt();
+        file_size = file["size"].GetInt64();
+        smallest_key = file["smallest_key"].GetString();
+        largest_key = file["largest_key"].GetString();
+        // Build filename
+        filename =
+            config_->GetSavedDataPath() + std::to_string(table_id) + ".sst";
+
+        version_edit->AddNewFiles(table_id, level, file_size, smallest_key,
+                                  largest_key, std::move(filename));
+      }
+    }
+
+    // Parse delete_files array
+    if (doc.HasMember("delete_files") && doc["delete_files"].IsArray()) {
+      for (auto &file : doc["delete_files"].GetArray()) {
+        table_id = file["id"].GetInt64();
+        level = file["level"].GetInt();
+
+        version_edit->RemoveFiles(table_id, level);
+      }
+    }
+
+    if (feof(fp)) {
+      break;
+    }
+  }
+
+  // Close
+  fclose(fp);
+  return version_edit;
 }
 
 std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
@@ -233,7 +325,7 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
 
   rapidjson::Document::AllocatorType &allocator = doc.GetAllocator();
 
-  // Add string
+  // Encode next table id
   doc.AddMember("next_table_id", version_edit->GetNextTableId(), allocator);
 
   // List of new files created
@@ -280,19 +372,19 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
     }
   }
 
-  for (int level = 0; level < new_files_list.size(); level++) {
-    for (const auto &delete_file : delete_files_list) {
-      rapidjson::Value delete_file_obj(rapidjson::kObjectType);
+  // for (int level = 0; level < new_files_list.size(); level++) {
+  for (const auto &delete_file : delete_files_list) {
+    rapidjson::Value delete_file_obj(rapidjson::kObjectType);
 
-      // Encode table id
-      delete_file_obj.AddMember("id", delete_file.first, allocator);
-      // Encode file level
-      delete_file_obj.AddMember("level", delete_file.second, allocator);
+    // Encode table id
+    delete_file_obj.AddMember("id", delete_file.first, allocator);
+    // Encode file level
+    delete_file_obj.AddMember("level", delete_file.second, allocator);
 
-      // Add file object to array
-      delete_files_array.PushBack(delete_file_obj, allocator);
-    }
+    // Add file object to array
+    delete_files_array.PushBack(delete_file_obj, allocator);
   }
+  // }
 
   // Add new_files_array to root
   if (!new_files_array.Empty()) {
@@ -352,8 +444,9 @@ void DBImpl::ExecuteBackgroundCompaction() {
   // Apply compact version edit(changes) to create new version
   version_manager_->ApplyNewChanges(std::move(version_edit));
 
+  // Compaction can create many files, so maybe we need another compaction
+  // round
   background_compaction_scheduled_ = false;
-  // Compaction can create many files, so maybe we need another compaction round
   MaybeScheduleCompaction();
 }
 

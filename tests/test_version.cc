@@ -296,10 +296,9 @@ TEST(VersionTest, ConcurrencyPutAndGet) {
   num_threads = 24;
   const int total_elems = nums_elem_each_thread * num_threads;
 
-  std::mutex mutex;
   std::latch all_writes_done(num_threads);
 
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
                  &all_writes_done](int index) {
     std::string key, value;
 
@@ -337,7 +336,7 @@ TEST(VersionTest, ConcurrencyPutAndGet) {
   EXPECT_TRUE(version);
 
   std::latch all_reads_done(num_threads);
-  auto get_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
+  auto get_op = [&db, &config, nums_elem = nums_elem_each_thread,
                  &all_reads_done](int index) {
     std::string key, value;
     std::optional<std::string> key_found;
