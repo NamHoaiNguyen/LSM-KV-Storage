@@ -3,9 +3,7 @@
 
 [lsm]
 # Per-memory table size limit (4MB)
-#LSM_PER_MEM_SIZE_LIMIT = 33554432
-LSM_PER_MEM_SIZE_LIMIT = 16777216  # 16 * 1024 * 1024
-# LSM_PER_MEM_SIZE_LIMIT = 8388608
+LSM_PER_MEM_SIZE_LIMIT = 33554432  # 16 * 1024 * 1024
 
 # Maximum number of immutable memtables in memory
 MAX_IMMUTABLE_MEMTABLES_IN_MEMORY = 3
@@ -18,5 +16,4 @@ LSM_SST_NUM_LEVELS = 7
 # Maximum number of SST level-0 files before triggering compaction
 LVL0_COMPACTION_TRIGGER = 4
 # Saved Data Path
-# DATA_PATH = "/var/lib/lsm-kv-storage/data"
-DATA_PATH = "/home/hoainam/self/biggg/lsm-kv-storage/data/"
+DATA_PATH = "/var/lib/lsm-kv-storage/data"
