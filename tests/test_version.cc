@@ -366,7 +366,7 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
 TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
-  const Config *const config = db->GetConfig();
+  // const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 100000;
   unsigned int num_threads = std::thread::hardware_concurrency();
@@ -379,7 +379,7 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
 
   // =========== PUT keys with values ===========
   std::latch all_put_done(num_threads);
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
+  auto put_op = [&db, nums_elem = nums_elem_each_thread,
                  &all_put_done](int index) {
     std::string key, value;
 
@@ -440,7 +440,7 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
 
   // ========== Delete all keys which were PUT ==========
   std::latch all_delete_done(num_threads);
-  auto delete_op = [&db, &config, nums_elem = nums_elem_each_thread,
+  auto delete_op = [&db, nums_elem = nums_elem_each_thread,
                     &all_delete_done](int index) {
     std::string key, value;
 
@@ -469,7 +469,7 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
 
   // ========== Reread keys after delete ==========
   std::latch all_reads_after_delete_done(num_threads);
-  auto get_after_delete_op = [&db, &config, nums_elem = nums_elem_each_thread,
+  auto get_after_delete_op = [&db, nums_elem = nums_elem_each_thread,
                               &all_reads_after_delete_done](int index) {
     std::string key, value;
     std::optional<std::string> key_found;
@@ -526,9 +526,16 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   // ========== Finish Re-PUT same key ==========
 
   // ========== Re-GET same key ==========
+  db.reset();
+  // Check recovery
+  db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB();
+  const Config *const config = db->GetConfig();
+
   std::latch all_reget_done(num_threads);
-  auto re_get_op = [&db, nums_elem = nums_elem_each_thread,
-                    &all_reget_done](int index) {
+  std::atomic<int> total_miss_keys = 0;
+  auto re_get_op = [&db, nums_elem = nums_elem_each_thread, &all_reget_done,
+                    &total_miss_keys](int index) {
     std::string key, value;
     std::optional<std::string> key_found;
 
@@ -538,7 +545,8 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
       key_found = db->Get(key, 0 /*txn_id*/);
 
       if (!key_found) {
-        std::cout << "namnh2 test" << std::endl;
+        std::cout << key << std::endl;
+        total_miss_keys++;
       }
 
       // EXPECT_TRUE(key_found);
@@ -553,6 +561,9 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
 
   // Wait until all threads finish
   all_reget_done.wait();
+
+  std::cout << "value of total_miss_keys " << total_miss_keys << std::endl;
+
   for (auto &thread : threads) {
     thread.join();
   }

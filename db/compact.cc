@@ -229,16 +229,12 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
 void Compact::DoCompactJob() {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
-  std::string_view last_current_key = std::string_view{};
-  // auto version_edit = std::make_unique<VersionEdit>();
-
   uint64_t new_sst_id = db_->GetNextSSTId();
   std::string filename = db_->GetConfig()->GetSavedDataPath() +
                          std::to_string(new_sst_id) + ".sst";
 
   auto new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                          db_->GetConfig());
-
   if (!new_sst->Open()) {
     return;
   }
@@ -248,6 +244,8 @@ void Compact::DoCompactJob() {
     return;
   }
 
+  std::string_view last_current_key = std::string_view{};
+  TxnId last_txn_id = INVALID_TXN_ID;
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
@@ -257,13 +255,23 @@ void Compact::DoCompactJob() {
            (type == db::ValueType::PUT || type == db::ValueType::DELETED) &&
            txn_id != INVALID_TXN_ID);
 
+    if (key == "key0") {
+      std::cout << "namnh " << std::endl;
+    }
+
     // Filter
-    if (!ShouldPickEntry(last_current_key, key)) {
+    if (!ShouldKeepEntry(last_current_key, key, last_txn_id, txn_id, type)) {
       continue;
     }
 
     // Update last_current_key
-    last_current_key = key;
+    // last_current_key = key;
+    // last_txn_id = txn_id;
+    if (last_current_key != key) {
+      last_current_key = key;
+      // When a new key shows up, keep the first (newest) version.
+      last_txn_id = txn_id;
+    }
 
     if (!new_sst) {
       new_sst_id = db_->GetNextSSTId();
@@ -312,18 +320,49 @@ void Compact::DoCompactJob() {
   }
 }
 
-bool Compact::ShouldPickEntry(std::string_view last_current_key,
-                              std::string_view key) {
-  // TODO(namnh) : update logic in case key is deleted
+bool Compact::ShouldKeepEntry(std::string_view last_current_key,
+                              std::string_view key, TxnId last_txn_id,
+                              TxnId txn_id, ValueType type) {
+  // // TODO(namnh) : update logic in case key is deleted
+  // if (last_current_key.empty()) {
+  //   return true;
+  // }
+
+  // if (last_current_key != key) {
+  //   return true;
+  // }
+
   if (last_current_key.empty()) {
+    // First key
     return true;
   }
 
-  if (last_current_key != key) {
-    return true;
+  // TODO(namnh) : In reality, we can't have duplicate txn id. But this logic
+  // will be kept to avoid missing key until transaction module is supported.
+  if (last_current_key == key && last_txn_id >= txn_id) {
+    return false;
+  } else if (type == ValueType::DELETED && IsBaseLevelForKey(key)) {
+    return false;
   }
 
-  return false;
+  return true;
+}
+
+bool Compact::IsBaseLevelForKey(std::string_view key) {
+  const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
+      &list_sst_metadata = version_->GetImmutableSSTMetadata();
+
+  for (int level = level_to_compact_ + 2;
+       level < db_->GetConfig()->GetSSTNumLvels(); level++) {
+    for (const auto &sst_metadata : list_sst_metadata[level]) {
+      if (sst_metadata->smallest_key <= key &&
+          key <= sst_metadata->smallest_key) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 } // namespace db

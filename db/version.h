@@ -70,6 +70,9 @@ public:
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
   GetImmutableSSTMetadata() const;
 
+  const std::vector<std::shared_ptr<SSTMetadata>> *
+  GetImmutableSSTMetadataAtLevel(int level) const;
+
   // ALL NON-CONST methods are only called when building new version
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &GetSSTMetadata();
 

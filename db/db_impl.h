@@ -132,6 +132,11 @@ private:
 
   std::atomic<bool> background_compaction_scheduled_;
 
+  // TODO(namnh)
+  // An increasing monotonic number assigned to each put/delete operation.
+  // it will be used until transaction module is supported
+  std::atomic<uint64_t> sequence_number_{0};
+
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
   kvs::ThreadPool *thread_pool_;

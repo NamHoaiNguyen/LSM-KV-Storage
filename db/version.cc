@@ -136,6 +136,15 @@ Version::GetImmutableSSTMetadata() const {
   return levels_sst_info_;
 }
 
+const std::vector<std::shared_ptr<SSTMetadata>> *
+Version::GetImmutableSSTMetadataAtLevel(int level) const {
+  if (0 < level || level >= levels_sst_info_.size()) {
+    return nullptr;
+  }
+
+  return &levels_sst_info_[level];
+}
+
 // This methos is ONLY called when building data for new version
 std::vector<std::vector<std::shared_ptr<SSTMetadata>>> &
 Version::GetSSTMetadata() {

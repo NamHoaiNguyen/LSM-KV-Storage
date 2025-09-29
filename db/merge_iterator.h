@@ -84,15 +84,23 @@ private:
     sstable::TableReaderIterator *iterator;
   };
 
+  // With min-heap
+  // 1. Items with the smallest key come first.
+  // 2. For items with the same key, the one with the largest txn_id comes
+  // first.
   struct LessCompare {
     bool operator()(const HeapItem &a, const HeapItem &b) {
-      return a.key > b.key || (a.key == b.key && a.txn_id > b.txn_id);
+      return a.key > b.key || (a.key == b.key && a.txn_id < b.txn_id);
     }
   };
 
+  // With max-heap
+  // 1. Items with the smallest key come first.
+  // 2. For items with the same key, the one with the smallest txn_id comes
+  // first.
   struct GreaterCompare {
     bool operator()(const HeapItem &a, const HeapItem &b) {
-      return a.key < b.key || (a.key == b.key && a.txn_id < b.txn_id);
+      return a.key < b.key || (a.key == b.key && a.txn_id > b.txn_id);
     }
   };
 

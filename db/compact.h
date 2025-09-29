@@ -67,7 +67,10 @@ private:
   // Execute compaction based on compact info
   void DoCompactJob();
 
-  bool ShouldPickEntry(std::string_view last_current_key, std::string_view key);
+  bool ShouldKeepEntry(std::string_view last_current_key, std::string_view key,
+                       TxnId last_txn_id, TxnId txn_id, ValueType type);
+
+  bool IsBaseLevelForKey(std::string_view key);
 
   const sstable::BlockReaderCache *block_reader_cache_;
 
