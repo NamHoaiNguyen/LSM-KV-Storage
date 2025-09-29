@@ -251,10 +251,9 @@ void Compact::DoCompactJob() {
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
-    assert(!key.empty() && !value.empty());
     db::ValueType type = iterator->GetType();
     TxnId txn_id = iterator->GetTransactionId();
-    assert(!key.empty() && !value.empty() &&
+    assert(!key.empty() &&
            (type == db::ValueType::PUT || type == db::ValueType::DELETED) &&
            txn_id != INVALID_TXN_ID);
 

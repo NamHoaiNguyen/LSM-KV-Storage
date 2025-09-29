@@ -69,6 +69,8 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
+  void Delete(std::string_view key, TxnId txn_id);
+
   uint64_t GetNextSSTId();
 
   void LoadDB();
@@ -91,6 +93,8 @@ public:
   void AddChangesToManifest(const VersionEdit *version_edit);
 
 private:
+  void Put_(std::string_view key, std::string_view value, TxnId txn_id);
+
   std::unique_ptr<VersionEdit> Recover(std::string_view manifest_path);
 
   void FlushMemTableJob();

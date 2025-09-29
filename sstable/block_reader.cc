@@ -4,7 +4,6 @@
 #include "io/linux_file.h"
 
 #include <cassert>
-#include <iostream>
 
 namespace kvs {
 

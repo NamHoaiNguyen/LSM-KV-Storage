@@ -7,7 +7,6 @@
 #include "sstable/table_reader.h"
 
 #include <algorithm>
-#include <iostream>
 
 namespace kvs {
 
@@ -35,8 +34,8 @@ void Version::DecreaseRefCount() const {
 
 GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
-
   std::vector<std::shared_ptr<SSTMetadata>> sst_lvl0_candidates_;
+
   for (const auto &sst : levels_sst_info_[0]) {
     // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs
     // that maybe contain the key

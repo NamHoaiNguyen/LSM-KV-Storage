@@ -80,7 +80,7 @@ struct TableReaderData {
 // indispensable requirement
 class TableReader {
 public:
-  TableReader(std::unique_ptr<TableReaderData> table_reader_data);
+  explicit TableReader(std::unique_ptr<TableReaderData> table_reader_data);
   // TableReader(std::string &&filename, SSTId table_id, uint64_t file_size);
 
   ~TableReader() = default;

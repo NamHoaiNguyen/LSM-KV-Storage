@@ -88,7 +88,7 @@ Extra format
 
 class BlockReader {
 public:
-  BlockReader(std::unique_ptr<BlockReaderData> block_reader_data);
+  explicit BlockReader(std::unique_ptr<BlockReaderData> block_reader_data);
   ~BlockReader() = default;
 
   // No copy allowed
@@ -119,7 +119,6 @@ private:
   // All of below objects are non-const to be moveable. But we need them to be
   // immutable. So, ALL of methods in this class MUST BE const to avoid these
   // data member be accidentaly updated
-  const std::vector<Byte> buffer_;
 
   // Total data entries in a block
   const uint64_t total_data_entries_;
@@ -129,6 +128,8 @@ private:
 
   // Contain starting offset of each data entries
   const std::vector<uint64_t> data_entries_offset_info_;
+
+  const std::vector<Byte> buffer_;
 };
 
 } // namespace sstable
