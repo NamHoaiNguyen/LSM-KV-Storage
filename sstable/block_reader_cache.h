@@ -41,8 +41,9 @@ public:
   const BlockReader *
   GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;
 
-  void AddNewBlockReader(std::pair<SSTId, BlockOffset> block_info,
-                         std::unique_ptr<BlockReader> block_reader) const;
+  const BlockReader *
+  AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
+                           std::unique_ptr<BlockReader> block_reader) const;
 
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,

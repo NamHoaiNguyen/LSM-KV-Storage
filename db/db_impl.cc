@@ -218,6 +218,22 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
 }
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
+  // TODO(namnh) : // Change when transaction is supported
+  sequence_number_++;
+  Put_(key, value, sequence_number_.load());
+
+  // Put_(key, value, txn_id);
+}
+
+void DBImpl::Delete(std::string_view key, TxnId txn_id) {
+  // TODO(namnh) : // Change when transaction is supported
+  sequence_number_++;
+  Put_(key, std::string_view{}, sequence_number_.load());
+
+  // Put_(key, std::string_view{}, txn_id);
+}
+
+void DBImpl::Put_(std::string_view key, std::string_view value, TxnId txn_id) {
   std::unique_lock rwlock(mutex_);
   // Stop writing when numbers of immutable memtable reach to threshold
   // TODO(namnh): Write Stop problem. Improve in future
@@ -225,7 +241,11 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
     return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
   });
 
-  memtable_->Put(key, value, txn_id);
+  if (value == std::string_view{}) {
+    memtable_->Delete(key, txn_id);
+  } else {
+    memtable_->Put(key, value, txn_id);
+  }
 
   if (memtable_->GetMemTableSize() >= config_->GetPerMemTableSizeLimit()) {
     immutable_memtables_.push_back(std::move(memtable_));

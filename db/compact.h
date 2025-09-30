@@ -67,7 +67,13 @@ private:
   // Execute compaction based on compact info
   void DoCompactJob();
 
-  bool ShouldPickEntry(std::string_view last_current_key, std::string_view key);
+  // Decide that a key should be kept or skipped
+  bool ShouldKeepEntry(std::string_view last_current_key, std::string_view key,
+                       TxnId last_txn_id, TxnId txn_id, ValueType type);
+
+  // Check that if there are higher level(from level_to_compact_+ 2) have key or
+  // not
+  bool IsBaseLevelForKey(std::string_view key);
 
   const sstable::BlockReaderCache *block_reader_cache_;
 

@@ -69,6 +69,8 @@ public:
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
+  void Delete(std::string_view key, TxnId txn_id);
+
   uint64_t GetNextSSTId();
 
   void LoadDB();
@@ -91,6 +93,8 @@ public:
   void AddChangesToManifest(const VersionEdit *version_edit);
 
 private:
+  void Put_(std::string_view key, std::string_view value, TxnId txn_id);
+
   std::unique_ptr<VersionEdit> Recover(std::string_view manifest_path);
 
   void FlushMemTableJob();
@@ -127,6 +131,11 @@ private:
   std::unique_ptr<Config> config_;
 
   std::atomic<bool> background_compaction_scheduled_;
+
+  // TODO(namnh)
+  // An increasing monotonic number assigned to each put/delete operation.
+  // it will be used until transaction module is supported
+  std::atomic<uint64_t> sequence_number_{0};
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves

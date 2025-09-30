@@ -130,12 +130,14 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
       table_reader_->CreateAndSetupDataForBlockReader(block_info.first,
                                                       block_info.second);
 
-  // Create new blockreaderiterator object
-  block_reader_iterator_.reset(new BlockReaderIterator(new_block_reader.get()));
-
   // Insert new blockreader into cache
-  block_reader_cache_->AddNewBlockReader({table_id, block_info.first},
-                                         std::move(new_block_reader));
+  const BlockReader *block_reader_inserted =
+      block_reader_cache_->AddNewBlockReaderThenGet(
+          {table_id, block_info.first}, std::move(new_block_reader));
+  assert(block_reader_inserted);
+
+  // Create new BlockReaderIterator
+  block_reader_iterator_.reset(new BlockReaderIterator(block_reader_inserted));
 }
 
 } // namespace sstable

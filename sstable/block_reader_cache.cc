@@ -19,12 +19,16 @@ const BlockReader *BlockReaderCache::GetBlockReader(
   return iterator->second.get();
 }
 
-void BlockReaderCache::AddNewBlockReader(
+const BlockReader *BlockReaderCache::AddNewBlockReaderThenGet(
     std::pair<SSTId, BlockOffset> block_info,
     std::unique_ptr<BlockReader> block_reader) const {
+  // Insert new block reader into cache
   std::scoped_lock rwlock(mutex_);
-  block_reader_cache_.insert(
-      std::make_pair(block_info, std::move(block_reader)));
+  block_reader_cache_.insert({block_info, std::move(block_reader)});
+
+  // Get block reader that MAYBE inserted
+  auto iterator = block_reader_cache_.find(block_info);
+  return iterator->second.get();
 }
 
 db::GetStatus
@@ -54,8 +58,11 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
 
   status = new_block_reader->SearchKey(key, txn_id);
 
-  // Insert new blockreader into cache
-  AddNewBlockReader(block_info, std::move(new_block_reader));
+  {
+    // Insert new blockreader into cache
+    std::scoped_lock rwlock(mutex_);
+    block_reader_cache_.insert({block_info, std::move(new_block_reader)});
+  }
 
   return status;
 }
