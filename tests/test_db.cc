@@ -8,6 +8,7 @@
 
 // libC++
 #include <filesystem>
+#include <iostream>
 #include <memory>
 
 namespace fs = std::filesystem;
@@ -80,19 +81,18 @@ TEST(DBTest, RecoverDB) {
 
   all_writes_done.wait();
 
-  // // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
-
-  // Wait a little bit time
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-
-  // Restarting a new db instance
-  db.reset();
   for (auto &thread : threads) {
     thread.join();
   }
   threads.clear();
 
+  // Force clearing all immutable memtables
+  db->ForceFlushMemTable();
+  // Wait a little bit time
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+  // Restarting a new db instance
+  db.reset();
   // Check recovery
   db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB();
@@ -108,6 +108,9 @@ TEST(DBTest, RecoverDB) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
+      // if (!key_found) {
+      //   std::cout << key << std::endl;
+      // }
       EXPECT_TRUE(key_found);
       EXPECT_EQ(key_found.value(), value);
     }
