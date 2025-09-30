@@ -533,9 +533,8 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   const Config *const config = db->GetConfig();
 
   std::latch all_reget_done(num_threads);
-  std::atomic<int> total_miss_keys = 0;
-  auto re_get_op = [&db, nums_elem = nums_elem_each_thread, &all_reget_done,
-                    &total_miss_keys](int index) {
+  auto re_get_op = [&db, nums_elem = nums_elem_each_thread,
+                    &all_reget_done](int index) {
     std::string key, value;
     std::optional<std::string> key_found;
 
@@ -544,13 +543,8 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
 
-      if (!key_found) {
-        std::cout << key << std::endl;
-        total_miss_keys++;
-      }
-
-      // EXPECT_TRUE(key_found);
-      // EXPECT_EQ(key_found.value(), value);
+      EXPECT_TRUE(key_found);
+      EXPECT_EQ(key_found.value(), value);
     }
     all_reget_done.count_down();
   };
@@ -561,8 +555,6 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
 
   // Wait until all threads finish
   all_reget_done.wait();
-
-  std::cout << "value of total_miss_keys " << total_miss_keys << std::endl;
 
   for (auto &thread : threads) {
     thread.join();

@@ -255,21 +255,14 @@ void Compact::DoCompactJob() {
            (type == db::ValueType::PUT || type == db::ValueType::DELETED) &&
            txn_id != INVALID_TXN_ID);
 
-    if (key == "key0") {
-      std::cout << "namnh " << std::endl;
-    }
-
     // Filter
     if (!ShouldKeepEntry(last_current_key, key, last_txn_id, txn_id, type)) {
       continue;
     }
 
-    // Update last_current_key
-    // last_current_key = key;
-    // last_txn_id = txn_id;
     if (last_current_key != key) {
-      last_current_key = key;
       // When a new key shows up, keep the first (newest) version.
+      last_current_key = key;
       last_txn_id = txn_id;
     }
 
@@ -323,17 +316,17 @@ void Compact::DoCompactJob() {
 bool Compact::ShouldKeepEntry(std::string_view last_current_key,
                               std::string_view key, TxnId last_txn_id,
                               TxnId txn_id, ValueType type) {
-  // // TODO(namnh) : update logic in case key is deleted
-  // if (last_current_key.empty()) {
-  //   return true;
-  // }
-
-  // if (last_current_key != key) {
-  //   return true;
-  // }
+  // Logic to pick a key
+  // 1. If it is the first key of mergeIterator, keep
+  // 2. If there are multiple same keys, keep the one with highest Transaction
+  // Id
+  // 3. If key shows first time and type of key = DELETED
+  // 3.1 If this key still show up at higher level, it should be kept as
+  // tombstone
+  // 3.2 Else we can remove this key
 
   if (last_current_key.empty()) {
-    // First key
+    // First key of mergeIterator
     return true;
   }
 
