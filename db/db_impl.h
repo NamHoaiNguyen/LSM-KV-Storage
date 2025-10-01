@@ -73,13 +73,21 @@ public:
 
   uint64_t GetNextSSTId();
 
-  void LoadDB();
+  bool LoadDB(std::string_view dbname);
 
-  const Config *const GetConfig();
+  void ForceFlushMemTable();
+
+  void AddChangesToManifest(const VersionEdit *version_edit);
+
+  const Config *GetConfig() const;
 
   const VersionManager *GetVersionManager() const;
 
-  void ForceFlushMemTable();
+  const sstable::BlockReaderCache *GetBlockReaderCache() const;
+
+  const sstable::TableReaderCache *GetTableReaderCache() const;
+
+  std::string GetDBPath() const;
 
   friend class Compact;
 
@@ -87,10 +95,6 @@ public:
   const BaseMemTable *GetCurrentMemtable();
 
   const std::vector<std::unique_ptr<BaseMemTable>> &GetImmutableMemTables();
-
-  const sstable::BlockReaderCache *GetBlockReaderCache() const;
-
-  void AddChangesToManifest(const VersionEdit *version_edit);
 
 private:
   void Put_(std::string_view key, std::string_view value, TxnId txn_id);
@@ -108,8 +112,6 @@ private:
 
   void ExecuteBackgroundCompaction();
 
-  const std::string dbname_;
-
   std::atomic<uint64_t> next_sstable_id_;
 
   struct PairHash {
@@ -119,6 +121,8 @@ private:
       return std::hash<uint64_t>()((p.first << 8) | p.second);
     }
   };
+
+  std::string db_path_;
 
   std::unique_ptr<BaseMemTable> memtable_;
 

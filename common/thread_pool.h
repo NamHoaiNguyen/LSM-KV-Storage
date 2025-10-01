@@ -31,18 +31,18 @@ public:
   ThreadPool &operator=(ThreadPool &&) = delete;
 
   template <typename Functor, typename... Args>
-  inline decltype(auto) Enqueue(Functor &&functor, Args &&...args);
+  inline decltype(auto) Enqueue(Functor &&functor, Args &&...args) const;
 
 private:
-  std::condition_variable cv_;
+  mutable std::condition_variable cv_;
 
-  std::mutex mutex_;
+  mutable std::mutex mutex_;
 
   unsigned int num_threads_;
 
   std::atomic<bool> shutdown_;
 
-  std::queue<std::function<void()>> jobs_;
+  mutable std::queue<std::function<void()>> jobs_;
 
   std::vector<std::thread> workers_;
 };
@@ -88,7 +88,7 @@ ThreadPool::~ThreadPool() {
 }
 
 template <typename Functor, typename... Args>
-decltype(auto) ThreadPool::Enqueue(Functor &&functor, Args &&...args) {
+decltype(auto) ThreadPool::Enqueue(Functor &&functor, Args &&...args) const {
   using ReturnType = std::invoke_result_t<Functor, Args...>;
   auto task = std::make_shared<std::packaged_task<ReturnType()>>(
       std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));

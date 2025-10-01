@@ -32,12 +32,11 @@ namespace kvs {
 
 namespace db {
 
-bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
-                                           db::DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const db::DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       num_sst_files++;
     }
@@ -53,9 +52,9 @@ bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
              : false;
 }
 
-void ClearAllSstFiles(const db::Config *config) {
+void ClearAllSstFiles(const db::DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -64,7 +63,7 @@ void ClearAllSstFiles(const db::Config *config) {
 
 TEST(TableTest, MergeIterator) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
 
   const db::Config *const config = db->GetConfig();
   // That number of key/value pairs is enough to create a new sst
@@ -105,7 +104,7 @@ TEST(TableTest, MergeIterator) {
   // // Need time for new SST is persisted to disk
   // // NOTE: It must be long enough for debug build
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       sst_metadata = db->GetVersionManager()
@@ -125,9 +124,8 @@ TEST(TableTest, MergeIterator) {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators_;
   for (int i = 0; i < sst_metadata[0].size(); i++) {
-    std::string filename = db->GetConfig()->GetSavedDataPath() +
-                           std::to_string(sst_metadata[0][i]->table_id) +
-                           ".sst";
+    std::string filename =
+        db->GetDBPath() + std::to_string(sst_metadata[0][i]->table_id) + ".sst";
     std::unique_ptr<sstable::TableReader> table_reader =
         sstable::CreateAndSetupDataForTableReader(
             std::move(filename), sst_metadata[0][i]->table_id,
@@ -172,7 +170,7 @@ TEST(TableTest, MergeIterator) {
   // Number of key value pairs should be equal to list_key_value's size.
   EXPECT_EQ(list_key_value.size(), total_elems);
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db

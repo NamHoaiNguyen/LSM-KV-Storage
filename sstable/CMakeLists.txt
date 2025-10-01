@@ -21,3 +21,4 @@ add_library(sstable
 
 target_include_directories(sstable PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(sstable PUBLIC io mvcc)
+target_link_libraries(sstable PRIVATE RapidJSON)

@@ -26,17 +26,17 @@ public:
 
   void LoadConfig();
 
-  const size_t GetPerMemTableSizeLimit() const;
+  size_t GetPerMemTableSizeLimit() const;
 
-  const int GetMaxImmuMemTablesInMem() const;
+  int GetMaxImmuMemTablesInMem() const;
 
-  const size_t GetSSTBlockSize() const;
+  size_t GetSSTBlockSize() const;
 
-  const int GetSSTNumLvels() const;
+  int GetSSTNumLvels() const;
 
-  const int GetLvl0SSTCompactionTrigger() const;
+  int GetLvl0SSTCompactionTrigger() const;
 
-  const std::string GetSavedDataPath() const;
+  std::string GetSavedDataPath() const;
 
 private:
   bool LoadConfigFromPath();

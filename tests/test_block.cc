@@ -24,12 +24,11 @@ namespace fs = std::filesystem;
 
 namespace kvs {
 
-bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
-                                           db::DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const db::DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       num_sst_files++;
     }
@@ -45,9 +44,9 @@ bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
              : false;
 }
 
-void ClearAllSstFiles(const db::Config *config) {
+void ClearAllSstFiles(const db::DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -188,7 +187,7 @@ TEST(BlockTest, EdgeCasesEncode) {
 
 TEST(BlockTest, BlockReaderIterator) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
 
   const db::Config *const config = db->GetConfig();
   // That number of key/value pairs is enough to create a new sst
@@ -222,7 +221,7 @@ TEST(BlockTest, BlockReaderIterator) {
   // // Need time for new SST is persisted to disk
   // // NOTE: It must be long enough for debug build
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       sst_metadata = db->GetVersionManager()
@@ -238,8 +237,7 @@ TEST(BlockTest, BlockReaderIterator) {
     }
   }
 
-  std::string filename =
-      db->GetConfig()->GetSavedDataPath() + std::to_string(1) + ".sst";
+  std::string filename = db->GetDBPath() + std::to_string(1) + ".sst";
 
   std::unique_ptr<sstable::TableReader> table_reader =
       sstable::CreateAndSetupDataForTableReader(
@@ -297,7 +295,7 @@ TEST(BlockTest, BlockReaderIterator) {
     }
   }
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace kvs

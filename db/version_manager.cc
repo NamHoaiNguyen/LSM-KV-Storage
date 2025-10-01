@@ -2,6 +2,7 @@
 
 #include "common/thread_pool.h"
 #include "db/config.h"
+#include "db/db_impl.h"
 #include "db/version.h"
 #include "sstable/block_reader_cache.h"
 #include "sstable/table_reader_cache.h"
@@ -17,14 +18,13 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(
-    DBImpl *db, const sstable::TableReaderCache *table_reader_cache,
-    const sstable::BlockReaderCache *block_reader_cache, const Config *config,
-    kvs::ThreadPool *thread_pool)
-    : table_reader_cache_(table_reader_cache),
-      block_reader_cache_(block_reader_cache), config_(config),
-      thread_pool_(thread_pool) {
-  assert(table_reader_cache_ && block_reader_cache_ && config_ && thread_pool_);
+VersionManager::VersionManager(const DBImpl *db,
+                               const kvs::ThreadPool *thread_pool)
+    : db_(db), table_reader_cache_(db_->GetTableReaderCache()),
+      block_reader_cache_(db_->GetBlockReaderCache()),
+      config_(db_->GetConfig()), thread_pool_(thread_pool) {
+  assert(db_ && table_reader_cache_ && block_reader_cache_ && config_ &&
+         thread_pool_);
 }
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
@@ -73,8 +73,8 @@ void VersionManager::ApplyNewChanges(
 void VersionManager::InitVersionWhenLoadingDb(
     std::unique_ptr<VersionEdit> version_edit) {
   uint64_t new_verions_id = ++next_version_id_;
-  auto new_version =
-      std::make_unique<Version>(new_verions_id, config_, thread_pool_, this);
+  auto new_version = std::make_unique<Version>(
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
 
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
       &latest_version_sst_info = new_version->GetSSTMetadata();
@@ -114,26 +114,26 @@ void VersionManager::InitVersionWhenLoadingDb(
   latest_version_->IncreaseRefCount();
 
   // Remove obsolete SST files
-  thread_pool_->Enqueue(
-      [version_edit_ = std::move(version_edit), config_ = this->config_]() {
-        const std::set<std::pair<SSTId, int>> deleted_files =
-            version_edit_->GetImmutableDeletedFiles();
-        for (const auto &file : deleted_files) {
-          std::string filename =
-              config_->GetSavedDataPath() + std::to_string(file.first) + ".sst";
-          fs::path file_path(filename);
-          if (fs::exists(file_path) && fs::is_regular_file(file_path)) {
-            fs::remove(file_path);
-          }
-        }
-      });
+  thread_pool_->Enqueue([version_edit_ = std::move(version_edit),
+                         config_ = this->config_, db_ = this->db_]() {
+    const std::set<std::pair<SSTId, int>> deleted_files =
+        version_edit_->GetImmutableDeletedFiles();
+    for (const auto &file : deleted_files) {
+      std::string filename =
+          db_->GetDBPath() + std::to_string(file.first) + ".sst";
+      fs::path file_path(filename);
+      if (fs::exists(file_path) && fs::is_regular_file(file_path)) {
+        fs::remove(file_path);
+      }
+    }
+  });
 }
 
 void VersionManager::CreateNewVersion(
     std::unique_ptr<VersionEdit> version_edit) {
   uint64_t new_verions_id = ++next_version_id_;
-  auto new_version =
-      std::make_unique<Version>(new_verions_id, config_, thread_pool_, this);
+  auto new_version = std::make_unique<Version>(
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
 
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>

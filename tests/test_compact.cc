@@ -17,11 +17,11 @@ namespace kvs {
 
 namespace db {
 
-bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       num_sst_files++;
     }
@@ -33,7 +33,7 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
   }
 
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -42,9 +42,9 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
   return (num_sst_files == num_sst_files_info) ? true : false;
 }
 
-void ClearAllSstFiles(const Config *config) {
+void ClearAllSstFiles(const DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -53,7 +53,8 @@ void ClearAllSstFiles(const Config *config) {
 
 TEST(CompactTest, CompactLv0Lvl1) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  // db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
   const int nums_elem_each_thread = 1000000;
 
@@ -97,11 +98,11 @@ TEST(CompactTest, CompactLv0Lvl1) {
   // Compaction should be triggered
   EXPECT_TRUE(db->GetVersionManager()->NeedSSTCompaction() == true);
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
   // All older versions that aren't refered to anymore should be cleared
   EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 0);
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db

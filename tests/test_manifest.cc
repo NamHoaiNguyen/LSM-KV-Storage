@@ -17,9 +17,9 @@ namespace kvs {
 
 namespace db {
 
-void ClearAllSstFiles(const Config *config) {
+void ClearAllSstFiles(const DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -28,7 +28,7 @@ void ClearAllSstFiles(const Config *config) {
 
 TEST(VersionTest, BasicEncodeManifest) {
   auto db = std::make_unique<DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const db::Config *const config = db->GetConfig();
   auto version_edit = std::make_unique<VersionEdit>(config->GetSSTNumLvels());
 
@@ -66,8 +66,8 @@ TEST(VersionTest, BasicEncodeManifest) {
       R"({"id":4,"level":0},)"
       R"({"id":5,"level":1}]})";
 
-  auto read_manifest_object = std::make_unique<io::LinuxReadOnlyFile>(
-      config->GetSavedDataPath() + "MANIFEST");
+  auto read_manifest_object =
+      std::make_unique<io::LinuxReadOnlyFile>(db->GetDBPath() + "MANIFEST");
   read_manifest_object->Open();
 
   std::vector<Byte> read_buffer(expected.size(), 0);
@@ -79,7 +79,7 @@ TEST(VersionTest, BasicEncodeManifest) {
                         read_buffer.size());
 
   EXPECT_EQ(encoded_result, expected);
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db

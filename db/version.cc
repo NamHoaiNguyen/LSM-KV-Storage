@@ -1,7 +1,6 @@
 #include "db/version.h"
 
 #include "common/thread_pool.h"
-#include "db/config.h"
 #include "db/version_manager.h"
 #include "io/base_file.h"
 #include "sstable/table_reader.h"
@@ -12,13 +11,14 @@ namespace kvs {
 
 namespace db {
 
-Version::Version(uint64_t version_id, const Config *config,
-                 kvs::ThreadPool *thread_pool, VersionManager *version_manager)
-    : version_id_(version_id), levels_sst_info_(config->GetSSTNumLvels()),
+Version::Version(uint64_t version_id, int num_sst_levels,
+                 const kvs::ThreadPool *thread_pool,
+                 VersionManager *version_manager)
+    : version_id_(version_id), levels_sst_info_(num_sst_levels),
       compaction_level_(0), compaction_score_(0), ref_count_(0),
-      levels_score_(config->GetSSTNumLvels(), 0), config_(config),
-      thread_pool_(thread_pool), version_manager_(version_manager) {
-  assert(config_ && thread_pool_ && version_manager_);
+      levels_score_(num_sst_levels, 0), thread_pool_(thread_pool),
+      version_manager_(version_manager) {
+  assert(thread_pool_ && version_manager_);
 }
 
 void Version::IncreaseRefCount() const { ref_count_++; }

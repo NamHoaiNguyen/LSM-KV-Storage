@@ -55,38 +55,45 @@ DBImpl::DBImpl(bool is_testing)
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
-      table_reader_cache_(
-          std::make_unique<sstable::TableReaderCache>(config_.get())),
+      table_reader_cache_(std::make_unique<sstable::TableReaderCache>(this)),
       block_reader_cache_(std::make_unique<sstable::BlockReaderCache>()),
-      version_manager_(std::make_unique<VersionManager>(
-          this, table_reader_cache_.get(), block_reader_cache_.get(),
-          config_.get(), thread_pool_)) {}
+      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
   thread_pool_ = nullptr;
 }
 
-void DBImpl::LoadDB() {
+bool DBImpl::LoadDB(std::string_view dbname) {
   // Load config
   config_->LoadConfig();
 
+  db_path_ = config_->GetSavedDataPath() + std::string(dbname) + "/";
+  fs::path db_path_fs(db_path_);
+  if (!fs::exists(db_path_fs)) {
+    if (!fs::create_directory(db_path_fs)) {
+      return false;
+    }
+  }
+
   // Load MANIFEST
-  std::string manifest_path = config_->GetSavedDataPath() + kManifestFileName;
-  manifest_write_object_ = std::make_unique<io::LinuxWriteOnlyFile>(
-      config_->GetSavedDataPath() + kManifestFileName);
+  std::string manifest_path = db_path_ + kManifestFileName;
+  manifest_write_object_ =
+      std::make_unique<io::LinuxWriteOnlyFile>(manifest_path);
   if (!manifest_write_object_->Open()) {
-    return;
+    return false;
   }
 
   // Recover
   std::unique_ptr<VersionEdit> version_edit = Recover(manifest_path);
   if (!version_edit) {
-    return;
+    return false;
   }
 
   // Apply version edit to create new version
   version_manager_->ApplyNewChanges(std::move(version_edit));
+
+  return true;
 }
 
 std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
@@ -139,8 +146,7 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
         smallest_key = file["smallest_key"].GetString();
         largest_key = file["largest_key"].GetString();
         // Build filename
-        filename =
-            config_->GetSavedDataPath() + std::to_string(table_id) + ".sst";
+        filename = db_path_ + std::to_string(table_id) + ".sst";
 
         auto sst_metadata = std::make_shared<SSTMetadata>(
             table_id, level, file_size, smallest_key, largest_key,
@@ -317,9 +323,7 @@ void DBImpl::CreateNewSST(
   assert(version_edit);
 
   uint64_t sst_id = GetNextSSTId();
-
-  std::string filename =
-      config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
+  std::string filename = db_path_ + std::to_string(sst_id) + ".sst";
   sstable::TableBuilder new_sst(std::move(filename), config_.get());
 
   if (!new_sst.Open()) {
@@ -340,8 +344,7 @@ void DBImpl::CreateNewSST(
 
   {
     std::scoped_lock lock(mutex_);
-    std::string filename =
-        config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
+    std::string filename = db_path_ + std::to_string(sst_id) + ".sst";
     version_edit->AddNewFiles(sst_id, 0 /*level*/, new_sst.GetFileSize(),
                               new_sst.GetSmallestKey(), new_sst.GetLargestKey(),
                               std::move(filename));
@@ -485,11 +488,13 @@ uint64_t DBImpl::GetNextSSTId() {
   return next_sstable_id_.load();
 }
 
-const Config *const DBImpl::GetConfig() { return config_.get(); }
+const Config *DBImpl::GetConfig() const { return config_.get(); }
 
 const VersionManager *DBImpl::GetVersionManager() const {
   return version_manager_.get();
 }
+
+std::string DBImpl::GetDBPath() const { return db_path_; }
 
 const BaseMemTable *DBImpl::GetCurrentMemtable() { return memtable_.get(); }
 
@@ -500,6 +505,10 @@ DBImpl::GetImmutableMemTables() {
 
 const sstable::BlockReaderCache *DBImpl::GetBlockReaderCache() const {
   return block_reader_cache_.get();
+}
+
+const sstable::TableReaderCache *DBImpl::GetTableReaderCache() const {
+  return table_reader_cache_.get();
 }
 
 } // namespace db

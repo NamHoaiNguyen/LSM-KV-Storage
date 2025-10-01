@@ -30,12 +30,11 @@ namespace kvs {
 
 namespace sstable {
 
-bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
-                                           db::DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const db::DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       num_sst_files++;
     }
@@ -51,9 +50,9 @@ bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
              : false;
 }
 
-void ClearAllSstFiles(const db::Config *config) {
+void ClearAllSstFiles(const db::DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -147,7 +146,7 @@ TEST(TableTest, BasicEncode) {
 
 TEST(TableTest, CreateTable) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const db::Config *const config = db->GetConfig();
   const int nums_elems = 10000000;
 
@@ -185,14 +184,14 @@ TEST(TableTest, CreateTable) {
   EXPECT_EQ(level_sst_info[0][0]->level, 0);
   // EXPECT_TRUE(level_sst_info[0][0]->table_->GetBlockIndex().size() != 0);
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(TableTest, BasicTableReader) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const db::Config *const config = db->GetConfig();
   const int nums_elems = 10000000;
 
@@ -219,12 +218,11 @@ TEST(TableTest, BasicTableReader) {
   // Force creating a new sst
   db->ForceFlushMemTable();
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   // There is only 1 sst file
   SSTId table_id = 1;
-  std::string filename =
-      config->GetSavedDataPath() + std::to_string(table_id) + ".sst";
+  std::string filename = db->GetDBPath() + std::to_string(table_id) + ".sst";
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       &version_sst_metadata =
@@ -248,12 +246,12 @@ TEST(TableTest, BasicTableReader) {
     EXPECT_TRUE(bi.GetBlockSize() > 0);
   }
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(TableTest, TableReaderIterator) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
 
   const db::Config *const config = db->GetConfig();
   // That number of key/value pairs is enough to create a new sst
@@ -293,7 +291,7 @@ TEST(TableTest, TableReaderIterator) {
   // // Need time for new SST is persisted to disk
   // // NOTE: It must be long enough for debug build
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       sst_metadata = db->GetVersionManager()
@@ -309,8 +307,7 @@ TEST(TableTest, TableReaderIterator) {
     }
   }
 
-  std::string filename =
-      db->GetConfig()->GetSavedDataPath() + std::to_string(1) + ".sst";
+  std::string filename = db->GetDBPath() + std::to_string(1) + ".sst";
 
   std::unique_ptr<sstable::TableReader> table_reader =
       sstable::CreateAndSetupDataForTableReader(
@@ -352,7 +349,7 @@ TEST(TableTest, TableReaderIterator) {
   // Number of key value pairs should be equal to list_key_value's size.
   EXPECT_EQ(list_key_value.size(), total_elems);
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace sstable

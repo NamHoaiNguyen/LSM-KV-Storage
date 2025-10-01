@@ -18,11 +18,11 @@ namespace kvs {
 
 namespace db {
 
-bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       num_sst_files++;
     }
@@ -38,9 +38,9 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
              : false;
 }
 
-void ClearAllSstFiles(const Config *config) {
+void ClearAllSstFiles(const DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -49,7 +49,7 @@ void ClearAllSstFiles(const Config *config) {
 
 TEST(VersionTest, CreateOnlyOneVersion) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
 
   const Config *const config = db->GetConfig();
 
@@ -87,14 +87,14 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   // Creating new SST when memtable is overlow means that new latest version
   // is created
   EXPECT_TRUE(db->GetVersionManager()->GetLatestVersion());
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, CreateMultipleVersions) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   // That number of key/value pairs will create a new sst
@@ -112,14 +112,14 @@ TEST(VersionTest, CreateMultipleVersions) {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, ConcurrencyPut) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 1000000;
@@ -160,16 +160,16 @@ TEST(VersionTest, ConcurrencyPut) {
 
   db->ForceFlushMemTable();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(15000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, GetFromSST) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   // That number of key/value pairs will create a new sst
@@ -202,14 +202,14 @@ TEST(VersionTest, GetFromSST) {
     EXPECT_EQ(status.value(), value);
   }
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, ConcurrentPutSingleGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 100000;
@@ -258,7 +258,7 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
   // Sleep to wait all written data is persisted to disk
   std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   // Now all immutable memtables are no longer in memory, it means that all
   // GET operation must go to SST to lookup
@@ -277,12 +277,12 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
     EXPECT_EQ(value_found.value(), value);
   }
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, SequentialConcurrentPutGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 100000;
@@ -326,12 +326,12 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   // Now all immutable memtables are no longer in memory, it means that all
   // GET operation must go to SST to lookup
   std::latch all_reads_done(num_threads);
-  auto get_op = [&db, &config, nums_elem = nums_elem_each_thread,
+  auto get_op = [&db, nums_elem = nums_elem_each_thread,
                  &all_reads_done](int index) {
     std::string key, value;
     std::optional<std::string> key_found;
@@ -340,8 +340,6 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
-      if (key_found) {
-      }
 
       EXPECT_TRUE(key_found.has_value());
       EXPECT_EQ(key_found.value(), value);
@@ -360,13 +358,12 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
     thread.join();
   }
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
-  // const Config *const config = db->GetConfig();
+  db->LoadDB("test");
 
   const int nums_elem_each_thread = 100000;
   unsigned int num_threads = std::thread::hardware_concurrency();
@@ -526,12 +523,6 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   // ========== Finish Re-PUT same key ==========
 
   // ========== Re-GET same key ==========
-  db.reset();
-  // Check recovery
-  db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
-  const Config *const config = db->GetConfig();
-
   std::latch all_reget_done(num_threads);
   auto re_get_op = [&db, nums_elem = nums_elem_each_thread,
                     &all_reget_done](int index) {
@@ -562,13 +553,13 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   threads.clear();
   // ========== Finish Re-GET same key ==========
 
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
-  ClearAllSstFiles(config);
+  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, FreeObsoleteVersions) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 1000000;
@@ -627,11 +618,11 @@ TEST(VersionTest, FreeObsoleteVersions) {
   // Sleep to wait all older versions is not referenced anymore
   std::this_thread::sleep_for(std::chrono::milliseconds(15000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
   // All older versions that aren't refered to anymore should be cleared
   EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 0);
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db

@@ -27,10 +27,7 @@ class Config;
 
 class VersionManager {
 public:
-  VersionManager(DBImpl *db,
-                 const sstable::TableReaderCache *table_reader_cache,
-                 const sstable::BlockReaderCache *block_reader_cache,
-                 const Config *config, kvs::ThreadPool *thread_pool);
+  VersionManager(const DBImpl *db, const kvs::ThreadPool *thread_pool);
 
   ~VersionManager() = default;
 
@@ -77,13 +74,15 @@ private:
   // Below are objects that VersionManager does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
   // allocate/deallocate, etc... these objects.
+  const DBImpl *db_;
+
   const sstable::TableReaderCache *table_reader_cache_;
 
   const sstable::BlockReaderCache *block_reader_cache_;
 
   const Config *config_;
 
-  kvs::ThreadPool *thread_pool_;
+  const kvs::ThreadPool *thread_pool_;
 
   mutable std::mutex mutex_;
 };

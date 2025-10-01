@@ -135,23 +135,23 @@ void Config::LoadDefaultConfig() {
   data_path_ = (project_dir / "data/").string();
 }
 
-const size_t Config::GetPerMemTableSizeLimit() const {
+size_t Config::GetPerMemTableSizeLimit() const {
   return lsm_per_mem_size_limit_;
 }
 
-const int Config::GetMaxImmuMemTablesInMem() const {
+int Config::GetMaxImmuMemTablesInMem() const {
   return max_immutable_memtables_in_mem_;
 }
 
-const size_t Config::GetSSTBlockSize() const { return sst_block_size_; }
+size_t Config::GetSSTBlockSize() const { return sst_block_size_; }
 
-const int Config::GetSSTNumLvels() const { return lsm_sst_num_levels_; }
+int Config::GetSSTNumLvels() const { return lsm_sst_num_levels_; }
 
-const int Config::GetLvl0SSTCompactionTrigger() const {
+int Config::GetLvl0SSTCompactionTrigger() const {
   return lvl0_compaction_trigger_;
 }
 
-const std::string Config::GetSavedDataPath() const { return data_path_; }
+std::string Config::GetSavedDataPath() const { return data_path_; }
 
 } // namespace db
 
