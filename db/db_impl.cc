@@ -50,7 +50,7 @@ namespace kvs {
 namespace db {
 
 DBImpl::DBImpl(bool is_testing)
-    : next_sstable_id_(0), memtable_(std::make_unique<MemTable>()),
+    : next_sstable_id_(1), memtable_(std::make_unique<MemTable>()),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
@@ -134,13 +134,17 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
     // Parse next_table_id
     if (doc.HasMember("next_table_id") && doc["next_table_id"].IsInt64()) {
       // Update next id used for new table
-      next_sstable_id_ = doc["next_table_id"].GetInt64();
+      if (doc["next_table_id"].GetInt64() > next_sstable_id_) {
+        next_sstable_id_ = doc["next_table_id"].GetInt64();
+      }
     }
 
     // Parse sequence_number
     if (doc.HasMember("sequence_number") && doc["sequence_number"].IsInt64()) {
       // Update next id used for new table
-      sequence_number_ = doc["sequence_number"].GetInt64();
+      if (doc["sequence_number"].GetInt64() > sequence_number_) {
+        sequence_number_ = doc["sequence_number"].GetInt64();
+      }
     }
 
     // Parse new_files array
@@ -499,8 +503,9 @@ void DBImpl::ExecuteBackgroundCompaction() {
 }
 
 uint64_t DBImpl::GetNextSSTId() {
+  int next_table_id = next_sstable_id_.load();
   next_sstable_id_.fetch_add(1);
-  return next_sstable_id_.load();
+  return next_table_id;
 }
 
 const Config *DBImpl::GetConfig() const { return config_.get(); }
