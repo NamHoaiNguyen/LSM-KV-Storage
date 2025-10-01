@@ -160,7 +160,7 @@ TEST(VersionTest, ConcurrencyPut) {
 
   db->ForceFlushMemTable();
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(15000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 

@@ -18,7 +18,8 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(const DBImpl *db, kvs::ThreadPool *thread_pool)
+VersionManager::VersionManager(const DBImpl *db,
+                               const kvs::ThreadPool *thread_pool)
     : db_(db), table_reader_cache_(db_->GetTableReaderCache()),
       block_reader_cache_(db_->GetBlockReaderCache()),
       config_(db_->GetConfig()), thread_pool_(thread_pool) {
@@ -72,8 +73,8 @@ void VersionManager::ApplyNewChanges(
 void VersionManager::InitVersionWhenLoadingDb(
     std::unique_ptr<VersionEdit> version_edit) {
   uint64_t new_verions_id = ++next_version_id_;
-  auto new_version =
-      std::make_unique<Version>(new_verions_id, config_, thread_pool_, this);
+  auto new_version = std::make_unique<Version>(
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
 
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
       &latest_version_sst_info = new_version->GetSSTMetadata();
@@ -134,8 +135,8 @@ void VersionManager::InitVersionWhenLoadingDb(
 void VersionManager::CreateNewVersion(
     std::unique_ptr<VersionEdit> version_edit) {
   uint64_t new_verions_id = ++next_version_id_;
-  auto new_version =
-      std::make_unique<Version>(new_verions_id, config_, thread_pool_, this);
+  auto new_version = std::make_unique<Version>(
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
 
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>

@@ -11,11 +11,12 @@ namespace kvs {
 
 namespace db {
 
-Version::Version(uint64_t version_id, kvs::ThreadPool *thread_pool,
+Version::Version(uint64_t version_id, int num_sst_levels,
+                 const kvs::ThreadPool *thread_pool,
                  VersionManager *version_manager)
-    : version_id_(version_id), levels_sst_info_(config->GetSSTNumLvels()),
+    : version_id_(version_id), levels_sst_info_(num_sst_levels),
       compaction_level_(0), compaction_score_(0), ref_count_(0),
-      levels_score_(config->GetSSTNumLvels(), 0), thread_pool_(thread_pool),
+      levels_score_(num_sst_levels, 0), thread_pool_(thread_pool),
       version_manager_(version_manager) {
   assert(thread_pool_ && version_manager_);
 }
