@@ -73,13 +73,15 @@ public:
 
   uint64_t GetNextSSTId();
 
-  void LoadDB();
+  bool LoadDB(std::string_view dbname);
 
   const Config *const GetConfig();
 
   const VersionManager *GetVersionManager() const;
 
   void ForceFlushMemTable();
+
+  std::string GetDBPath() const;
 
   friend class Compact;
 
@@ -108,8 +110,6 @@ private:
 
   void ExecuteBackgroundCompaction();
 
-  const std::string dbname_;
-
   std::atomic<uint64_t> next_sstable_id_;
 
   struct PairHash {
@@ -119,6 +119,8 @@ private:
       return std::hash<uint64_t>()((p.first << 8) | p.second);
     }
   };
+
+  std::string db_path_;
 
   std::unique_ptr<BaseMemTable> memtable_;
 

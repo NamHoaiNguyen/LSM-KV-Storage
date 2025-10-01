@@ -77,6 +77,8 @@ private:
   // Below are objects that VersionManager does NOT own lifetime. So, DO NOT
   // modify, including change memory that it is pointing to,
   // allocate/deallocate, etc... these objects.
+  const DBImpl *db_;
+
   const sstable::TableReaderCache *table_reader_cache_;
 
   const sstable::BlockReaderCache *block_reader_cache_;

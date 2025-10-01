@@ -22,7 +22,7 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       num_sst_files++;
     }
@@ -38,9 +38,9 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
              : false;
 }
 
-void ClearAllSstFiles(const Config *config) {
+void ClearAllSstFiles(const DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -49,7 +49,7 @@ void ClearAllSstFiles(const Config *config) {
 
 TEST(VersionTest, CreateOnlyOneVersion) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
 
   const Config *const config = db->GetConfig();
 
@@ -89,12 +89,12 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   EXPECT_TRUE(db->GetVersionManager()->GetLatestVersion());
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, CreateMultipleVersions) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   // That number of key/value pairs will create a new sst
@@ -114,12 +114,12 @@ TEST(VersionTest, CreateMultipleVersions) {
 
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, ConcurrencyPut) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 1000000;
@@ -164,12 +164,12 @@ TEST(VersionTest, ConcurrencyPut) {
 
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, GetFromSST) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   // That number of key/value pairs will create a new sst
@@ -204,12 +204,12 @@ TEST(VersionTest, GetFromSST) {
 
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, ConcurrentPutSingleGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 100000;
@@ -277,12 +277,12 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
     EXPECT_EQ(value_found.value(), value);
   }
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, SequentialConcurrentPutGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 100000;
@@ -360,12 +360,12 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
     thread.join();
   }
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   // const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 100000;
@@ -529,7 +529,7 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   db.reset();
   // Check recovery
   db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   std::latch all_reget_done(num_threads);
@@ -563,12 +563,12 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   // ========== Finish Re-GET same key ==========
 
   // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, FreeObsoleteVersions) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 1000000;
@@ -631,7 +631,7 @@ TEST(VersionTest, FreeObsoleteVersions) {
   // All older versions that aren't refered to anymore should be cleared
   EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 0);
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db

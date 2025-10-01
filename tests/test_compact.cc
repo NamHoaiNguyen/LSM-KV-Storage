@@ -53,7 +53,8 @@ void ClearAllSstFiles(const Config *config) {
 
 TEST(CompactTest, CompactLv0Lvl1) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  // db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
   const int nums_elem_each_thread = 1000000;
 

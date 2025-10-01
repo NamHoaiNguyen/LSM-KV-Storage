@@ -21,7 +21,7 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       num_sst_files++;
     }
@@ -37,9 +37,9 @@ bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
              : false;
 }
 
-void ClearAllSstFiles(const Config *config) {
+void ClearAllSstFiles(const DBImpl *db) {
   // clear all SST files created for next test
-  for (const auto &entry : fs::directory_iterator(config->GetSavedDataPath())) {
+  for (const auto &entry : fs::directory_iterator(db->GetDBPath())) {
     if (fs::is_regular_file(entry.status())) {
       fs::remove(entry.path());
     }
@@ -48,7 +48,7 @@ void ClearAllSstFiles(const Config *config) {
 
 TEST(DBTest, RecoverDB) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
 
   const int nums_elem_each_thread = 1000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
@@ -95,7 +95,7 @@ TEST(DBTest, RecoverDB) {
   db.reset();
   // Check recovery
   db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB();
+  db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
   std::latch all_reads_done(num_threads);
@@ -132,7 +132,7 @@ TEST(DBTest, RecoverDB) {
   // version after reloading
   // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
-  ClearAllSstFiles(config);
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db
