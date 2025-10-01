@@ -230,8 +230,6 @@ void Compact::DoCompactJob() {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
   uint64_t new_sst_id = db_->GetNextSSTId();
-  // std::string filename = db_->GetConfig()->GetSavedDataPath() +
-  //                        std::to_string(new_sst_id) + ".sst";
   std::string filename = db_->GetDBPath() + std::to_string(new_sst_id) + ".sst";
 
   auto new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
@@ -269,8 +267,6 @@ void Compact::DoCompactJob() {
 
     if (!new_sst) {
       new_sst_id = db_->GetNextSSTId();
-      // filename = db_->GetConfig()->GetSavedDataPath() +
-      //            std::to_string(new_sst_id) + ".sst";
       filename = db_->GetDBPath() + std::to_string(new_sst_id) + ".sst";
       new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                         db_->GetConfig());
@@ -284,8 +280,6 @@ void Compact::DoCompactJob() {
     // TODO(namnh) : Should have a seperate config for size of sst
     if (new_sst->GetDataSize() >= db_->GetConfig()->GetPerMemTableSizeLimit()) {
       new_sst->Finish();
-      // std::string filename = db_->GetConfig()->GetSavedDataPath() +
-      //                        std::to_string(new_sst_id) + ".sst";
       std::string filename =
           db_->GetDBPath() + std::to_string(new_sst_id) + ".sst";
       version_edit_->AddNewFiles(new_sst_id, 1 /*level*/,
@@ -301,8 +295,6 @@ void Compact::DoCompactJob() {
   if (new_sst) {
     // Flush remaining datas
     new_sst->Finish();
-    // filename = db_->GetConfig()->GetSavedDataPath() +
-    //            std::to_string(new_sst_id) + ".sst";
     filename = db_->GetDBPath() + std::to_string(new_sst_id) + ".sst";
     version_edit_->AddNewFiles(new_sst_id, 1 /*level*/, new_sst->GetFileSize(),
                                new_sst->GetSmallestKey(),

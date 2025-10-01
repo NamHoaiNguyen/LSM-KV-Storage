@@ -75,11 +75,17 @@ public:
 
   bool LoadDB(std::string_view dbname);
 
-  const Config *const GetConfig();
+  void ForceFlushMemTable();
+
+  void AddChangesToManifest(const VersionEdit *version_edit);
+
+  const Config *GetConfig() const;
 
   const VersionManager *GetVersionManager() const;
 
-  void ForceFlushMemTable();
+  const sstable::BlockReaderCache *GetBlockReaderCache() const;
+
+  const sstable::TableReaderCache *GetTableReaderCache() const;
 
   std::string GetDBPath() const;
 
@@ -89,10 +95,6 @@ public:
   const BaseMemTable *GetCurrentMemtable();
 
   const std::vector<std::unique_ptr<BaseMemTable>> &GetImmutableMemTables();
-
-  const sstable::BlockReaderCache *GetBlockReaderCache() const;
-
-  void AddChangesToManifest(const VersionEdit *version_edit);
 
 private:
   void Put_(std::string_view key, std::string_view value, TxnId txn_id);

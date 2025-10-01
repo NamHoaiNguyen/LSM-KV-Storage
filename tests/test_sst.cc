@@ -30,8 +30,7 @@ namespace kvs {
 
 namespace sstable {
 
-bool CompareVersionFilesWithDirectoryFiles(const db::Config *config,
-                                           db::DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const db::DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
@@ -185,7 +184,7 @@ TEST(TableTest, CreateTable) {
   EXPECT_EQ(level_sst_info[0][0]->level, 0);
   // EXPECT_TRUE(level_sst_info[0][0]->table_->GetBlockIndex().size() != 0);
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   ClearAllSstFiles(db.get());
 }
@@ -219,7 +218,7 @@ TEST(TableTest, BasicTableReader) {
   // Force creating a new sst
   db->ForceFlushMemTable();
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   // There is only 1 sst file
   SSTId table_id = 1;
@@ -294,7 +293,7 @@ TEST(TableTest, TableReaderIterator) {
   // // Need time for new SST is persisted to disk
   // // NOTE: It must be long enough for debug build
   std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       sst_metadata = db->GetVersionManager()

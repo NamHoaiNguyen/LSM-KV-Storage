@@ -1,6 +1,5 @@
 #include "sstable/table_reader_cache.h"
 
-#include "db/config.h"
 #include "db/db_impl.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
@@ -10,10 +9,8 @@ namespace kvs {
 
 namespace sstable {
 
-TableReaderCache::TableReaderCache(const db::DBImpl *db,
-                                   const db::Config *config)
-    : db_(db), config_(config) {
-  assert(config_);
+TableReaderCache::TableReaderCache(const db::DBImpl *db) : db_(db) {
+  assert(db_);
 }
 
 const TableReader *TableReaderCache::GetTableReader(SSTId table_id) const {
@@ -52,8 +49,6 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   }
 
   // if table hadn't been in cache, create new table and load into cache
-  // std::string filename =
-  //     config_->GetSavedDataPath() + std::to_string(table_id) + ".sst";
   std::string filename = db_->GetDBPath() + std::to_string(table_id) + ".sst";
 
   // Create new table reader

@@ -18,7 +18,7 @@ namespace kvs {
 
 namespace db {
 
-bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 
@@ -87,7 +87,7 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   // Creating new SST when memtable is overlow means that new latest version
   // is created
   EXPECT_TRUE(db->GetVersionManager()->GetLatestVersion());
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   ClearAllSstFiles(db.get());
 }
@@ -112,7 +112,7 @@ TEST(VersionTest, CreateMultipleVersions) {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   ClearAllSstFiles(db.get());
 }
@@ -162,7 +162,7 @@ TEST(VersionTest, ConcurrencyPut) {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(15000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   ClearAllSstFiles(db.get());
 }
@@ -202,7 +202,7 @@ TEST(VersionTest, GetFromSST) {
     EXPECT_EQ(status.value(), value);
   }
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   ClearAllSstFiles(db.get());
 }
@@ -258,7 +258,7 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
   // Sleep to wait all written data is persisted to disk
   std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   // Now all immutable memtables are no longer in memory, it means that all
   // GET operation must go to SST to lookup
@@ -326,7 +326,7 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   // Now all immutable memtables are no longer in memory, it means that all
   // GET operation must go to SST to lookup
@@ -562,7 +562,7 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   threads.clear();
   // ========== Finish Re-GET same key ==========
 
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
   ClearAllSstFiles(db.get());
 }
 
@@ -627,7 +627,7 @@ TEST(VersionTest, FreeObsoleteVersions) {
   // Sleep to wait all older versions is not referenced anymore
   std::this_thread::sleep_for(std::chrono::milliseconds(15000));
 
-  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
   // All older versions that aren't refered to anymore should be cleared
   EXPECT_EQ(db->GetVersionManager()->GetVersions().size(), 0);
 

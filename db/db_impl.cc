@@ -55,12 +55,9 @@ DBImpl::DBImpl(bool is_testing)
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
-      table_reader_cache_(
-          std::make_unique<sstable::TableReaderCache>(this, config_.get())),
+      table_reader_cache_(std::make_unique<sstable::TableReaderCache>(this)),
       block_reader_cache_(std::make_unique<sstable::BlockReaderCache>()),
-      version_manager_(std::make_unique<VersionManager>(
-          this, table_reader_cache_.get(), block_reader_cache_.get(),
-          config_.get(), thread_pool_)) {}
+      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {}
 
 DBImpl::~DBImpl() {
   delete thread_pool_;
@@ -502,7 +499,7 @@ uint64_t DBImpl::GetNextSSTId() {
   return next_sstable_id_.load();
 }
 
-const Config *const DBImpl::GetConfig() { return config_.get(); }
+const Config *DBImpl::GetConfig() const { return config_.get(); }
 
 const VersionManager *DBImpl::GetVersionManager() const {
   return version_manager_.get();
@@ -519,6 +516,10 @@ DBImpl::GetImmutableMemTables() {
 
 const sstable::BlockReaderCache *DBImpl::GetBlockReaderCache() const {
   return block_reader_cache_.get();
+}
+
+const sstable::TableReaderCache *DBImpl::GetTableReaderCache() const {
+  return table_reader_cache_.get();
 }
 
 } // namespace db

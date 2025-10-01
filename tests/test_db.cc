@@ -17,7 +17,7 @@ namespace kvs {
 
 namespace db {
 
-bool CompareVersionFilesWithDirectoryFiles(const Config *config, DBImpl *db) {
+bool CompareVersionFilesWithDirectoryFiles(const DBImpl *db) {
   int num_sst_files = 0;
   int num_sst_files_info = 0;
 

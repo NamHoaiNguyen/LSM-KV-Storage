@@ -18,13 +18,10 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(
-    DBImpl *db, const sstable::TableReaderCache *table_reader_cache,
-    const sstable::BlockReaderCache *block_reader_cache, const Config *config,
-    kvs::ThreadPool *thread_pool)
-    : db_(db), table_reader_cache_(table_reader_cache),
-      block_reader_cache_(block_reader_cache), config_(config),
-      thread_pool_(thread_pool) {
+VersionManager::VersionManager(const DBImpl *db, kvs::ThreadPool *thread_pool)
+    : db_(db), table_reader_cache_(db_->GetTableReaderCache()),
+      block_reader_cache_(db_->GetBlockReaderCache()),
+      config_(db_->GetConfig()), thread_pool_(thread_pool) {
   assert(db_ && table_reader_cache_ && block_reader_cache_ && config_ &&
          thread_pool_);
 }

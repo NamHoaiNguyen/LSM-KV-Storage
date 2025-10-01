@@ -27,10 +27,7 @@ class Config;
 
 class VersionManager {
 public:
-  VersionManager(DBImpl *db,
-                 const sstable::TableReaderCache *table_reader_cache,
-                 const sstable::BlockReaderCache *block_reader_cache,
-                 const Config *config, kvs::ThreadPool *thread_pool);
+  VersionManager(const DBImpl *db, kvs::ThreadPool *thread_pool);
 
   ~VersionManager() = default;
 

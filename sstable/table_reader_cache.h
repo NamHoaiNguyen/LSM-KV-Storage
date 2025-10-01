@@ -16,7 +16,6 @@ namespace kvs {
 
 namespace db {
 class DBImpl;
-class Config;
 } // namespace db
 
 namespace sstable {
@@ -26,7 +25,7 @@ class TableReader;
 
 class TableReaderCache {
 public:
-  TableReaderCache(const db::DBImpl *db, const db::Config *config);
+  TableReaderCache(const db::DBImpl *db);
 
   ~TableReaderCache() = default;
 
@@ -49,8 +48,6 @@ public:
 
 private:
   const db::DBImpl *db_;
-
-  const db::Config *config_;
 
   mutable std::unordered_map<SSTId, std::unique_ptr<TableReader>>
       table_readers_cache_;
