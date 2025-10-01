@@ -137,6 +137,12 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
       next_sstable_id_ = doc["next_table_id"].GetInt64();
     }
 
+    // Parse sequence_number
+    if (doc.HasMember("sequence_number") && doc["sequence_number"].IsInt64()) {
+      // Update next id used for new table
+      sequence_number_ = doc["sequence_number"].GetInt64();
+    }
+
     // Parse new_files array
     if (doc.HasMember("new_files") && doc["new_files"].IsArray()) {
       for (auto &file : doc["new_files"].GetArray()) {
@@ -299,8 +305,10 @@ void DBImpl::FlushMemTableJob() {
   // Wait until all workers have finished
   all_done.wait();
 
-  // Apply versionEdit to manifest and fsync to persist data
   version_edit->SetNextTableId(GetNextSSTId());
+  version_edit->SetSequenceNumber(sequence_number_);
+
+  // Apply versionEdit to manifest and fsync to persist data
   AddChangesToManifest(version_edit.get());
 
   // Not until this point that latest version is visible
@@ -362,6 +370,10 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
 
   // Encode next table id
   doc.AddMember("next_table_id", version_edit->GetNextTableId(), allocator);
+
+  // Encode sequence number
+  doc.AddMember("sequence_number", version_edit->GetSequenceNumber(),
+                allocator);
 
   // List of new files created
   rapidjson::Value new_files_array(rapidjson::kArrayType);
@@ -438,6 +450,7 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
       reinterpret_cast<const uint8_t *>(buffer.GetString()), buffer.GetSize());
 
   // TODO(namnh, IMPORTANT) : What if append fail ?
+  // TODO(namnh, IMPORTANT) : Do we need to lock file ?
   manifest_write_object_->AppendAtLast(bytes);
 }
 
@@ -470,8 +483,10 @@ void DBImpl::ExecuteBackgroundCompaction() {
   compact->PickCompact();
   version->DecreaseRefCount();
 
-  // Apply versionEdit to manifest and fsync to persist data
   version_edit->SetNextTableId(GetNextSSTId());
+  version_edit->SetSequenceNumber(sequence_number_);
+
+  // Apply versionEdit to manifest and fsync to persist data
   AddChangesToManifest(version_edit.get());
 
   // Apply compact version edit(changes) to create new version

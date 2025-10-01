@@ -55,10 +55,11 @@ TEST(VersionTest, BasicEncodeManifest) {
   }
 
   version_edit->SetNextTableId(6);
+  version_edit->SetSequenceNumber(4);
   db->AddChangesToManifest(version_edit.get());
 
   std::string expected =
-      R"({"next_table_id":6,"new_files":[)"
+      R"({"next_table_id":6,"sequence_number":4,"new_files":[)"
       R"({"id":2,"level":0,"size":200000,"smallest_key":"key2","largest_key":"key200000"},)"
       R"({"id":1,"level":1,"size":100000,"smallest_key":"key1","largest_key":"key100000"},)"
       R"({"id":3,"level":1,"size":300000,"smallest_key":"key3","largest_key":"key300000"}],)"

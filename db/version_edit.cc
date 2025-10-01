@@ -37,6 +37,12 @@ void VersionEdit::SetNextTableId(uint64_t next_table_id) {
 
 uint64_t VersionEdit::GetNextTableId() const { return next_table_id_; }
 
+void VersionEdit::SetSequenceNumber(uint64_t sequence_number) {
+  sequence_number_ = sequence_number;
+}
+
+uint64_t VersionEdit::GetSequenceNumber() const { return sequence_number_; }
+
 const std::set<std::pair<SSTId, int>> &
 VersionEdit::GetImmutableDeletedFiles() const {
   return deleted_files_;

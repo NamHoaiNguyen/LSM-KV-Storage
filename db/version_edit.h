@@ -81,6 +81,10 @@ public:
 
   uint64_t GetNextTableId() const;
 
+  void SetSequenceNumber(uint64_t next_table_id);
+
+  uint64_t GetSequenceNumber() const;
+
 private:
   // SST id + level
   std::set<std::pair<SSTId, int>> deleted_files_;
@@ -88,6 +92,9 @@ private:
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>> new_files_;
 
   uint64_t next_table_id_{0};
+
+  // TODO(namnh) : txnid when transaction is supported
+  uint64_t sequence_number_{0};
 };
 
 } // namespace db
