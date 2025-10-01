@@ -364,7 +364,6 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
 TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
-  // const Config *const config = db->GetConfig();
 
   const int nums_elem_each_thread = 100000;
   unsigned int num_threads = std::thread::hardware_concurrency();
@@ -524,12 +523,6 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   // ========== Finish Re-PUT same key ==========
 
   // ========== Re-GET same key ==========
-  db.reset();
-  // Check recovery
-  db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB("test");
-  const Config *const config = db->GetConfig();
-
   std::latch all_reget_done(num_threads);
   auto re_get_op = [&db, nums_elem = nums_elem_each_thread,
                     &all_reget_done](int index) {

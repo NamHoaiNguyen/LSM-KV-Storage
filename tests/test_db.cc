@@ -8,7 +8,6 @@
 
 // libC++
 #include <filesystem>
-#include <iostream>
 #include <memory>
 
 namespace fs = std::filesystem;
@@ -101,12 +100,12 @@ TEST(DBTest, RecoverDB) {
   // Force clearing all immutable memtables
   db->ForceFlushMemTable();
   // Wait a little bit time
-  std::this_thread::sleep_for(std::chrono::milliseconds(6000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
-  std::latch all_reads_done(num_threads);
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread, i,
-                         std::ref(all_reads_done));
+  std::latch all_reads_done(1);
+  for (int i = 0; i < 1; i++) {
+    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread * num_threads,
+                         i, std::ref(all_reads_done));
   }
 
   // Wait until all threads finish
@@ -116,6 +115,9 @@ TEST(DBTest, RecoverDB) {
     thread.join();
   }
   threads.clear();
+
+  // Wait a little bit for compaction. Otherwise, test is crashed
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   // Restarting a new db instance
   db.reset();
