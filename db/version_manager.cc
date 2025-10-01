@@ -119,9 +119,6 @@ void VersionManager::InitVersionWhenLoadingDb(
     const std::set<std::pair<SSTId, int>> deleted_files =
         version_edit_->GetImmutableDeletedFiles();
     for (const auto &file : deleted_files) {
-      // std::string filename =
-      //     config_->GetSavedDataPath() + std::to_string(file.first) +
-      //     ".sst";
       std::string filename =
           db_->GetDBPath() + std::to_string(file.first) + ".sst";
       fs::path file_path(filename);

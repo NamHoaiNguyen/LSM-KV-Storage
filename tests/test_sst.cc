@@ -222,8 +222,6 @@ TEST(TableTest, BasicTableReader) {
 
   // There is only 1 sst file
   SSTId table_id = 1;
-  // std::string filename =
-  //     config->GetSavedDataPath() + std::to_string(table_id) + ".sst";
   std::string filename = db->GetDBPath() + std::to_string(table_id) + ".sst";
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
@@ -309,8 +307,6 @@ TEST(TableTest, TableReaderIterator) {
     }
   }
 
-  // std::string filename =
-  //     db->GetConfig()->GetSavedDataPath() + std::to_string(1) + ".sst";
   std::string filename = db->GetDBPath() + std::to_string(1) + ".sst";
 
   std::unique_ptr<sstable::TableReader> table_reader =

@@ -77,10 +77,6 @@ bool DBImpl::LoadDB(std::string_view dbname) {
   }
 
   // Load MANIFEST
-  // std::string manifest_path = config_->GetSavedDataPath() +
-  // kManifestFileName; manifest_write_object_ =
-  // std::make_unique<io::LinuxWriteOnlyFile>(
-  //     config_->GetSavedDataPath() + kManifestFileName);
   std::string manifest_path = db_path_ + kManifestFileName;
   manifest_write_object_ =
       std::make_unique<io::LinuxWriteOnlyFile>(manifest_path);
@@ -150,8 +146,6 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
         smallest_key = file["smallest_key"].GetString();
         largest_key = file["largest_key"].GetString();
         // Build filename
-        // filename =
-        //     config_->GetSavedDataPath() + std::to_string(table_id) + ".sst";
         filename = db_path_ + std::to_string(table_id) + ".sst";
 
         auto sst_metadata = std::make_shared<SSTMetadata>(
@@ -329,9 +323,6 @@ void DBImpl::CreateNewSST(
   assert(version_edit);
 
   uint64_t sst_id = GetNextSSTId();
-
-  // std::string filename =
-  //     config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
   std::string filename = db_path_ + std::to_string(sst_id) + ".sst";
   sstable::TableBuilder new_sst(std::move(filename), config_.get());
 
@@ -353,8 +344,6 @@ void DBImpl::CreateNewSST(
 
   {
     std::scoped_lock lock(mutex_);
-    // std::string filename =
-    //     config_->GetSavedDataPath() + std::to_string(sst_id) + ".sst";
     std::string filename = db_path_ + std::to_string(sst_id) + ".sst";
     version_edit->AddNewFiles(sst_id, 0 /*level*/, new_sst.GetFileSize(),
                               new_sst.GetSmallestKey(), new_sst.GetLargestKey(),

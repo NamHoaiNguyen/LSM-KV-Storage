@@ -237,8 +237,6 @@ TEST(BlockTest, BlockReaderIterator) {
     }
   }
 
-  // std::string filename =
-  //     db->GetConfig()->GetSavedDataPath() + std::to_string(1) + ".sst";
   std::string filename = db->GetDBPath() + std::to_string(1) + ".sst";
 
   std::unique_ptr<sstable::TableReader> table_reader =
