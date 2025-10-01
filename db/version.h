@@ -25,7 +25,6 @@ namespace db {
 
 class BaseMemTable;
 class Compact;
-class Config;
 class DBImpl;
 class ThreadPool;
 class VersionEdit;
@@ -43,8 +42,8 @@ class VersionManager;
 
 class Version {
 public:
-  Version(uint64_t version_id, const Config *config,
-          kvs::ThreadPool *thread_pool, VersionManager *version_manager);
+  Version(uint64_t version_id, kvs::ThreadPool *thread_pool,
+          VersionManager *version_manager);
 
   ~Version() = default;
 
