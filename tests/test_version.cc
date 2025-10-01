@@ -331,7 +331,7 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
   // Now all immutable memtables are no longer in memory, it means that all
   // GET operation must go to SST to lookup
   std::latch all_reads_done(num_threads);
-  auto get_op = [&db, &config, nums_elem = nums_elem_each_thread,
+  auto get_op = [&db, nums_elem = nums_elem_each_thread,
                  &all_reads_done](int index) {
     std::string key, value;
     std::optional<std::string> key_found;
@@ -340,8 +340,6 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
-      if (key_found) {
-      }
 
       EXPECT_TRUE(key_found.has_value());
       EXPECT_EQ(key_found.value(), value);
