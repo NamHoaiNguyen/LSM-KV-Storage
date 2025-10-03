@@ -111,9 +111,6 @@ private:
   std::pair<BlockOffset, BlockSize>
   GetBlockOffsetAndSize(std::string_view key) const;
 
-  // All of below objects are non-const to be moveable. But we need them to be
-  // immutable. So, ALL of methods in this class MUST BE const to avoid these
-  // data member be accidentaly updated
   const std::string filename_;
 
   const SSTId table_id_;
@@ -121,8 +118,10 @@ private:
   // Size of SST file
   const uint64_t file_size_;
 
+  // Min transaction id contained in SST
   const TxnId min_transaction_id_;
 
+  // Max transaction id contained in SST
   const TxnId max_transaction_id_;
 
   // Contain starting offset and size of each block in table

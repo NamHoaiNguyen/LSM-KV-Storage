@@ -116,10 +116,6 @@ private:
 
   TxnId GetTransactionIdFromDataEntry(uint64_t data_entry_offset) const;
 
-  // All of below objects are non-const to be moveable. But we need them to be
-  // immutable. So, ALL of methods in this class MUST BE const to avoid these
-  // data member be accidentaly updated
-
   // Total data entries in a block
   const uint64_t total_data_entries_;
 
@@ -129,6 +125,7 @@ private:
   // Contain starting offset of each data entries
   const std::vector<uint64_t> data_entries_offset_info_;
 
+  // Buffer containing block's data
   const std::vector<Byte> buffer_;
 };
 
