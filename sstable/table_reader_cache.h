@@ -41,8 +41,9 @@ public:
       std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
       const sstable::BlockReaderCache *block_reader_cache) const;
 
-  void AddNewTableReader(SSTId table_id,
-                         std::unique_ptr<TableReader> table_reader) const;
+  const TableReader *
+  AddNewTableReaderThenGet(SSTId table_id,
+                           std::unique_ptr<TableReader> table_reader) const;
 
   const TableReader *GetTableReader(SSTId table_id) const;
 

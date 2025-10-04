@@ -15,6 +15,21 @@ namespace io {
 
 class Buffer;
 
+class AppendOnlyFile {
+public:
+  virtual ~AppendOnlyFile() {}
+
+  virtual bool Close() = 0;
+
+  // Persist data from memory to disk
+  virtual bool Flush() = 0;
+
+  virtual bool Open() = 0;
+
+  // Append new data at the end of the file
+  virtual ssize_t Append(std::span<const Byte> buffer) = 0;
+};
+
 class WriteOnlyFile {
 public:
   virtual ~WriteOnlyFile() {}

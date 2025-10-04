@@ -196,30 +196,33 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       // Find table in cache
       const sstable::TableReader *table_reader =
           table_reader_cache_->GetTableReader(table_id);
-      if (!table_reader) {
-        // If not found, create new table and add into cache
-        std::string filename = files_need_compaction_[level][i]->filename;
-        uint64_t file_size = files_need_compaction_[level][i]->file_size;
-        auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
-            std::move(filename), table_id, file_size);
-        if (!new_table_reader) {
-          return nullptr;
-        }
-        // create iterator for new table
+      if (table_reader) {
+        // If table reader had already been in cache, just create table iterator
         table_reader_iterators.emplace_back(
-            std::make_unique<sstable::TableReaderIterator>(
-                block_reader_cache_, new_table_reader.get()));
-
-        // Insert new table into cache
-        table_reader_cache_->AddNewTableReader(table_id,
-                                               std::move(new_table_reader));
+            std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
+                                                           table_reader));
         continue;
       }
 
-      // If table reader had already been in cache, just create table iterator
+      // If not found, create new table and add into cache
+      std::string filename = files_need_compaction_[level][i]->filename;
+      uint64_t file_size = files_need_compaction_[level][i]->file_size;
+      auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
+          std::move(filename), table_id, file_size);
+      if (!new_table_reader) {
+        return nullptr;
+      }
+
+      // Insert new blockreader into cache
+      const sstable::TableReader *table_reader_inserted =
+          table_reader_cache_->AddNewTableReaderThenGet(
+              table_id, std::move(new_table_reader));
+      assert(table_reader_inserted);
+
+      // create iterator for new table
       table_reader_iterators.emplace_back(
-          std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
-                                                         table_reader));
+          std::make_unique<sstable::TableReaderIterator>(
+              block_reader_cache_, table_reader_inserted));
     }
   }
 

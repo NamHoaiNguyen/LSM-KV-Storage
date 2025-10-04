@@ -70,21 +70,25 @@ void TableBuilder::FlushBlock() {
 
   // Starting offset of block
   const uint64_t block_starting_offset = current_offset_;
+  ssize_t bytes_written = 0;
 
   // Flush data part of data block to disk
   std::span<const Byte> data_buffer = block_data_->GetDataView();
-  write_file_object_->Append(data_buffer, current_offset_);
+  bytes_written = write_file_object_->Append(data_buffer, current_offset_);
+  assert(bytes_written == data_buffer.size());
   current_offset_ += data_buffer.size();
 
   // Flush metadata part of data block to disk
   std::span<const Byte> offset_buffer = block_data_->GetOffsetView();
-  write_file_object_->Append(offset_buffer, current_offset_);
+  bytes_written = write_file_object_->Append(offset_buffer, current_offset_);
+  assert(bytes_written == offset_buffer.size());
   current_offset_ += offset_buffer.size();
 
   // Flush extra info of data block to disk
   block_data_->EncodeExtraInfo();
   std::span<const Byte> extra_buffer = block_data_->GetExtraView();
-  write_file_object_->Append(extra_buffer, current_offset_);
+  bytes_written = write_file_object_->Append(extra_buffer, current_offset_);
+  assert(bytes_written == extra_buffer.size());
   current_offset_ += extra_buffer.size();
 
   // Ensure that data is persisted to disk from page cache
@@ -186,6 +190,9 @@ void TableBuilder::Finish() {
 }
 
 void TableBuilder::EncodeExtraInfo() {
+  std::cout << "namnh total_block_entries_ TableBuilder::EncodeExtraInfo"
+            << total_block_entries_ << std::endl;
+
   // Insert total number of entries
   const Byte *const total_block_entries_bytes =
       reinterpret_cast<const Byte *const>(&total_block_entries_);

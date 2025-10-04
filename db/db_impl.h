@@ -35,7 +35,7 @@ class TransactionManager;
 } // namespace mvcc
 
 namespace io {
-class LinuxWriteOnlyFile;
+class AppendOnlyFile;
 } // namespace io
 
 namespace sstable {
@@ -151,7 +151,7 @@ private:
 
   std::unique_ptr<VersionManager> version_manager_;
 
-  std::unique_ptr<io::LinuxWriteOnlyFile> manifest_write_object_;
+  std::unique_ptr<io::AppendOnlyFile> manifest_write_object_;
 
   // Mutex to protect some critical data structures
   // (immutable_memtables_ list, levels_sst_info_)
