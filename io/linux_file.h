@@ -16,7 +16,6 @@ namespace io {
 
 class Buffer;
 
-
 class LinuxAppendOnlyFile : public AppendOnlyFile {
 public:
   explicit LinuxAppendOnlyFile(std::string_view filename);
@@ -38,7 +37,7 @@ public:
   bool Flush() override;
 
   // append data from buffer starting from offset
-  ssize_t Append() override;
+  ssize_t Append(std::span<const Byte> buffer) override;
 
 private:
   std::string filename_;
@@ -46,9 +45,6 @@ private:
   // file descriptor
   Fd fd_;
 };
-
-
-}
 
 class LinuxWriteOnlyFile : public WriteOnlyFile {
 public:

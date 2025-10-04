@@ -104,6 +104,10 @@ void FetchBlockIndexInfo(uint64_t total_block_entries,
 
   uint64_t starting_offset = 0;
 
+  if (total_block_entries <= 0) {
+    std::cout << "namnh debug FetchBlockIndexInfo" << std::endl;
+  }
+
   for (int i = 0; i < total_block_entries; i++) {
     // First 4 bytes contain info smallest key length
     const uint32_t smallest_key_length = *reinterpret_cast<const uint32_t *>(

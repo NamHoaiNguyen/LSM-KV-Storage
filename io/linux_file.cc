@@ -66,7 +66,7 @@ bool LinuxAppendOnlyFile::Open() {
 
 // append
 ssize_t LinuxAppendOnlyFile::Append(std::span<const Byte> buffer) {
-  return ::write(fd_, buffer, buffer.size());
+  return ::write(fd_, buffer.data(), buffer.size());
 }
 
 // ==========================Start LinuxAppendOnlyFile==========================

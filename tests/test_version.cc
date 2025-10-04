@@ -285,7 +285,7 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
   db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
-  const int nums_elem_each_thread = 100000;
+  const int nums_elem_each_thread = 1000000;
 
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {

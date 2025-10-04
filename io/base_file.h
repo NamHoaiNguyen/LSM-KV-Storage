@@ -27,8 +27,8 @@ public:
   virtual bool Open() = 0;
 
   // Append new data at the end of the file
-  virtual ssize_t Append(std::span<const Byte> buffe) = 0;
-}
+  virtual ssize_t Append(std::span<const Byte> buffer) = 0;
+};
 
 class WriteOnlyFile {
 public:
