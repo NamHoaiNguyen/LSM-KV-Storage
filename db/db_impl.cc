@@ -464,6 +464,7 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
 }
 
 void DBImpl::MaybeScheduleCompaction() {
+  std::scoped_lock rwlock(mutex_);
   if (background_compaction_scheduled_) {
     // only 1 compaction happens at a moment. This condition is highest
     // privilege
@@ -507,11 +508,7 @@ void DBImpl::ExecuteBackgroundCompaction() {
   MaybeScheduleCompaction();
 }
 
-uint64_t DBImpl::GetNextSSTId() {
-  int next_table_id = next_sstable_id_.load();
-  next_sstable_id_.fetch_add(1);
-  return next_table_id;
-}
+uint64_t DBImpl::GetNextSSTId() { return next_sstable_id_.fetch_add(1); }
 
 const Config *DBImpl::GetConfig() const { return config_.get(); }
 
