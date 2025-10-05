@@ -23,10 +23,14 @@ const TableReader *TableReaderCache::GetTableReader(SSTId table_id) const {
   return table_reader_iterator->second.get();
 }
 
-void TableReaderCache::AddNewTableReader(
+const TableReader *TableReaderCache::AddNewTableReaderThenGet(
     SSTId table_id, std::unique_ptr<TableReader> table_reader) const {
   std::scoped_lock rwlock(mutex_);
   table_readers_cache_.insert({table_id, std::move(table_reader)});
+
+  // Get block reader that MAYBE inserted
+  auto iterator = table_readers_cache_.find(table_id);
+  return iterator->second.get();
 }
 
 db::GetStatus TableReaderCache::GetKeyFromTableCache(
@@ -62,8 +66,11 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   status = new_table_reader->SearchKey(key, txn_id, block_reader_cache,
                                        new_table_reader.get());
 
-  // Insert table into cache
-  AddNewTableReader(table_id, std::move(new_table_reader));
+  {
+    // Insert table into cache
+    std::scoped_lock rwlock(mutex_);
+    table_readers_cache_.insert({table_id, std::move(new_table_reader)});
+  }
 
   return status;
 }
