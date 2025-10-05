@@ -255,6 +255,8 @@ void Compact::DoCompactJob() {
 
   std::string_view last_current_key = std::string_view{};
   TxnId last_txn_id = INVALID_TXN_ID;
+  db::ValueType last_type = db::ValueType::NOT_FOUND;
+
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
