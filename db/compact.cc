@@ -126,9 +126,6 @@ Compact::GetOverlappingSSTLvl0(std::string_view smallest_key,
     if (smallest_key > largest_key) {
       // If re-iterating is needed, maybe there is a case that smallest key can
       // be larger than largest key. If that, they need to be swapped
-      // std::string_view tmp = smallest_key;
-      // smallest_key = largest_key;
-      // largest_key = tmp;
       std::swap(smallest_key, largest_key);
     }
 
@@ -151,6 +148,7 @@ void Compact::GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
 
   for (size_t i = starting_file_index.value();
        i < version_->levels_sst_info_[level].size(); i++) {
+    // TODO(namnh, IMPORTANCE) : Recheck this logic
     // if (version_->levels_sst_info_[level][i]->smallest_key > largest_key) {
     //   // If smallest key of file is largesr than largest key, stop. Because
     //   file
@@ -337,6 +335,11 @@ bool Compact::ShouldKeepEntry(std::string_view last_current_key,
   // 3.1 If this key still show up at higher level, it should be kept as
   // tombstone
   // 3.2 Else we can remove this key
+
+  if (last_current_key.empty()) {
+    // First key of mergeIterator
+    return true;
+  }
 
   if (last_current_key != key) {
     // New key
