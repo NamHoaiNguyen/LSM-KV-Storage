@@ -79,7 +79,7 @@ bool DBImpl::LoadDB(std::string_view dbname) {
   // Load MANIFEST
   std::string manifest_path = db_path_ + kManifestFileName;
   manifest_write_object_ =
-      std::make_unique<io::LinuxWriteOnlyFile>(manifest_path);
+      std::make_unique<io::LinuxAppendOnlyFile>(manifest_path);
   if (!manifest_write_object_->Open()) {
     return false;
   }
@@ -455,7 +455,7 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
 
   // TODO(namnh, IMPORTANT) : What if append fail ?
   // TODO(namnh, IMPORTANT) : Do we need to lock file ?
-  manifest_write_object_->AppendAtLast(bytes);
+  manifest_write_object_->Append(bytes);
 }
 
 void DBImpl::MaybeScheduleCompaction() {
