@@ -151,16 +151,14 @@ void Compact::GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
 
   for (size_t i = starting_file_index.value();
        i < version_->levels_sst_info_[level].size(); i++) {
-    if (smallest_key <= version_->levels_sst_info_[level][i]->largest_key &&
-        largest_key >= version_->levels_sst_info_[level][i]->smallest_key) {
-      files_need_compaction_[1].push_back(
-          version_->levels_sst_info_[level][i].get());
-    } else {
-      // Because at these levels, files are not overllaping with each other.
-      // Because 'i.smallest_key' > 'i - 1.largest_key' then if file at "i"
-      // index doesn't overllap, then all files after it doesn't.
+    if (version_->levels_sst_info_[level][i]->smallest_key > largest_key) {
+      // If smallest key of file is largesr than largest key, stop. Because file
+      // at level >= 1 is sorted by key and not overlapping
       break;
     }
+
+    files_need_compaction_[1].push_back(
+        version_->levels_sst_info_[level][i].get());
   }
 }
 
