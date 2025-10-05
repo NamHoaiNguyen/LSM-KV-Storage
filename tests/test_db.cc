@@ -71,7 +71,7 @@ void GetOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
   done.count_down();
 }
 
-TEST(DBTest, DISABLED_RecoverDB) {
+TEST(DBTest, RecoverDB) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
