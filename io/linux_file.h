@@ -16,6 +16,36 @@ namespace io {
 
 class Buffer;
 
+class LinuxAppendOnlyFile : public AppendOnlyFile {
+public:
+  explicit LinuxAppendOnlyFile(std::string_view filename);
+
+  ~LinuxAppendOnlyFile();
+
+  // No copy allowed
+  LinuxAppendOnlyFile(const LinuxAppendOnlyFile &) = delete;
+  LinuxAppendOnlyFile &operator=(LinuxAppendOnlyFile &) = delete;
+
+  // Move constructor/assignment
+  LinuxAppendOnlyFile(LinuxAppendOnlyFile &&) = default;
+  LinuxAppendOnlyFile &operator=(LinuxAppendOnlyFile &&) = default;
+
+  bool Open() override;
+
+  bool Close() override;
+
+  bool Flush() override;
+
+  // append data from buffer starting from offset
+  ssize_t Append(std::span<const Byte> buffer) override;
+
+private:
+  std::string filename_;
+
+  // file descriptor
+  Fd fd_;
+};
+
 class LinuxWriteOnlyFile : public WriteOnlyFile {
 public:
   explicit LinuxWriteOnlyFile(std::string_view filename);

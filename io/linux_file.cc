@@ -18,6 +18,59 @@ namespace kvs {
 
 namespace io {
 
+// ==========================Start LinuxAppendOnlyFile==========================
+
+LinuxAppendOnlyFile::LinuxAppendOnlyFile(std::string_view filename)
+    : filename_(std::string(filename)) {}
+
+LinuxAppendOnlyFile::~LinuxAppendOnlyFile() { Close(); }
+
+bool LinuxAppendOnlyFile::Close() {
+  if (::close(fd_) == -1) {
+    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    return false;
+  }
+
+  return true;
+}
+
+bool LinuxAppendOnlyFile::Flush() {
+  if (::fsync(fd_) < 0) {
+    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    return false;
+  }
+
+  return true;
+}
+
+bool LinuxAppendOnlyFile::Open() {
+  // TODO(namnh) : Recheck
+  chmod(filename_.c_str(), 0644);
+
+  bool should_create = (access(filename_.c_str(), F_OK) == 0) ? false : true;
+
+  int flags = 0;
+  if (should_create) {
+    flags |= O_CREAT | O_WRONLY | O_APPEND;
+  } else {
+    flags |= O_WRONLY | O_APPEND;
+  }
+
+  fd_ = ::open(filename_.c_str(), flags, 0644);
+  if (fd_ == -1) {
+    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    return false;
+  }
+  return true;
+}
+
+// append
+ssize_t LinuxAppendOnlyFile::Append(std::span<const Byte> buffer) {
+  return ::write(fd_, buffer.data(), buffer.size());
+}
+
+// ==========================Start LinuxAppendOnlyFile==========================
+
 // ==========================Start LinuxWriteOnlyFile==========================
 
 LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string_view filename)
