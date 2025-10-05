@@ -15,6 +15,7 @@
 
 // libC++
 #include <cassert>
+#include <iostream>
 
 namespace kvs {
 
@@ -123,6 +124,12 @@ Compact::GetOverlappingSSTLvl0(std::string_view smallest_key,
   }
 
   if (ShouldIterateAgain) {
+    if (smallest_key > largest_key) {
+      std::string_view tmp = smallest_key;
+      smallest_key = largest_key;
+      largest_key = tmp;
+    }
+
     // Because smallest key and/or smallest key is updated, need another call to
     // get all overlapping SST lvl0 files
     GetOverlappingSSTLvl0(smallest_key, largest_key, oldest_sst_index);
@@ -133,6 +140,8 @@ Compact::GetOverlappingSSTLvl0(std::string_view smallest_key,
 
 void Compact::GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
                                        std::string_view largest_key) {
+  assert(smallest_key < largest_key);
+
   std::optional<size_t> starting_file_index =
       FindNonOverlappingFiles(level, smallest_key, largest_key);
 
@@ -142,16 +151,23 @@ void Compact::GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
 
   for (size_t i = starting_file_index.value();
        i < version_->levels_sst_info_[level].size(); i++) {
-    if (smallest_key <= version_->levels_sst_info_[level][i]->largest_key &&
-        largest_key >= version_->levels_sst_info_[level][i]->smallest_key) {
-      files_need_compaction_[1].push_back(
-          version_->levels_sst_info_[level][i].get());
-    } else {
-      // Because at these levels, files are not overllaping with each other.
-      // Because 'i.smallest_key' > 'i - 1.largest_key' then if file at "i"
-      // index doesn't overllap, then all files after it doesn't.
-      break;
-    }
+    // if (smallest_key <= version_->levels_sst_info_[level][i]->largest_key &&
+    //     largest_key >= version_->levels_sst_info_[level][i]->smallest_key) {
+    //   files_need_compaction_[1].push_back(
+    //       version_->levels_sst_info_[level][i].get());
+    // } else {
+    //   // Because at these levels, files are not overllaping with each other.
+    //   // Because 'i.smallest_key' > 'i - 1.largest_key' then if file at "i"
+    //   // index doesn't overllap, then all files after it doesn't.
+    //   break;
+    // }
+
+    // if (version_->levels_sst_info_[level][i]->smallest_key > largest_key) {
+    //   break;
+    // }
+
+    files_need_compaction_[1].push_back(
+        version_->levels_sst_info_[level][i].get());
   }
 }
 
@@ -248,6 +264,7 @@ void Compact::DoCompactJob() {
 
   std::string_view last_current_key = std::string_view{};
   TxnId last_txn_id = INVALID_TXN_ID;
+  db::ValueType last_type = db::ValueType::NOT_FOUND;
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
     std::string_view key = iterator->GetKey();
     std::string_view value = iterator->GetValue();
@@ -257,16 +274,58 @@ void Compact::DoCompactJob() {
            (type == db::ValueType::PUT || type == db::ValueType::DELETED) &&
            txn_id != INVALID_TXN_ID);
 
+    // if (key == "key99999") {
+    //   std::cout << "namnh  debug when compacting " << key << std::endl;
+    // }
+
+    // if (last_current_key == key) {
+    //   // When a new key shows up, keep the first (newest) version.
+    //   assert(last_current_key <= key);
+    //   last_txn_id = txn_id;
+    //   last_type = type;
+    // } else {
+    //   last_current_key = key;
+    //   last_txn_id = txn_id;
+    //   last_type = type;
+    // }
+
     // Filter
-    if (!ShouldKeepEntry(last_current_key, key, last_txn_id, txn_id, type)) {
+    if (!ShouldKeepEntry(last_current_key, key, last_txn_id, txn_id, type,
+                         last_type)) {
+      if (last_current_key != key) {
+        // When a new key shows up, keep the first (newest) version.
+        assert(last_current_key <= key);
+        last_current_key = key;
+        last_txn_id = txn_id;
+        last_type = type;
+      }
+
       continue;
     }
 
+    // if (key == "key99999") {
+    //   std::cout << "namnh  CONFIRM THAT " << key << " IS PICKED WHEN COMPACT"
+    //             << std::endl;
+    // }
+
+    // if (key == "key999999") {
+    //   std::cout << "namnh  CONFIRM THAT key999999" << " IS PICKED WHEN
+    //   COMPACT"
+    //             << std::endl;
+    // }
+
     if (last_current_key != key) {
       // When a new key shows up, keep the first (newest) version.
+      assert(last_current_key <= key);
       last_current_key = key;
       last_txn_id = txn_id;
+      last_type = type;
     }
+    // else {
+    //   last_current_key = key;
+    //   last_txn_id = txn_id;
+    //   last_type = type;
+    // }
 
     if (!new_sst) {
       new_sst_id = db_->GetNextSSTId();
@@ -315,7 +374,8 @@ void Compact::DoCompactJob() {
 
 bool Compact::ShouldKeepEntry(std::string_view last_current_key,
                               std::string_view key, TxnId last_txn_id,
-                              TxnId txn_id, ValueType type) {
+                              TxnId txn_id, ValueType type,
+                              ValueType last_type) {
   // Logic to pick a key
   // 1. If it is the first key of mergeIterator, keep
   // 2. If there are multiple same keys, keep the one with highest Transaction
@@ -330,11 +390,39 @@ bool Compact::ShouldKeepEntry(std::string_view last_current_key,
     return true;
   }
 
-  // TODO(namnh) : In reality, we can't have duplicate txn id. But this logic
-  // will be kept to avoid missing key until transaction module is supported.
-  if (last_current_key == key && last_txn_id >= txn_id) {
-    return false;
-  } else if (type == ValueType::DELETED && IsBaseLevelForKey(key)) {
+  // // TODO(namnh) : In reality, we can't have duplicate txn id. But this logic
+  // // will be kept to avoid missing key until transaction module is supported.
+  // if (last_current_key == key && last_txn_id > txn_id) {
+  //   return false;
+  // } else if (type == ValueType::DELETED) {
+  //   if (!IsBaseLevelForKey(key)) {
+  //     return true;
+  //   } else {
+  //   }
+  // }
+
+  // // else if (type == ValueType::DELETED && IsBaseLevelForKey(key)) {
+  // //   return false;
+  // // }
+
+  if (last_current_key != key) {
+    // New key
+    if (type == db::ValueType::PUT) {
+      // just keep if type is PUT
+      return true;
+    } else if (type == db::ValueType::DELETED) {
+      if (!IsBaseLevelForKey(key)) {
+        // If this key exist at higher level, keep it as tombstone
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  // Cases that meet duplicate key
+  if (last_txn_id > txn_id) {
+    // Only keep the one that have largest txn_id(or sequence number now)
     return false;
   }
 

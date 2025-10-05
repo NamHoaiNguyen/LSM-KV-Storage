@@ -465,7 +465,7 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
 
 void DBImpl::MaybeScheduleCompaction() {
   std::scoped_lock rwlock(mutex_);
-  if (background_compaction_scheduled_) {
+  if (background_compaction_scheduled_.load()) {
     // only 1 compaction happens at a moment. This condition is highest
     // privilege
     return;
@@ -475,8 +475,10 @@ void DBImpl::MaybeScheduleCompaction() {
     return;
   }
 
-  background_compaction_scheduled_ = true;
-  thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
+  // background_compaction_scheduled_ = true;
+  if (!background_compaction_scheduled_.exchange(true)) {
+    thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
+  }
 }
 
 void DBImpl::ExecuteBackgroundCompaction() {
@@ -504,7 +506,8 @@ void DBImpl::ExecuteBackgroundCompaction() {
 
   // Compaction can create many files, so maybe we need another compaction
   // round
-  background_compaction_scheduled_ = false;
+  // background_compaction_scheduled_ = false;
+  background_compaction_scheduled_.store(false);
   MaybeScheduleCompaction();
 }
 

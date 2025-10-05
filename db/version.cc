@@ -6,6 +6,7 @@
 #include "sstable/table_reader.h"
 
 #include <algorithm>
+#include <iostream>
 
 namespace kvs {
 
@@ -21,12 +22,16 @@ Version::Version(uint64_t version_id, int num_sst_levels,
   assert(thread_pool_ && version_manager_);
 }
 
-void Version::IncreaseRefCount() const { ref_count_++; }
+void Version::IncreaseRefCount() const { ref_count_.fetch_add(1); }
 
 void Version::DecreaseRefCount() const {
   assert(ref_count_ >= 1);
-  ref_count_--;
-  if (ref_count_ == 0) {
+  // ref_count_--;
+  // if (ref_count_ == 0) {
+  //   thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
+  //                         version_manager_, version_id_);
+  // }
+  if (ref_count_.fetch_sub(1) == 1) {
     thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
                           version_manager_, version_id_);
   }
@@ -74,16 +79,34 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     // TODO(namnh) : Implement bloom filter for level >= 1
     status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
                                       file_candidate->file_size);
-    if (status.type != db::ValueType::NOT_FOUND) {
-      return status;
-    }
+    // for (const auto &candidate : levels_sst_info_[level]) {
+
+    //   status = version_manager_->GetKey(key, txn_id, candidate->table_id,
+    //                                     candidate->file_size);
+    //   if (status.type != db::ValueType::NOT_FOUND) {
+    //     return status;
+    //   }
+    // }
   }
+
+  // if (status.type == db::ValueType::NOT_FOUND) {
+  //   std::cout << "namnh can't find key " << key << std::endl;
+  // }
 
   return status;
 }
 
 std::shared_ptr<SSTMetadata>
 Version::FindFilesAtLevel(int level, std::string_view key) const {
+  for (int i = 1; i < levels_sst_info_[level].size(); i++) {
+    assert(levels_sst_info_[level][i - 1]->smallest_key <
+               levels_sst_info_[level][i - 1]->largest_key &&
+           levels_sst_info_[level][i - 1]->largest_key <=
+               levels_sst_info_[level][i]->smallest_key &&
+           levels_sst_info_[level][i]->smallest_key <=
+               levels_sst_info_[level][i]->largest_key);
+  }
+
   int64_t left = 0;
   int64_t right = levels_sst_info_[level].size() - 1;
 

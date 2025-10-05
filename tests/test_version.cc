@@ -342,6 +342,11 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
 
+      // if (!key_found) {
+      //   std::cout << "namnh key miss " << key << std::endl;
+      //   continue;
+      // }
+
       EXPECT_TRUE(key_found.has_value());
       EXPECT_EQ(key_found.value(), value);
     }
@@ -366,7 +371,7 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
-  const int nums_elem_each_thread = 100000;
+  const int nums_elem_each_thread = 1000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not
@@ -477,7 +482,7 @@ TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
       value = "value" + std::to_string(nums_elem * index + i);
       key_found = db->Get(key, 0 /*txn_id*/);
 
-      EXPECT_TRUE(!key_found);
+      EXPECT_FALSE(key_found);
     }
     all_reads_after_delete_done.count_down();
   };

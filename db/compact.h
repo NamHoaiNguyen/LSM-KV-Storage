@@ -58,8 +58,8 @@ private:
   void GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
                                 std::string_view largest_key);
 
-  // Find starting index of file in level_sst_infos_ that overlaps with
-  // the fiels to be compacted from upper level
+  // Find starting index of file in level_sst_infos_ at level >= 1that overlaps
+  // with the fiels to be compacted from upper level
   std::optional<size_t> FindNonOverlappingFiles(int level,
                                                 std::string_view smallest_key,
                                                 std::string_view largest_key);
@@ -69,7 +69,8 @@ private:
 
   // Decide that a key should be kept or skipped
   bool ShouldKeepEntry(std::string_view last_current_key, std::string_view key,
-                       TxnId last_txn_id, TxnId txn_id, ValueType type);
+                       TxnId last_txn_id, TxnId txn_id, ValueType type,
+                       ValueType last_type);
 
   // Check that if there are higher level(from level_to_compact_+ 2) have key or
   // not

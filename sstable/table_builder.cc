@@ -190,8 +190,8 @@ void TableBuilder::Finish() {
 }
 
 void TableBuilder::EncodeExtraInfo() {
-  std::cout << "namnh total_block_entries_ TableBuilder::EncodeExtraInfo"
-            << total_block_entries_ << std::endl;
+  // std::cout << "namnh total_block_entries_ TableBuilder::EncodeExtraInfo"
+  //           << total_block_entries_ << std::endl;
 
   // Insert total number of entries
   const Byte *const total_block_entries_bytes =

@@ -51,6 +51,11 @@ void PutOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
   for (size_t i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(nums_elem * index + i);
     value = "value" + std::to_string(nums_elem * index + i);
+
+    if (key == "key999999") {
+      std::cout << "namnh debug key999999 PUT" << std::endl;
+    }
+
     db->Put(key, value, 0 /*txn_id*/);
   }
   done.count_down();
@@ -64,6 +69,11 @@ void GetOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
     key = "key" + std::to_string(nums_elem * index + i);
     value = "value" + std::to_string(nums_elem * index + i);
     key_found = db->Get(key, 0 /*txn_id*/);
+
+    // if (!key_found) {
+    //   std::cout << "namnh key miss " << key << std::endl;
+    //   continue;
+    // }
 
     EXPECT_TRUE(key_found);
     EXPECT_EQ(key_found.value(), value);
@@ -102,10 +112,10 @@ TEST(DBTest, RecoverDB) {
   // Wait a little bit time
   std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
-  std::latch all_reads_done(1);
-  for (int i = 0; i < 1; i++) {
-    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread * num_threads,
-                         i, std::ref(all_reads_done));
+  std::latch all_reads_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread, i,
+                         std::ref(all_reads_done));
   }
 
   // Wait until all threads finish
@@ -119,27 +129,27 @@ TEST(DBTest, RecoverDB) {
   // Wait a little bit for compaction. Otherwise, test is crashed
   std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
-  // // Restarting a new db instance
-  // db.reset();
-  // // Check recovery
-  // db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  // db->LoadDB("test");
+  // Restarting a new db instance
+  db.reset();
+  // Check recovery
+  db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB("test");
 
-  // std::latch all_reget_done(num_threads);
-  // for (int i = 0; i < num_threads; i++) {
-  //   threads.emplace_back(GetOp, db.get(), nums_elem_each_thread, i,
-  //                        std::ref(all_reget_done));
-  // }
+  std::latch all_reget_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread, i,
+                         std::ref(all_reget_done));
+  }
 
-  // // Wait until all threads finish
-  // all_reget_done.wait();
+  // Wait until all threads finish
+  all_reget_done.wait();
 
-  // for (auto &thread : threads) {
-  //   thread.join();
-  // }
+  for (auto &thread : threads) {
+    thread.join();
+  }
 
   // // Number of SST files in directory should be equal to number of SST files
-  // in
+  // // in
   // // version after reloading
   // // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
 
