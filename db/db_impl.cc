@@ -470,7 +470,9 @@ void DBImpl::MaybeScheduleCompaction() {
     return;
   }
 
-  background_compaction_scheduled_ = true;
+  if (!background_compaction_scheduled_.exchange(true)) {
+    thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
+  }
   thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
 }
 
@@ -499,7 +501,7 @@ void DBImpl::ExecuteBackgroundCompaction() {
 
   // Compaction can create many files, so maybe we need another compaction
   // round
-  background_compaction_scheduled_ = false;
+  background_compaction_scheduled_.store(false);
   MaybeScheduleCompaction();
 }
 
