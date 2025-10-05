@@ -123,6 +123,15 @@ Compact::GetOverlappingSSTLvl0(std::string_view smallest_key,
   }
 
   if (ShouldIterateAgain) {
+    if (smallest_key > largest_key) {
+      // If re-iterating is needed, maybe there is a case that smallest key can
+      // be larger than largest key. If that, they need to be swapped
+      // std::string_view tmp = smallest_key;
+      // smallest_key = largest_key;
+      // largest_key = tmp;
+      std::swap(smallest_key, largest_key);
+    }
+
     // Because smallest key and/or smallest key is updated, need another call to
     // get all overlapping SST lvl0 files
     GetOverlappingSSTLvl0(smallest_key, largest_key, oldest_sst_index);

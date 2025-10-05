@@ -459,7 +459,7 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
 }
 
 void DBImpl::MaybeScheduleCompaction() {
-  std::scoped_lock rwlock(mutex_);
+  // std::scoped_lock rwlock(mutex_);
   if (background_compaction_scheduled_) {
     // only 1 compaction happens at a moment. This condition is highest
     // privilege
