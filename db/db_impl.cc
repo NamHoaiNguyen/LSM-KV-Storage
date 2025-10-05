@@ -473,7 +473,6 @@ void DBImpl::MaybeScheduleCompaction() {
   if (!background_compaction_scheduled_.exchange(true)) {
     thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
   }
-  thread_pool_->Enqueue(&DBImpl::ExecuteBackgroundCompaction, this);
 }
 
 void DBImpl::ExecuteBackgroundCompaction() {
