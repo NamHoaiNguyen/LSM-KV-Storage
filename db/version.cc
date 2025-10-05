@@ -21,12 +21,11 @@ Version::Version(uint64_t version_id, int num_sst_levels,
   assert(thread_pool_ && version_manager_);
 }
 
-void Version::IncreaseRefCount() const { ref_count_++; }
+void Version::IncreaseRefCount() const { ref_count_.fetch_add(1); }
 
 void Version::DecreaseRefCount() const {
   assert(ref_count_ >= 1);
-  ref_count_--;
-  if (ref_count_ == 0) {
+  if (ref_count_.fetch_sub(1) == 1) {
     thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
                           version_manager_, version_id_);
   }

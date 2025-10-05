@@ -41,8 +41,7 @@ void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
          file_index++) {
       // Decrease number of version that is refering to a file when an obsolete
       // version is deleted
-      sst_metadata[level][file_index]->ref_count--;
-      if (sst_metadata[level][file_index]->ref_count == 0) {
+      if (sst_metadata[level][file_index]->ref_count.fetch_sub(1) == 1) {
         // If ref count of a SST file = 0, it means that versions refer to it no
         // more. Time to say goodbye!
         fs::path file_path(sst_metadata[level][file_index]->filename);
@@ -72,7 +71,8 @@ void VersionManager::ApplyNewChanges(
 
 void VersionManager::InitVersionWhenLoadingDb(
     std::unique_ptr<VersionEdit> version_edit) {
-  uint64_t new_verions_id = ++next_version_id_;
+  next_version_id_.fetch_add(1);
+  uint64_t new_verions_id = next_version_id_;
   auto new_version = std::make_unique<Version>(
       new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
 
@@ -87,7 +87,7 @@ void VersionManager::InitVersionWhenLoadingDb(
     for (const auto &sst_info : add_files[level]) {
       // Increase refcount of SST metadata each time a new version is
       // created
-      sst_info->ref_count++;
+      sst_info->ref_count.fetch_add(1);
 
       latest_version_sst_info[level].push_back(sst_info);
     }
@@ -131,7 +131,8 @@ void VersionManager::InitVersionWhenLoadingDb(
 
 void VersionManager::CreateNewVersion(
     std::unique_ptr<VersionEdit> version_edit) {
-  uint64_t new_verions_id = ++next_version_id_;
+  next_version_id_.fetch_add(1);
+  uint64_t new_verions_id = next_version_id_.load();
   auto new_version = std::make_unique<Version>(
       new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
 
@@ -165,7 +166,7 @@ void VersionManager::CreateNewVersion(
 
       // Increase refcount of SST metadata each time a new version is
       // created
-      sst_info->ref_count++;
+      sst_info->ref_count.fetch_add(1);
 
       latest_version_sst_info[level].push_back(sst_info);
     }
@@ -181,8 +182,9 @@ void VersionManager::CreateNewVersion(
       continue;
     }
 
-    std::for_each(added_files[level].begin(), added_files[level].end(),
-                  [](const auto &elem) { return elem->ref_count++; });
+    std::for_each(
+        added_files[level].begin(), added_files[level].end(),
+        [](const auto &elem) { return elem->ref_count.fetch_add(1); });
 
     if (level == 0) {
       latest_version_sst_info[level].insert(
