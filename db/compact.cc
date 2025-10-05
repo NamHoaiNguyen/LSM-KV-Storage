@@ -265,14 +265,17 @@ void Compact::DoCompactJob() {
            txn_id != INVALID_TXN_ID);
 
     // Filter
-    if (!ShouldKeepEntry(last_current_key, key, last_txn_id, txn_id, type)) {
-      continue;
-    }
-
+    bool should_keep_entry =
+        ShouldKeepEntry(last_current_key, key, last_txn_id, txn_id, type);
     if (last_current_key != key) {
       // When a new key shows up, keep the first (newest) version.
       last_current_key = key;
       last_txn_id = txn_id;
+      last_type = type;
+    }
+
+    if (!should_keep_entry) {
+      continue;
     }
 
     if (!new_sst) {
@@ -332,16 +335,24 @@ bool Compact::ShouldKeepEntry(std::string_view last_current_key,
   // tombstone
   // 3.2 Else we can remove this key
 
-  if (last_current_key.empty()) {
-    // First key of mergeIterator
-    return true;
+  if (last_current_key != key) {
+    // New key
+    if (type == db::ValueType::PUT) {
+      // just keep if type is PUT
+      return true;
+    } else if (type == db::ValueType::DELETED) {
+      if (!IsBaseLevelForKey(key)) {
+        // If this key exist at higher level, keep it as tombstone
+        return true;
+      } else {
+        return false;
+      }
+    }
   }
 
-  // TODO(namnh) : In reality, we can't have duplicate txn id. But this logic
-  // will be kept to avoid missing key until transaction module is supported.
-  if (last_current_key == key && last_txn_id >= txn_id) {
-    return false;
-  } else if (type == ValueType::DELETED && IsBaseLevelForKey(key)) {
+  // Cases that meet duplicate key
+  if (last_txn_id > txn_id) {
+    // Only keep the one that have largest txn_id(or sequence number now)
     return false;
   }
 
