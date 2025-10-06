@@ -140,7 +140,7 @@ Compact::GetOverlappingSSTLvl0(std::string_view smallest_key,
 void Compact::GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
                                        std::string_view largest_key) {
   std::optional<size_t> starting_file_index =
-      FindNonOverlappingFiles(level, smallest_key, largest_key);
+      FindFile(level, smallest_key, largest_key);
 
   if (!starting_file_index) {
     return;
@@ -148,33 +148,24 @@ void Compact::GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
 
   for (size_t i = starting_file_index.value();
        i < version_->levels_sst_info_[level].size(); i++) {
-    // TODO(namnh, IMPORTANCE) : Recheck this logic
-    // if (version_->levels_sst_info_[level][i]->smallest_key > largest_key) {
-    //   // If smallest key of file is largesr than largest key, stop. Because
-    //   file
-    //   // at level >= 1 is sorted by key and not overlapping
-    //   break;
-    // }
-
     files_need_compaction_[1].push_back(
         version_->levels_sst_info_[level][i].get());
   }
 }
 
-std::optional<size_t>
-Compact::FindNonOverlappingFiles(int level, std::string_view smallest_key,
-                                 std::string_view largest_key) {
+std::optional<int64_t> Compact::FindFile(int level,
+                                         std::string_view smallest_key,
+                                         std::string_view largest_key) {
   assert(level >= 1);
   if (version_->levels_sst_info_[level].empty()) {
     return std::nullopt;
   }
 
-  size_t left = 0;
-  // TODO(namnh) : SAFE ?
-  size_t right = version_->levels_sst_info_[level].size() - 1;
+  int64_t left = 0;
+  int64_t right = version_->levels_sst_info_[level].size() - 1;
 
   while (left < right) {
-    size_t mid = left + (right - left) / 2;
+    int64_t mid = left + (right - left) / 2;
     if (version_->levels_sst_info_[level][mid]->largest_key < smallest_key) {
       // Largest key of sst index "mid" < smallest_key. Therefor all files
       // at or before "mid" are uninteresting

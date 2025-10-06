@@ -58,11 +58,10 @@ private:
   void GetOverlappingSSTNextLvl(int level, std::string_view smallest_key,
                                 std::string_view largest_key);
 
-  // Find starting index of file in level_sst_infos_ that overlaps with
-  // the fiels to be compacted from upper level
-  std::optional<size_t> FindNonOverlappingFiles(int level,
-                                                std::string_view smallest_key,
-                                                std::string_view largest_key);
+  // Find starting index of file in level_sst_infos_ that overlaps  range from
+  // smallest_key to largest_key
+  std::optional<int64_t> FindFile(int level, std::string_view smallest_key,
+                                  std::string_view largest_key);
 
   // Execute compaction based on compact info
   void DoCompactJob();
