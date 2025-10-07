@@ -24,6 +24,7 @@
 #include "sstable/block_builder.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"

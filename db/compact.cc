@@ -8,6 +8,7 @@
 #include "db/version.h"
 #include "sstable/block_builder.h"
 #include "sstable/block_reader_iterator.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
@@ -191,9 +192,11 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       // filename = files_need_compaction_[level][i]->filename;
       table_id = files_need_compaction_[level][i]->table_id;
       // Find table in cache
-      const sstable::TableReader *table_reader =
+      // const sstable::TableReader *table_reader =
+      //     table_reader_cache_->GetTableReader(table_id);
+      const sstable::LRUTableItem *table_reader =
           table_reader_cache_->GetTableReader(table_id);
-      if (table_reader) {
+      if (table_reader && table_reader->GetTableReader()) {
         // If table reader had already been in cache, just create table iterator
         table_reader_iterators.emplace_back(
             std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
@@ -211,7 +214,10 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       }
 
       // Insert new blockreader into cache
-      const sstable::TableReader *table_reader_inserted =
+      // const sstable::TableReader *table_reader_inserted =
+      //     table_reader_cache_->AddNewTableReaderThenGet(
+      //         table_id, std::move(new_table_reader));
+      const sstable::LRUTableItem *table_reader_inserted =
           table_reader_cache_->AddNewTableReaderThenGet(
               table_id, std::move(new_table_reader));
       assert(table_reader_inserted);

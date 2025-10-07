@@ -1,6 +1,7 @@
 #include "sstable/block_reader_cache.h"
 
 #include "sstable/block_reader.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
 
@@ -31,11 +32,11 @@ const BlockReader *BlockReaderCache::AddNewBlockReaderThenGet(
   return iterator->second.get();
 }
 
-db::GetStatus
-BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
-                                       std::pair<SSTId, BlockOffset> block_info,
-                                       uint64_t block_size,
-                                       const TableReader *table_reader) const {
+db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
+    std::string_view key, TxnId txn_id,
+    std::pair<SSTId, BlockOffset> block_info, uint64_t block_size,
+    //  const TableReader *table_reader) const {
+    const LRUTableItem *table_reader) const {
   assert(table_reader);
   db::GetStatus status;
 
@@ -53,8 +54,9 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   }
 
   // Create new tablereader
-  auto new_block_reader = table_reader->CreateAndSetupDataForBlockReader(
-      block_info.second, block_size);
+  auto new_block_reader =
+      table_reader->GetTableReader()->CreateAndSetupDataForBlockReader(
+          block_info.second, block_size);
 
   status = new_block_reader->SearchKey(key, txn_id);
 
@@ -63,6 +65,8 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
     std::scoped_lock rwlock(mutex_);
     block_reader_cache_.insert({block_info, std::move(new_block_reader)});
   }
+
+  table_reader->Unref();
 
   return status;
 }

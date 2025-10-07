@@ -3,34 +3,77 @@
 #include "db/db_impl.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_reader.h"
 
 namespace kvs {
 
 namespace sstable {
 
-TableReaderCache::TableReaderCache(const db::DBImpl *db) : db_(db) {
+TableReaderCache::TableReaderCache(const db::DBImpl *db)
+    : capacity_(100), db_(db) {
   assert(db_);
 }
 
-const TableReader *TableReaderCache::GetTableReader(SSTId table_id) const {
+const LRUTableItem *TableReaderCache::GetTableReader(SSTId table_id) const {
   std::shared_lock rlock(mutex_);
-  auto table_reader_iterator = table_readers_cache_.find(table_id);
-  if (table_reader_iterator == table_readers_cache_.end()) {
+  auto iterator = table_readers_cache_.find(table_id);
+  if (iterator == table_readers_cache_.end()) {
     return nullptr;
   }
 
-  return table_reader_iterator->second.get();
+  // Increase ref count
+  iterator->second->ref_count_.fetch_add(1);
+
+  return iterator->second.get();
 }
 
-const TableReader *TableReaderCache::AddNewTableReaderThenGet(
+const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
     SSTId table_id, std::unique_ptr<TableReader> table_reader) const {
+  auto lru_table_item =
+      std::make_unique<LRUTableItem>(table_id, std::move(table_reader), this);
+
   std::scoped_lock rwlock(mutex_);
-  table_readers_cache_.insert({table_id, std::move(table_reader)});
+  if (table_readers_cache_.size() >= capacity_) {
+    Evict();
+  }
+
+  table_readers_cache_.insert({table_id, std::move(lru_table_item)});
 
   // Get block reader that MAYBE inserted
   auto iterator = table_readers_cache_.find(table_id);
+  // Increase ref count
+  iterator->second->ref_count_.fetch_add(1);
+
   return iterator->second.get();
+}
+
+// NOT THREAD-SAFE
+void TableReaderCache::Evict() const {
+  if (free_list_.empty()) {
+    return;
+  }
+
+  SSTId table_id = free_list_.front();
+  auto iterator = table_readers_cache_.find(table_id);
+  while (iterator != table_readers_cache_.end() &&
+         iterator->second->ref_count_ > 0) {
+    free_list_.pop_front();
+
+    table_id = free_list_.front();
+    iterator = table_readers_cache_.find(table_id);
+  }
+
+  free_list_.pop_front();
+
+  // Erase from cache
+  table_readers_cache_.erase(table_id);
+}
+
+void TableReaderCache::AddVictim(SSTId table_id) const {
+  std::scoped_lock rwlock(mutex_);
+
+  free_list_.push_back(table_id);
 }
 
 db::GetStatus TableReaderCache::GetKeyFromTableCache(
@@ -44,11 +87,12 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   // Temporarily, because of lacking cache eviction mechanism. everything is
   // fine. But when cache eviction algorithm is implemented, ref count for
   // TableReader should be also done too
-  const TableReader *table_reader = GetTableReader(table_id);
-  if (table_reader) {
+  // const TableReader *table_reader = GetTableReader(table_id);
+  const LRUTableItem *table_reader = GetTableReader(table_id);
+  if (table_reader && table_reader->table_reader_) {
     // if table reader had already been in cache
-    status =
-        table_reader->SearchKey(key, txn_id, block_reader_cache, table_reader);
+    status = table_reader->table_reader_->SearchKey(
+        key, txn_id, block_reader_cache, table_reader);
     return status;
   }
 
@@ -63,14 +107,21 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   }
 
   // Search key in new table
-  status = new_table_reader->SearchKey(key, txn_id, block_reader_cache,
-                                       new_table_reader.get());
+  // status = lru_table_item->GetTableReader()->SearchKey(
+  //     key, txn_id, block_reader_cache, lru_table_item.get());
 
-  {
-    // Insert table into cache
-    std::scoped_lock rwlock(mutex_);
-    table_readers_cache_.insert({table_id, std::move(new_table_reader)});
-  }
+  // {
+  //   // Insert table into cache
+  //   std::scoped_lock rwlock(mutex_);
+  //   table_readers_cache_.insert({table_id, std::move(lru_table_item)});
+  // }
+
+  const LRUTableItem *lru_table_item =
+      AddNewTableReaderThenGet(table_id, std::move(new_table_reader));
+  assert(lru_table_item_immu);
+
+  status = lru_table_item->GetTableReader()->SearchKey(
+      key, txn_id, block_reader_cache, lru_table_item);
 
   return status;
 }

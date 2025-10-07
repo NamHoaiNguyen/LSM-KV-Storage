@@ -3,6 +3,7 @@
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
 #include "sstable/block_reader_iterator.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_reader.h"
 
 namespace kvs {
@@ -15,6 +16,17 @@ TableReaderIterator::TableReaderIterator(
       block_reader_cache_(block_reader_cache), table_reader_(table_reader) {
   assert(block_reader_cache_ && table_reader_);
 }
+
+TableReaderIterator::TableReaderIterator(
+    const BlockReaderCache *block_reader_cache,
+    const LRUTableItem *lru_table_item)
+    : block_reader_iterator_(nullptr), current_block_offset_index_(0),
+      block_reader_cache_(block_reader_cache), lru_table_item_(lru_table_item) {
+  table_reader_ = lru_table_item_->GetTableReader();
+  assert(block_reader_cache_ && lru_table_item_ && table_reader_);
+}
+
+TableReaderIterator::~TableReaderIterator() { lru_table_item_->Unref(); }
 
 std::string_view TableReaderIterator::GetKey() {
   return block_reader_iterator_->GetKey();

@@ -6,6 +6,7 @@
 #include "sstable/block_index.h"
 
 // libC++
+#include <list>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -21,6 +22,7 @@ class DBImpl;
 namespace sstable {
 
 class BlockReaderCache;
+class LRUTableItem;
 class TableReader;
 
 class TableReaderCache {
@@ -41,19 +43,28 @@ public:
       std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
       const sstable::BlockReaderCache *block_reader_cache) const;
 
-  const TableReader *
+  const LRUTableItem *
   AddNewTableReaderThenGet(SSTId table_id,
                            std::unique_ptr<TableReader> table_reader) const;
 
-  const TableReader *GetTableReader(SSTId table_id) const;
+  const LRUTableItem *GetTableReader(SSTId table_id) const;
+
+  void AddVictim(SSTId table_id) const;
 
 private:
-  const db::DBImpl *db_;
+  // NOT THREAD-SAFE
+  void Evict() const;
 
-  mutable std::unordered_map<SSTId, std::unique_ptr<TableReader>>
+  const int capacity_;
+
+  mutable std::unordered_map<SSTId, std::unique_ptr<LRUTableItem>>
       table_readers_cache_;
 
+  mutable std::list<SSTId> free_list_;
+
   mutable std::shared_mutex mutex_;
+
+  const db::DBImpl *db_;
 };
 
 } // namespace sstable
