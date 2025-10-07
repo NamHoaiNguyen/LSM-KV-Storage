@@ -26,6 +26,8 @@ LinuxAppendOnlyFile::LinuxAppendOnlyFile(std::string_view filename)
 LinuxAppendOnlyFile::~LinuxAppendOnlyFile() { Close(); }
 
 bool LinuxAppendOnlyFile::Close() {
+  std::cout << filename_ << " LinuxAppendOnlyFile is closed" << std::endl;
+
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -79,6 +81,8 @@ LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string_view filename)
 LinuxWriteOnlyFile::~LinuxWriteOnlyFile() { Close(); }
 
 bool LinuxWriteOnlyFile::Close() {
+  // std::cout << filename_ << " LinuxWriteOnlyFile is closed" << std::endl;
+
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -174,6 +178,8 @@ bool LinuxReadOnlyFile::Open() {
 }
 
 bool LinuxReadOnlyFile::Close() {
+  std::cout << filename_ << " LinuxReadOnlyFile is closed" << std::endl;
+
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;

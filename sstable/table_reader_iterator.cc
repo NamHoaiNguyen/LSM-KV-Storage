@@ -10,12 +10,13 @@ namespace kvs {
 
 namespace sstable {
 
-TableReaderIterator::TableReaderIterator(
-    const BlockReaderCache *block_reader_cache, const TableReader *table_reader)
-    : block_reader_iterator_(nullptr), current_block_offset_index_(0),
-      block_reader_cache_(block_reader_cache), table_reader_(table_reader) {
-  assert(block_reader_cache_ && table_reader_);
-}
+// TableReaderIterator::TableReaderIterator(
+//     const BlockReaderCache *block_reader_cache, const TableReader
+//     *table_reader) : block_reader_iterator_(nullptr),
+//     current_block_offset_index_(0),
+//       block_reader_cache_(block_reader_cache), table_reader_(table_reader) {
+//   assert(block_reader_cache_ && table_reader_);
+// }
 
 TableReaderIterator::TableReaderIterator(
     const BlockReaderCache *block_reader_cache,

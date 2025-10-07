@@ -19,8 +19,8 @@ class TableReader;
 
 class TableReaderIterator : public kvs::BaseIterator {
 public:
-  TableReaderIterator(const BlockReaderCache *block_reader_cache,
-                      const TableReader *table_reader);
+  // TableReaderIterator(const BlockReaderCache *block_reader_cache,
+  //                     const TableReader *table_reader);
 
   TableReaderIterator(const BlockReaderCache *block_reader_cache,
                       const LRUTableItem *lru_table_item);
