@@ -13,6 +13,7 @@
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_iterator.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_iterator.h"
@@ -61,7 +62,7 @@ void ClearAllSstFiles(const db::DBImpl *db) {
   }
 }
 
-TEST(TableTest, DISABLED_MergeIterator) {
+TEST(TableTest, MergeIterator) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
@@ -120,58 +121,62 @@ TEST(TableTest, DISABLED_MergeIterator) {
     }
   }
 
-  // std::vector<std::unique_ptr<sstable::TableReader>> table_readers;
-  // std::vector<std::unique_ptr<sstable::TableReaderIterator>>
-  //     table_reader_iterators_;
-  // for (int i = 0; i < sst_metadata[0].size(); i++) {
-  //   std::string filename =
-  //       db->GetDBPath() + std::to_string(sst_metadata[0][i]->table_id) +
-  //       ".sst";
-  //   std::unique_ptr<sstable::TableReader> table_reader =
-  //       sstable::CreateAndSetupDataForTableReader(
-  //           std::move(filename), sst_metadata[0][i]->table_id,
-  //           sst_metadata[0][i]->file_size);
+  std::vector<std::unique_ptr<sstable::LRUTableItem>> lru_table_items;
+  std::vector<std::unique_ptr<sstable::TableReaderIterator>>
+      table_reader_iterators;
+  for (int i = 0; i < sst_metadata[0].size(); i++) {
+    std::string filename =
+        db->GetDBPath() + std::to_string(sst_metadata[0][i]->table_id) + ".sst";
+    std::unique_ptr<sstable::TableReader> table_reader =
+        sstable::CreateAndSetupDataForTableReader(
+            std::move(filename), sst_metadata[0][i]->table_id,
+            sst_metadata[0][i]->file_size);
 
-  //   auto iterator = std::make_unique<sstable::TableReaderIterator>(
-  //       db->GetBlockReaderCache(), table_reader.get());
+    // Mock LRU table item
+    auto lru_table_item = std::make_unique<sstable::LRUTableItem>(
+        sst_metadata[0][i]->table_id /*table_id*/, std::move(table_reader),
+        db->GetTableReaderCache());
 
-  //   table_readers.push_back(std::move(table_reader));
-  //   table_reader_iterators_.push_back(std::move(iterator));
-  // }
+    auto iterator = std::make_unique<sstable::TableReaderIterator>(
+        db->GetBlockReaderCache(), lru_table_item.get());
 
-  // auto iterator =
-  //     std::make_unique<MergeIterator>(std::move(table_reader_iterators_));
+    lru_table_items.push_back(std::move(lru_table_item));
+    table_reader_iterators.push_back(std::move(iterator));
+  }
 
-  // int total_elems = 0;
-  // // Forward traverse
-  // for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-  //   std::string_view key_found = iterator->GetKey();
-  //   std::string_view value_found = iterator->GetValue();
+  auto iterator =
+      std::make_unique<MergeIterator>(std::move(table_reader_iterators));
 
-  //   // Order of key/value in iterator must be sorted
-  //   EXPECT_EQ(key_found, list_key_value[total_elems].first);
-  //   EXPECT_EQ(value_found, list_key_value[total_elems].second);
+  int total_elems = 0;
+  // Forward traverse
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    std::string_view key_found = iterator->GetKey();
+    std::string_view value_found = iterator->GetValue();
 
-  //   total_elems++;
-  // }
+    // Order of key/value in iterator must be sorted
+    EXPECT_EQ(key_found, list_key_value[total_elems].first);
+    EXPECT_EQ(value_found, list_key_value[total_elems].second);
 
-  // int last_elem_index = total_elems - 1;
-  // // Backward traverse
-  // for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
-  //   std::string_view key_found = iterator->GetKey();
-  //   std::string_view value_found = iterator->GetValue();
+    total_elems++;
+  }
 
-  //   // Order of key/value in iterator must be sorted
-  //   EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
-  //   EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
+  int last_elem_index = total_elems - 1;
+  // Backward traverse
+  for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
+    std::string_view key_found = iterator->GetKey();
+    std::string_view value_found = iterator->GetValue();
 
-  //   last_elem_index--;
-  // }
+    // Order of key/value in iterator must be sorted
+    EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
+    EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
 
-  // // Number of key value pairs should be equal to list_key_value's size.
-  // EXPECT_EQ(list_key_value.size(), total_elems);
+    last_elem_index--;
+  }
 
-  // ClearAllSstFiles(db.get());
+  // Number of key value pairs should be equal to list_key_value's size.
+  EXPECT_EQ(list_key_value.size(), total_elems);
+
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db

@@ -11,7 +11,7 @@ namespace kvs {
 namespace sstable {
 
 TableReaderCache::TableReaderCache(const db::DBImpl *db)
-    : capacity_(10), db_(db) {
+    : capacity_(1000), db_(db) {
   assert(db_);
 }
 
@@ -65,9 +65,9 @@ void TableReaderCache::Evict() const {
 
   while (iterator != table_readers_cache_.end() &&
          iterator->second->ref_count_ > 0 && !free_list_.empty()) {
-    std::cout << table_id
-              << " table_id is in picked process to evict with ref_count = "
-              << iterator->second->ref_count_ << std::endl;
+    // std::cout << table_id
+    //           << " table_id is in picked process to evict with ref_count = "
+    //           << iterator->second->ref_count_ << std::endl;
 
     table_id = free_list_.front();
     iterator = table_readers_cache_.find(table_id);
@@ -77,8 +77,8 @@ void TableReaderCache::Evict() const {
   // Erase from cache
   if (iterator != table_readers_cache_.end() &&
       iterator->second->ref_count_ == 0) {
-    // std::cout << table_id << " is evicted from cache when ref_count = "
-    //           << iterator->second->ref_count_ << std::endl;
+    std::cout << table_id << " is evicted from cache when ref_count = "
+              << iterator->second->ref_count_ << std::endl;
     table_readers_cache_.erase(table_id);
   }
 }
@@ -118,7 +118,9 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   auto new_table_reader = CreateAndSetupDataForTableReader(std::move(filename),
                                                            table_id, file_size);
   if (!new_table_reader) {
-    throw std::runtime_error("Can't open SST file to read");
+    // throw std::runtime_error("Can't open SST file to read");
+    status.type = db::ValueType::kTooManyOpenFiles;
+    return status;
   }
 
   // Search key in new table

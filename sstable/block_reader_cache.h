@@ -8,6 +8,7 @@
 // libC++
 #include <cassert>
 #include <functional>
+#include <list>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -21,13 +22,14 @@ namespace kvs {
 namespace sstable {
 
 class BlockReader;
+class LRUBlockItem;
 class LRUTableItem;
 class TableReaderCache;
 class TableReader;
 
 class BlockReaderCache {
 public:
-  BlockReaderCache() = default;
+  BlockReaderCache();
 
   ~BlockReaderCache() = default;
 
@@ -39,10 +41,10 @@ public:
   BlockReaderCache(BlockReaderCache &&) = delete;
   BlockReaderCache &operator=(BlockReaderCache &&) = delete;
 
-  const BlockReader *
+  const LRUBlockItem *
   GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;
 
-  const BlockReader *
+  const LRUBlockItem *
   AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
                            std::unique_ptr<BlockReader> block_reader) const;
 
@@ -52,7 +54,12 @@ public:
                                      //  const TableReader *table_reader) const;
                                      const LRUTableItem *table_reader) const;
 
+  void AddVictim(std::pair<SSTId, BlockOffset> block_info) const;
+
 private:
+  // NOT THREAD-SAFE
+  void Evict() const;
+
   // Custom hash for pair<int, int>
   struct pair_hash {
     size_t operator()(const std::pair<SSTId, BlockOffset> &p) const noexcept {
@@ -72,11 +79,13 @@ private:
   // Each key of block reader item in block reader cache is the combination
   // of table id and block offset
   mutable std::unordered_map<std::pair<SSTId, BlockOffset>,
-                             std::unique_ptr<BlockReader>, pair_hash,
+                             std::unique_ptr<LRUBlockItem>, pair_hash,
                              pair_equal>
       block_reader_cache_;
 
-  const TableReaderCache *table_reader_cache_;
+  const int capacity_;
+
+  mutable std::list<std::pair<SSTId, BlockOffset>> free_list_;
 
   mutable std::shared_mutex mutex_;
 };

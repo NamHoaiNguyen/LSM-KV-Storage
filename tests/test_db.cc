@@ -10,6 +10,9 @@
 #include <filesystem>
 #include <memory>
 
+// posix API
+#include <sys/resource.h>
+
 namespace fs = std::filesystem;
 
 namespace kvs {
@@ -69,6 +72,71 @@ void GetOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
     EXPECT_EQ(key_found.value(), value);
   }
   done.count_down();
+}
+
+TEST(DBTest, LRUTableReaderCache) {
+  // Guarantee that maximum number of file descriptors doesn't exceed limit
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB("test");
+
+  const int nums_elem_each_thread = 2000000;
+  unsigned int num_threads = std::thread::hardware_concurrency();
+  if (num_threads == 0) {
+    // std::thread::hardware_concurrency() might return 0 if sys info not
+    // available
+    num_threads = 10;
+  }
+  std::vector<std::thread> threads;
+
+  std::latch all_writes_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(PutOp, db.get(), nums_elem_each_thread, i,
+                         std::ref(all_writes_done));
+  }
+  // Wait until all threads finish
+  all_writes_done.wait();
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
+
+  // Force clearing all immutable memtables
+  db->ForceFlushMemTable();
+  // Wait a little bit time
+  std::this_thread::sleep_for(std::chrono::milliseconds(15000));
+
+  // Set new limits
+  // With that value of soft limit, it is ensured that table reader cache MUST
+  // work normally to guarantee that this threshold is not reached.
+  struct rlimit limit;
+  limit.rlim_cur = 1024;
+  limit.rlim_max = 4096;
+
+  EXPECT_NE(setrlimit(RLIMIT_NOFILE, &limit), -1);
+
+  std::latch all_reads_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread, i,
+                         std::ref(all_reads_done));
+  }
+
+  // Wait until all threads finish
+  all_reads_done.wait();
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
+
+  // Wait a little bit for compaction. Otherwise, test is crashed
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+  // Number of SST files in directory should be equal to number of SST files in
+  // version after reloading
+  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+
+  ClearAllSstFiles(db.get());
 }
 
 TEST(DBTest, RecoverDB) {

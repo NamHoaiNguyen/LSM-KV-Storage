@@ -10,7 +10,6 @@
 
 // C libs
 #include <fcntl.h>
-#include <iostream>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -26,8 +25,6 @@ LinuxAppendOnlyFile::LinuxAppendOnlyFile(std::string_view filename)
 LinuxAppendOnlyFile::~LinuxAppendOnlyFile() { Close(); }
 
 bool LinuxAppendOnlyFile::Close() {
-  std::cout << filename_ << " LinuxAppendOnlyFile is closed" << std::endl;
-
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -60,7 +57,8 @@ bool LinuxAppendOnlyFile::Open() {
 
   fd_ = ::open(filename_.c_str(), flags, 0644);
   if (fd_ == -1) {
-    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    std::cerr << " LinuxAppendOnlyFileError message: " << std::strerror(errno)
+              << std::endl;
     return false;
   }
   return true;
@@ -81,7 +79,7 @@ LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string_view filename)
 LinuxWriteOnlyFile::~LinuxWriteOnlyFile() { Close(); }
 
 bool LinuxWriteOnlyFile::Close() {
-  // std::cout << filename_ << " LinuxWriteOnlyFile is closed" << std::endl;
+  // std::cout << "LinuxWriteOnlyFile is closed" << std::endl;
 
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
@@ -115,7 +113,8 @@ bool LinuxWriteOnlyFile::Open() {
 
   fd_ = ::open(filename_.c_str(), flags, 0644);
   if (fd_ == -1) {
-    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    std::cerr << "LinuxWriteOnlyFile Error message: " << std::strerror(errno)
+              << std::endl;
     return false;
   }
   return true;
@@ -171,15 +170,14 @@ LinuxReadOnlyFile::~LinuxReadOnlyFile() { Close(); }
 bool LinuxReadOnlyFile::Open() {
   fd_ = ::open(filename_.c_str(), O_RDONLY);
   if (fd_ == -1) {
-    std::cerr << "Error message: " << std::strerror(errno) << std::endl;
+    std::cerr << "LinuxReadOnlyFile Error message: " << std::strerror(errno)
+              << std::endl;
     return false;
   }
   return true;
 }
 
 bool LinuxReadOnlyFile::Close() {
-  std::cout << filename_ << " LinuxReadOnlyFile is closed" << std::endl;
-
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;

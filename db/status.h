@@ -16,6 +16,8 @@ enum class ValueType : uint8_t {
   NOT_FOUND = 2,
 
   INVALID = 3,
+
+  kTooManyOpenFiles = 4,
 };
 
 struct GetStatus {

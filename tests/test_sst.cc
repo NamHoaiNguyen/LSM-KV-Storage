@@ -15,6 +15,7 @@
 #include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
 #include "sstable/table_reader.h"
+#include "sstable/table_reader_cache.h"
 #include "sstable/table_reader_iterator.h"
 
 // libC++
@@ -250,7 +251,7 @@ TEST(TableTest, BasicTableReader) {
   ClearAllSstFiles(db.get());
 }
 
-TEST(TableTest, DISABLED_TableReaderIterator) {
+TEST(TableTest, TableReaderIterator) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
@@ -308,49 +309,52 @@ TEST(TableTest, DISABLED_TableReaderIterator) {
     }
   }
 
-  // std::string filename = db->GetDBPath() + std::to_string(1) + ".sst";
+  std::string filename = db->GetDBPath() + std::to_string(1) + ".sst";
 
-  // std::unique_ptr<sstable::TableReader> table_reader =
-  //     sstable::CreateAndSetupDataForTableReader(
-  //         std::move(filename), 1 /*sst_id*/, sst_metadata[0][0]->file_size);
+  std::unique_ptr<sstable::TableReader> table_reader =
+      sstable::CreateAndSetupDataForTableReader(
+          std::move(filename), 1 /*sst_id*/, sst_metadata[0][0]->file_size);
+  // Mock LRU table item
+  auto lru_table_item = std::make_unique<LRUTableItem>(
+      1 /*table_id*/, std::move(table_reader), db->GetTableReaderCache());
 
-  // auto iterator = std::make_unique<sstable::TableReaderIterator>(
-  //     db->GetBlockReaderCache(), table_reader.get());
+  auto iterator = std::make_unique<sstable::TableReaderIterator>(
+      db->GetBlockReaderCache(), lru_table_item.get());
 
-  // int total_elems = 0;
-  // for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-  //   std::string_view key_found = iterator->GetKey();
-  //   std::string_view value_found = iterator->GetValue();
-  //   TxnId txn_id = iterator->GetTransactionId();
+  int total_elems = 0;
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    std::string_view key_found = iterator->GetKey();
+    std::string_view value_found = iterator->GetValue();
+    TxnId txn_id = iterator->GetTransactionId();
 
-  //   // Order of key/value in iterator must be sorted
-  //   EXPECT_EQ(key_found, list_key_value[total_elems].first);
-  //   EXPECT_EQ(value_found, list_key_value[total_elems].second);
+    // Order of key/value in iterator must be sorted
+    EXPECT_EQ(key_found, list_key_value[total_elems].first);
+    EXPECT_EQ(value_found, list_key_value[total_elems].second);
 
-  //   EXPECT_EQ(value_found, db->Get(key_found, txn_id));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
 
-  //   total_elems++;
-  // }
+    total_elems++;
+  }
 
-  // int last_elem_index = total_elems - 1;
-  // for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
-  //   std::string_view key_found = iterator->GetKey();
-  //   std::string_view value_found = iterator->GetValue();
-  //   TxnId txn_id = iterator->GetTransactionId();
+  int last_elem_index = total_elems - 1;
+  for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
+    std::string_view key_found = iterator->GetKey();
+    std::string_view value_found = iterator->GetValue();
+    TxnId txn_id = iterator->GetTransactionId();
 
-  //   // Order of key/value in iterator must be sorted
-  //   EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
-  //   EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
+    // Order of key/value in iterator must be sorted
+    EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
+    EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
 
-  //   EXPECT_EQ(value_found, db->Get(key_found, txn_id));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
 
-  //   last_elem_index--;
-  // }
+    last_elem_index--;
+  }
 
-  // // Number of key value pairs should be equal to list_key_value's size.
-  // EXPECT_EQ(list_key_value.size(), total_elems);
+  // Number of key value pairs should be equal to list_key_value's size.
+  EXPECT_EQ(list_key_value.size(), total_elems);
 
-  // ClearAllSstFiles(db.get());
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace sstable

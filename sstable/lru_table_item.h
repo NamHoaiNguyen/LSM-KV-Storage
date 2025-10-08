@@ -1,5 +1,5 @@
-#ifndef COMMON_LRU_CACHE_ITEM_H
-#define COMMON_LRU_CACHE_ITEM_H
+#ifndef COMMON_LRU_TABLE_ITEM_H
+#define COMMON_LRU_TABLE_ITEM_H
 
 #include "common/macros.h"
 
@@ -54,4 +54,4 @@ private:
 
 } // namespace kvs
 
-#endif // COMMON_LRU_CACHE_ITEM_H
+#endif // COMMON_LRU_TABLE_ITEM_H

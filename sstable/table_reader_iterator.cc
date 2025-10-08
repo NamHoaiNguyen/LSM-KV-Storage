@@ -22,7 +22,7 @@ TableReaderIterator::TableReaderIterator(
     const BlockReaderCache *block_reader_cache,
     const LRUTableItem *lru_table_item)
     : block_reader_iterator_(nullptr), current_block_offset_index_(0),
-      block_reader_cache_(block_reader_cache), lru_table_item_(lru_table_item) {
+      lru_table_item_(lru_table_item), block_reader_cache_(block_reader_cache) {
   table_reader_ = lru_table_item_->GetTableReader();
   assert(block_reader_cache_ && lru_table_item_ && table_reader_);
 }
@@ -130,7 +130,7 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
     std::pair<BlockOffset, BlockSize> block_info) {
   SSTId table_id = table_reader_->table_id_;
   // Look up block in cache
-  const BlockReader *block_reader =
+  const LRUBlockItem *block_reader =
       block_reader_cache_->GetBlockReader({table_id, block_info.first});
   if (block_reader) {
     // if had already been in cache
@@ -144,7 +144,7 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
                                                       block_info.second);
 
   // Insert new blockreader into cache
-  const BlockReader *block_reader_inserted =
+  const LRUBlockItem *block_reader_inserted =
       block_reader_cache_->AddNewBlockReaderThenGet(
           {table_id, block_info.first}, std::move(new_block_reader));
   assert(block_reader_inserted);

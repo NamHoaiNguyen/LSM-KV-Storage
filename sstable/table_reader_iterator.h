@@ -68,9 +68,9 @@ private:
 
   const BlockReaderCache *block_reader_cache_;
 
-  const TableReader *table_reader_;
-
   const LRUTableItem *lru_table_item_;
+
+  const TableReader *table_reader_;
 };
 
 } // namespace sstable
