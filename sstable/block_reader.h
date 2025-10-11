@@ -19,6 +19,8 @@ class ReadOnlyFile;
 
 namespace sstable {
 
+class LRUBlockItem;
+
 struct BlockReaderData {
   BlockReaderData(uint64_t block_size) {
     assert(block_size > 0);
@@ -99,7 +101,8 @@ public:
   BlockReader(BlockReader &&other) = delete;
   BlockReader &operator=(BlockReader &&other) = delete;
 
-  db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
+  db::GetStatus SearchKey(std::string_view key, TxnId txn_id,
+                          const LRUBlockItem *lru_block_item) const;
 
   friend class BlockReaderIterator;
 

@@ -30,7 +30,7 @@ std::string_view SkipListIterator::GetValue() {
 
 ValueType SkipListIterator::GetType() {
   if (!node_) {
-    return ValueType::INVALID;
+    return ValueType::NOT_FOUND;
   }
   return node_->value_type_;
 }

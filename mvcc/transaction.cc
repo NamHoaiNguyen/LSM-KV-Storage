@@ -29,10 +29,10 @@ std::optional<std::string> Transaction::Get(std::string_view key) {
     throw std::runtime_error("Transaction not be found");
   }
 
-  std::optional<std::string> value;
-  value = db_->Get(key, txn_id_);
+  // std::optional<std::string> value;
+  // value = db_->Get(key, txn_id_);
 
-  return value;
+  return std::nullopt;
 }
 
 void Transaction::Put(std::string_view key) {}

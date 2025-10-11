@@ -14,14 +14,18 @@ namespace sstable {
 
 class BlockReaderCache;
 class BlockReaderIterator;
+class LRUTableItem;
 class TableReader;
 
 class TableReaderIterator : public kvs::BaseIterator {
 public:
-  TableReaderIterator(const BlockReaderCache *block_reader_cache,
-                      const TableReader *table_reader);
+  // TableReaderIterator(const BlockReaderCache *block_reader_cache,
+  //                     const TableReader *table_reader);
 
-  ~TableReaderIterator() = default;
+  TableReaderIterator(const BlockReaderCache *block_reader_cache,
+                      const LRUTableItem *lru_table_item);
+
+  ~TableReaderIterator();
 
   // No copy allowed
   TableReaderIterator(const TableReaderIterator &) = delete;
@@ -63,6 +67,8 @@ private:
   std::unique_ptr<BlockReaderIterator> block_reader_iterator_;
 
   const BlockReaderCache *block_reader_cache_;
+
+  const LRUTableItem *lru_table_item_;
 
   const TableReader *table_reader_;
 };

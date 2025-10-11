@@ -42,10 +42,10 @@ public:
 
   // sst_lvl0_size works like a snapshot of SSTInfo size at the time that
   // compact is triggered
-  void PickCompact();
+  bool PickCompact();
 
 private:
-  void DoL0L1Compact();
+  bool DoL0L1Compact();
 
   std::unique_ptr<MergeIterator> CreateMergeIterator();
 
@@ -64,7 +64,7 @@ private:
                                   std::string_view largest_key);
 
   // Execute compaction based on compact info
-  void DoCompactJob();
+  bool DoCompactJob();
 
   // Decide that a key should be kept or skipped
   bool ShouldKeepEntry(std::string_view last_current_key, std::string_view key,

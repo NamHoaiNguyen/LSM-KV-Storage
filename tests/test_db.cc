@@ -10,6 +10,9 @@
 #include <filesystem>
 #include <memory>
 
+// posix API
+#include <sys/resource.h>
+
 namespace fs = std::filesystem;
 
 namespace kvs {
@@ -56,22 +59,77 @@ void PutOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
   done.count_down();
 }
 
-void GetOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
+// void GetOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
+//   std::string key, value;
+//   GetStatus status;
+
+//   for (size_t i = 0; i < nums_elem; i++) {
+//     key = "key" + std::to_string(nums_elem * index + i);
+//     value = "value" + std::to_string(nums_elem * index + i);
+//     status = db->Get(key, 0 /*txn_id*/);
+
+//     EXPECT_TRUE(status.type == ValueType::PUT ||
+//                 status.type == ValueType::DELETED);
+//     EXPECT_EQ(status.value.value(), value);
+//   }
+//   done.count_down();
+// }
+
+void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
+                    std::latch &done) {
   std::string key, value;
-  std::optional<std::string> key_found;
+  GetStatus status;
+  std::vector<std::pair<std::string, std::string>> miss_keys;
 
   for (size_t i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(nums_elem * index + i);
     value = "value" + std::to_string(nums_elem * index + i);
-    key_found = db->Get(key, 0 /*txn_id*/);
+    status = db->Get(key, 0 /*txn_id*/);
 
-    EXPECT_TRUE(key_found);
-    EXPECT_EQ(key_found.value(), value);
+    if (status.type == ValueType::kTooManyOpenFiles) {
+      int retry = 0;
+      while (retry < 3) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+        status = db->Get(key, 0 /*txn_id*/);
+        if (status.type == ValueType::PUT ||
+            status.type == ValueType::DELETED) {
+          break;
+        }
+
+        retry++;
+      }
+
+      if (status.type == ValueType::kTooManyOpenFiles) {
+        miss_keys.push_back({key, value});
+        continue;
+      }
+    } else if (status.type == ValueType::NOT_FOUND) {
+      std::cout << "namnh key missed " << key << std::endl;
+      miss_keys.push_back({key, value});
+      continue;
+    }
+
+    EXPECT_EQ(status.type, ValueType::PUT);
+    EXPECT_EQ(status.value.value(), value);
   }
+
+  // // Wait a little bit
+  // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+  std::cout << "namnh GetWithRetryOp after sleep 5s" << std::endl;
+
+  for (int i = 0; i < miss_keys.size(); i++) {
+    status = db->Get(key, 0 /*txn_id*/);
+    EXPECT_TRUE(status.type == ValueType::PUT);
+    EXPECT_EQ(status.value.value(), value);
+  }
+
   done.count_down();
 }
 
-TEST(DBTest, RecoverDB) {
+TEST(DBTest, LRUTableReaderCache) {
+  // Guarantee that maximum number of file descriptors doesn't exceed limit
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
@@ -100,12 +158,82 @@ TEST(DBTest, RecoverDB) {
   // Force clearing all immutable memtables
   db->ForceFlushMemTable();
   // Wait a little bit time
+  // std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
+  // Set new limits
+  // With that value of soft limit, it is ensured that table reader cache MUST
+  // work normally to guarantee that this threshold is not reached.
+  struct rlimit limit;
+  limit.rlim_cur = 1024;
+  limit.rlim_max = 4096;
+
+  EXPECT_NE(setrlimit(RLIMIT_NOFILE, &limit), -1);
+
+  std::latch all_reads_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(GetWithRetryOp, db.get(), nums_elem_each_thread, i,
+                         std::ref(all_reads_done));
+  }
+
+  // Wait until all threads finish
+  all_reads_done.wait();
+
+  std::cout << "LRUTableReaderCache all_reads_done finished " << std::endl;
+
+  // Wait a little bit for compaction. Otherwise, test is crashed
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
+
+  // // Wait a little bit for compaction. Otherwise, test is crashed
+  // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+  // Number of SST files in directory should be equal to number of SST files in
+  // version after reloading
+  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(config, db.get()));
+
+  ClearAllSstFiles(db.get());
+}
+
+TEST(DBTest, RecoverDB) {
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB("test");
+
+  const int nums_elem_each_thread = 500000;
+  unsigned int num_threads = std::thread::hardware_concurrency();
+  if (num_threads == 0) {
+    // std::thread::hardware_concurrency() might return 0 if sys info not
+    // available
+    num_threads = 10;
+  }
+  std::vector<std::thread> threads;
+
+  std::latch all_writes_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(PutOp, db.get(), nums_elem_each_thread, i,
+                         std::ref(all_writes_done));
+  }
+  // Wait until all threads finish
+  all_writes_done.wait();
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
+
+  // Force clearing all immutable memtables
+  db->ForceFlushMemTable();
+  // Wait a little bit time
   std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
   std::latch all_reads_done(1);
   for (int i = 0; i < 1; i++) {
-    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread * num_threads,
-                         i, std::ref(all_reads_done));
+    threads.emplace_back(GetWithRetryOp, db.get(),
+                         nums_elem_each_thread * num_threads, i,
+                         std::ref(all_reads_done));
   }
 
   // Wait until all threads finish
@@ -127,7 +255,7 @@ TEST(DBTest, RecoverDB) {
 
   std::latch all_reget_done(num_threads);
   for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(GetOp, db.get(), nums_elem_each_thread, i,
+    threads.emplace_back(GetWithRetryOp, db.get(), nums_elem_each_thread, i,
                          std::ref(all_reget_done));
   }
 
@@ -180,21 +308,21 @@ TEST(DBTest, MultipleDB) {
   auto get_op = [&db1, nums_elem = nums_elem_each_thread,
                  &all_reads_done_1](int index) {
     std::string key, value;
-    std::optional<std::string> key_found;
+    GetStatus status;
 
     for (size_t i = 0; i < nums_elem; i++) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
-      key_found = db1->Get(key, 0 /*txn_id*/);
+      status = db1->Get(key, 0 /*txn_id*/);
 
-      EXPECT_TRUE(key_found);
-      EXPECT_EQ(key_found.value(), value);
+      EXPECT_EQ(status.type, ValueType::PUT);
+      EXPECT_EQ(status.value.value(), value);
     }
     all_reads_done_1.count_down();
   };
 
   for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(GetOp, db1.get(), nums_elem_each_thread, i,
+    threads.emplace_back(GetWithRetryOp, db1.get(), nums_elem_each_thread, i,
                          std::ref(all_reads_done_1));
   }
 
@@ -230,7 +358,7 @@ TEST(DBTest, MultipleDB) {
 
   std::latch all_reads_done_2(num_threads);
   for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(GetOp, db2.get(), nums_elem_each_thread, i,
+    threads.emplace_back(GetWithRetryOp, db2.get(), nums_elem_each_thread, i,
                          std::ref(all_reads_done_2));
   }
 

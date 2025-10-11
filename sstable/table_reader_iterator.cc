@@ -3,18 +3,33 @@
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
 #include "sstable/block_reader_iterator.h"
+#include "sstable/lru_block_item.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_reader.h"
 
 namespace kvs {
 
 namespace sstable {
 
+// TableReaderIterator::TableReaderIterator(
+//     const BlockReaderCache *block_reader_cache, const TableReader
+//     *table_reader) : block_reader_iterator_(nullptr),
+//     current_block_offset_index_(0),
+//       block_reader_cache_(block_reader_cache), table_reader_(table_reader) {
+//   assert(block_reader_cache_ && table_reader_);
+// }
+
 TableReaderIterator::TableReaderIterator(
-    const BlockReaderCache *block_reader_cache, const TableReader *table_reader)
+    const BlockReaderCache *block_reader_cache,
+    const LRUTableItem *lru_table_item)
     : block_reader_iterator_(nullptr), current_block_offset_index_(0),
-      block_reader_cache_(block_reader_cache), table_reader_(table_reader) {
-  assert(block_reader_cache_ && table_reader_);
+      lru_table_item_(lru_table_item), block_reader_cache_(block_reader_cache) {
+  lru_table_item_->IncRef();
+  table_reader_ = lru_table_item_->GetTableReader();
+  assert(block_reader_cache_ && lru_table_item_ && table_reader_);
 }
+
+TableReaderIterator::~TableReaderIterator() { lru_table_item_->Unref(); }
 
 std::string_view TableReaderIterator::GetKey() {
   return block_reader_iterator_->GetKey();
@@ -117,7 +132,7 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
     std::pair<BlockOffset, BlockSize> block_info) {
   SSTId table_id = table_reader_->table_id_;
   // Look up block in cache
-  const BlockReader *block_reader =
+  const LRUBlockItem *block_reader =
       block_reader_cache_->GetBlockReader({table_id, block_info.first});
   if (block_reader) {
     // if had already been in cache
@@ -130,10 +145,18 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
       table_reader_->CreateAndSetupDataForBlockReader(block_info.first,
                                                       block_info.second);
 
+  auto new_lru_block_item = std::make_unique<LRUBlockItem>(
+      std::make_pair(table_id, block_info.first), std::move(new_block_reader),
+      block_reader_cache_);
+
   // Insert new blockreader into cache
-  const BlockReader *block_reader_inserted =
+  // const LRUBlockItem *block_reader_inserted =
+  //     block_reader_cache_->AddNewBlockReaderThenGet(
+  //         {table_id, block_info.first}, std::move(new_block_reader));
+  const LRUBlockItem *block_reader_inserted =
       block_reader_cache_->AddNewBlockReaderThenGet(
-          {table_id, block_info.first}, std::move(new_block_reader));
+          {table_id, block_info.first}, std::move(new_lru_block_item),
+          true /*need_to_get*/);
   assert(block_reader_inserted);
 
   // Create new BlockReaderIterator

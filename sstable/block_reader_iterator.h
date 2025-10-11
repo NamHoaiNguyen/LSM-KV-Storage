@@ -12,12 +12,15 @@ namespace kvs {
 namespace sstable {
 
 class BlockReader;
+class LRUBlockItem;
 
 class BlockReaderIterator : public kvs::BaseIterator {
 public:
-  explicit BlockReaderIterator(const BlockReader *block_reader);
+  // explicit BlockReaderIterator(const BlockReader *block_reader);
+  explicit BlockReaderIterator(const LRUBlockItem *block_reader);
 
-  ~BlockReaderIterator() = default;
+  // ~BlockReaderIterator() = default;
+  ~BlockReaderIterator();
 
   // No copy allowed
   BlockReaderIterator(const BlockReaderIterator &) = delete;
@@ -52,6 +55,8 @@ public:
 
 private:
   std::optional<uint64_t> GetCurrentDataEntryOffset();
+
+  const LRUBlockItem *lru_block_item_;
 
   const BlockReader *block_reader_;
 
