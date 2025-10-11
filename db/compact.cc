@@ -30,25 +30,26 @@ Compact::Compact(const sstable::BlockReaderCache *block_reader_cache,
   assert(block_reader_cache_ && table_reader_cache_ && version_ && db_);
 }
 
-void Compact::PickCompact() {
+bool Compact::PickCompact() {
   if (!version_) {
-    return;
+    return false;
   }
 
   if (!version_->GetLevelToCompact()) {
-    return;
+    return false;
   }
 
   level_to_compact_ = version_->GetLevelToCompact().value();
   if (level_to_compact_ == 0) {
-    DoL0L1Compact();
-    return;
+    return DoL0L1Compact();
   }
 
   // DoOtherLevelsCompact();
+
+  return false;
 }
 
-void Compact::DoL0L1Compact() {
+bool Compact::DoL0L1Compact() {
   // Get oldest sst level 0(the first lvl 0 file. Because sst files are sorted)
   // TODO(namnh) : Recheck this logic
   assert(!version_->levels_sst_info_[0].empty());
@@ -77,7 +78,7 @@ void Compact::DoL0L1Compact() {
   GetOverlappingSSTNextLvl(1 /*level*/, smallest_key_final /*smallest_key*/,
                            largest_key_final /*largest_key*/);
   // Execute compaction
-  DoCompactJob();
+  return DoCompactJob();
 }
 
 std::pair<std::string_view, std::string_view>
@@ -232,7 +233,7 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
   return std::make_unique<MergeIterator>(std::move(table_reader_iterators));
 }
 
-void Compact::DoCompactJob() {
+bool Compact::DoCompactJob() {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
   uint64_t new_sst_id = db_->GetNextSSTId();
@@ -241,12 +242,12 @@ void Compact::DoCompactJob() {
   auto new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                          db_->GetConfig());
   if (!new_sst->Open()) {
-    return;
+    return false;
   }
 
   std::unique_ptr<MergeIterator> iterator = CreateMergeIterator();
   if (!iterator) {
-    return;
+    return false;
   }
 
   std::string_view last_current_key = std::string_view{};
@@ -283,7 +284,7 @@ void Compact::DoCompactJob() {
                                                         db_->GetConfig());
 
       if (!new_sst->Open()) {
-        return;
+        return false;
       }
     }
 
@@ -319,6 +320,8 @@ void Compact::DoCompactJob() {
                                  files_need_compaction_[level][i]->level);
     }
   }
+
+  return true;
 }
 
 bool Compact::ShouldKeepEntry(std::string_view last_current_key,

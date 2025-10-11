@@ -65,7 +65,7 @@ public:
   DBImpl(DBImpl &&) = default;
   DBImpl &operator=(DBImpl &&) = default;
 
-  std::optional<std::string> Get(std::string_view key, TxnId txn_id);
+  GetStatus Get(std::string_view key, TxnId txn_id);
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 

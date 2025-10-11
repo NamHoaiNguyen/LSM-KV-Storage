@@ -3,6 +3,7 @@
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
 #include "sstable/block_reader_iterator.h"
+#include "sstable/lru_block_item.h"
 #include "sstable/lru_table_item.h"
 #include "sstable/table_reader.h"
 
@@ -143,10 +144,17 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
       table_reader_->CreateAndSetupDataForBlockReader(block_info.first,
                                                       block_info.second);
 
+  auto new_lru_block_item = std::make_unique<LRUBlockItem>(
+      std::make_pair(table_id, block_info.first), std::move(new_block_reader),
+      block_reader_cache_);
+
   // Insert new blockreader into cache
+  // const LRUBlockItem *block_reader_inserted =
+  //     block_reader_cache_->AddNewBlockReaderThenGet(
+  //         {table_id, block_info.first}, std::move(new_block_reader));
   const LRUBlockItem *block_reader_inserted =
       block_reader_cache_->AddNewBlockReaderThenGet(
-          {table_id, block_info.first}, std::move(new_block_reader));
+          {table_id, block_info.first}, std::move(new_lru_block_item));
   assert(block_reader_inserted);
 
   // Create new BlockReaderIterator

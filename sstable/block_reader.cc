@@ -2,6 +2,7 @@
 
 #include "io/buffer.h"
 #include "io/linux_file.h"
+#include "sstable/lru_block_item.h"
 
 #include <cassert>
 
@@ -16,7 +17,8 @@ BlockReader::BlockReader(std::unique_ptr<BlockReaderData> block_reader_data)
           std::move(block_reader_data->data_entries_offset_info)),
       buffer_(std::move(block_reader_data->buffer)) {}
 
-db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
+db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id,
+                                     const LRUBlockItem *lru_block_item) const {
   db::GetStatus status;
 
   // Binary search key in block based on offset
@@ -45,6 +47,10 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
       }
 
       status.value = GetValueFromDataEntry(data_entry_offset);
+      // if (lru_block_item) {
+      //   lru_block_item->Unref();
+      // }
+
       return status;
     } else if (key_in_block < key) {
       left = mid + 1;
@@ -59,6 +65,9 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
     }
   }
 
+  // if (lru_block_item) {
+  //   lru_block_item->Unref();
+  // }
   return status;
 }
 

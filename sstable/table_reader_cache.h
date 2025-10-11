@@ -6,14 +6,18 @@
 #include "sstable/block_index.h"
 
 // libC++
+#include <condition_variable>
 #include <list>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 
 namespace kvs {
+
+class ThreadPool;
 
 namespace db {
 class DBImpl;
@@ -27,9 +31,9 @@ class TableReader;
 
 class TableReaderCache {
 public:
-  TableReaderCache(const db::DBImpl *db);
+  TableReaderCache(const db::DBImpl *db, kvs::ThreadPool *thread_pool);
 
-  ~TableReaderCache() = default;
+  ~TableReaderCache();
 
   // No copy allowed
   TableReaderCache(const TableReaderCache &) = delete;
@@ -55,7 +59,11 @@ private:
   // NOT THREAD-SAFE
   void Evict() const;
 
+  void EvictV2() const;
+
   const int capacity_;
+
+  mutable std::atomic<bool> shutdown_;
 
   mutable std::unordered_map<SSTId, std::unique_ptr<LRUTableItem>>
       table_readers_cache_;
@@ -64,7 +72,13 @@ private:
 
   mutable std::shared_mutex mutex_;
 
+  std::thread evict_thread_;
+
+  mutable std::condition_variable_any cv_;
+
   const db::DBImpl *db_;
+
+  ThreadPool *thread_pool_;
 };
 
 } // namespace sstable

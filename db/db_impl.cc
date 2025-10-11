@@ -57,11 +57,20 @@ DBImpl::DBImpl(bool is_testing)
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
-      table_reader_cache_(std::make_unique<sstable::TableReaderCache>(this)),
-      block_reader_cache_(std::make_unique<sstable::BlockReaderCache>()),
-      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {}
+      table_reader_cache_(
+          std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
+      block_reader_cache_(
+          std::make_unique<sstable::BlockReaderCache>(thread_pool_)),
+      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
+  // thread_pool_->Enqueue(&sstable::BlockReaderCache::EvictV2,
+  //                       block_reader_cache_.get());
+}
 
 DBImpl::~DBImpl() {
+  std::cout << "namnh check that DBImpl::~DBImpl() is called" << std::endl;
+  block_reader_cache_.reset();
+  table_reader_cache_.reset();
+
   delete thread_pool_;
   thread_pool_ = nullptr;
 }
@@ -198,23 +207,26 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
   return version_edit;
 }
 
-std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
+GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
   GetStatus status;
+
+  // TODO(namnh) : Using txn_id when transaction is supported
+  uint64_t seq_num = sequence_number_.load();
   {
     std::shared_lock rlock(mutex_);
 
     // Find data from Memtable
-    status = memtable_->Get(key, txn_id);
+    status = memtable_->Get(key, seq_num);
     if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-      return status.value;
+      return status;
     }
 
     // If key is not found, continue finding from immutable memtables
     for (const auto &immu_memtable :
          immutable_memtables_ | std::views::reverse) {
-      status = immu_memtable->Get(key, txn_id);
+      status = immu_memtable->Get(key, seq_num);
       if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-        return status.value;
+        return status;
       }
     }
   }
@@ -222,17 +234,23 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
   // TODO(nanmh) : Does it need to acquire lock when looking up key in SSTs?
   const Version *version = version_manager_->GetLatestVersion();
   if (!version) {
-    return std::nullopt;
+    // std::cout << "namnh check value of type " << status.type << std::endl;
+    return status;
   }
 
   version->IncreaseRefCount();
-  status = version->Get(key, txn_id);
-  if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-    return status.value;
-  }
+  status = version->Get(key, seq_num);
+  // if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
+  //   return status;
+  // }
+
   version->DecreaseRefCount();
 
-  return std::nullopt;
+  // if (status.type == ValueType::NOT_FOUND) {
+  //   std::cout << "namnh check value of type 2" << status.type << std::endl;
+  // }
+
+  return status;
 }
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
@@ -488,7 +506,16 @@ void DBImpl::ExecuteBackgroundCompaction() {
   auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
                                            table_reader_cache_.get(), version,
                                            version_edit.get(), this);
-  compact->PickCompact();
+  bool compact_success = compact->PickCompact();
+  if (!compact_success) {
+    version->DecreaseRefCount();
+
+    background_compaction_scheduled_.store(false);
+    MaybeScheduleCompaction();
+
+    return;
+  }
+
   version->DecreaseRefCount();
 
   version_edit->SetNextTableId(GetNextSSTId());

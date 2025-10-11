@@ -7,6 +7,7 @@
 
 // libC++
 #include <cassert>
+#include <condition_variable>
 #include <functional>
 #include <list>
 #include <map>
@@ -14,10 +15,13 @@
 #include <mutex>
 #include <shared_mutex>
 #include <string_view>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 
 namespace kvs {
+
+class ThreadPool;
 
 namespace sstable {
 
@@ -30,8 +34,9 @@ class TableReader;
 class BlockReaderCache {
 public:
   BlockReaderCache();
+  explicit BlockReaderCache(kvs::ThreadPool *thread_pool);
 
-  ~BlockReaderCache() = default;
+  ~BlockReaderCache();
 
   // No copy allowed
   BlockReaderCache(const BlockReaderCache &) = delete;
@@ -46,7 +51,7 @@ public:
 
   const LRUBlockItem *
   AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
-                           std::unique_ptr<BlockReader> block_reader) const;
+                           std::unique_ptr<LRUBlockItem> block_reader) const;
 
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,
@@ -56,9 +61,15 @@ public:
 
   void AddVictim(std::pair<SSTId, BlockOffset> block_info) const;
 
+  void EvictV2() const;
+
 private:
   // NOT THREAD-SAFE
   void Evict() const;
+
+  // void EvictV2() const;
+
+  bool CanCreateNewBlockReader() const;
 
   // Custom hash for pair<int, int>
   struct pair_hash {
@@ -88,6 +99,18 @@ private:
   mutable std::list<std::pair<SSTId, BlockOffset>> free_list_;
 
   mutable std::shared_mutex mutex_;
+
+  std::atomic<bool> shutdown_;
+
+  mutable std::atomic<bool> deleted_;
+
+  mutable std::atomic<uint64_t> batch_;
+
+  std::thread evict_thread_;
+
+  mutable std::condition_variable_any cv_;
+
+  kvs::ThreadPool *thread_pool_;
 };
 
 } // namespace sstable

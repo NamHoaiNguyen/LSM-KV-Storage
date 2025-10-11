@@ -4,6 +4,7 @@
 #include <condition_variable>
 #include <functional>
 #include <future>
+#include <iostream>
 #include <mutex>
 #include <queue>
 #include <vector>
@@ -77,6 +78,8 @@ ThreadPool::ThreadPool() : shutdown_(false) {
 }
 
 ThreadPool::~ThreadPool() {
+  std::cout << "Destructor of ThreadPool is called" << std::endl;
+
   shutdown_ = true;
 
   // Finish remaining jobs

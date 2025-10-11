@@ -331,7 +331,7 @@ TEST(TableTest, TableReaderIterator) {
     EXPECT_EQ(key_found, list_key_value[total_elems].first);
     EXPECT_EQ(value_found, list_key_value[total_elems].second);
 
-    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id).value.value());
 
     total_elems++;
   }
@@ -346,7 +346,7 @@ TEST(TableTest, TableReaderIterator) {
     EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
     EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
 
-    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id).value.value());
 
     last_elem_index--;
   }
