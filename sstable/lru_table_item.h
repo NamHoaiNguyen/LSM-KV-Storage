@@ -33,6 +33,8 @@ public:
   LRUTableItem(LRUTableItem &&) = default;
   LRUTableItem &operator=(LRUTableItem &&) = default;
 
+  void IncRef() const;
+
   // It must be called each time an operation is finished
   void Unref() const;
 

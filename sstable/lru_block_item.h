@@ -34,15 +34,19 @@ public:
   LRUBlockItem(LRUBlockItem &&) = default;
   LRUBlockItem &operator=(LRUBlockItem &&) = default;
 
+  void IncRef() const;
+
   // It must be called each time an operation is finished
   void Unref() const;
 
   const BlockReader *GetBlockReader() const;
 
+  uint64_t GetRefCount() const;
+
   friend class BlockReaderCache;
 
 private:
-  mutable std::atomic<uint64_t> ref_count_;
+  mutable std::atomic<int64_t> ref_count_;
 
   SSTId table_id_;
 

@@ -48,6 +48,7 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id,
 
       status.value = GetValueFromDataEntry(data_entry_offset);
       // if (lru_block_item) {
+      //   // TODO(namnh, IMPORTANCE) : BOTTLENECK!!!
       //   lru_block_item->Unref();
       // }
 
@@ -66,6 +67,7 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id,
   }
 
   // if (lru_block_item) {
+  //   // TODO(namnh, IMPORTANCE) : BOTTLENECK!!!
   //   lru_block_item->Unref();
   // }
   return status;

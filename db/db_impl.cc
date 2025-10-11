@@ -61,13 +61,9 @@ DBImpl::DBImpl(bool is_testing)
           std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
       block_reader_cache_(
           std::make_unique<sstable::BlockReaderCache>(thread_pool_)),
-      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
-  // thread_pool_->Enqueue(&sstable::BlockReaderCache::EvictV2,
-  //                       block_reader_cache_.get());
-}
+      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {}
 
 DBImpl::~DBImpl() {
-  std::cout << "namnh check that DBImpl::~DBImpl() is called" << std::endl;
   block_reader_cache_.reset();
   table_reader_cache_.reset();
 
@@ -210,13 +206,11 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
 GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
   GetStatus status;
 
-  // TODO(namnh) : Using txn_id when transaction is supported
-  uint64_t seq_num = sequence_number_.load();
   {
     std::shared_lock rlock(mutex_);
 
     // Find data from Memtable
-    status = memtable_->Get(key, seq_num);
+    status = memtable_->Get(key, txn_id);
     if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
       return status;
     }
@@ -224,7 +218,7 @@ GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
     // If key is not found, continue finding from immutable memtables
     for (const auto &immu_memtable :
          immutable_memtables_ | std::views::reverse) {
-      status = immu_memtable->Get(key, seq_num);
+      status = immu_memtable->Get(key, txn_id);
       if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
         return status;
       }
@@ -239,7 +233,7 @@ GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
   }
 
   version->IncreaseRefCount();
-  status = version->Get(key, seq_num);
+  status = version->Get(key, txn_id);
   // if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
   //   return status;
   // }

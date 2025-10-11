@@ -51,7 +51,8 @@ public:
 
   const LRUBlockItem *
   AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
-                           std::unique_ptr<LRUBlockItem> block_reader) const;
+                           std::unique_ptr<LRUBlockItem> block_reader,
+                           bool need_to_get) const;
 
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,
@@ -89,9 +90,12 @@ private:
 
   // Each key of block reader item in block reader cache is the combination
   // of table id and block offset
-  mutable std::unordered_map<std::pair<SSTId, BlockOffset>,
-                             std::unique_ptr<LRUBlockItem>, pair_hash,
-                             pair_equal>
+  // mutable std::unordered_map<std::pair<SSTId, BlockOff set>,
+  //                            std::unique_ptr<LRUBlockItem>, pair_hash,
+  //                            pair_equal>
+  //     block_reader_cache_;
+
+  mutable std::map<std::pair<SSTId, BlockOffset>, std::unique_ptr<LRUBlockItem>>
       block_reader_cache_;
 
   const int capacity_;
@@ -105,8 +109,6 @@ private:
   mutable std::atomic<bool> deleted_;
 
   mutable std::atomic<uint64_t> batch_;
-
-  std::thread evict_thread_;
 
   mutable std::condition_variable_any cv_;
 
