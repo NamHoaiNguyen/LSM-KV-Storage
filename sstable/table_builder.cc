@@ -238,6 +238,8 @@ uint64_t TableBuilder::GetFileSize() const { return current_offset_ + 1; }
 
 uint64_t TableBuilder::GetDataSize() const { return data_size_; }
 
+std::string_view TableBuilder::GetFilename() const { return filename_; }
+
 } // namespace sstable
 
 } // namespace kvs

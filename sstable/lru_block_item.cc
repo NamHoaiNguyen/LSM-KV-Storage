@@ -16,6 +16,10 @@ LRUBlockItem::LRUBlockItem(std::pair<SSTId, BlockOffset> block_info,
       block_offset_(block_info.second), block_reader_(std::move(block_reader)),
       cache_(cache) {}
 
+LRUBlockItem::~LRUBlockItem() {
+  // std::cout << "Destructor of LRUBlockItem is called" << std::endl;
+}
+
 void LRUBlockItem::IncRef() const { ref_count_.fetch_add(1); }
 
 void LRUBlockItem::Unref() const {

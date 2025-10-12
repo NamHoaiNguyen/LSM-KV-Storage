@@ -13,10 +13,12 @@ LRUTableItem::LRUTableItem(SSTId table_id,
     : ref_count_(0), table_id_(table_id),
       table_reader_(std::move(table_reader)), cache_(cache) {}
 
+uint64_t LRUTableItem::GetRefCount() const { return ref_count_.load(); }
+
 void LRUTableItem::IncRef() const { ref_count_.fetch_add(1); }
 
 void LRUTableItem::Unref() const {
-  if (ref_count_.fetch_sub(1) == 1) {
+  if (ref_count_.fetch_sub(1) <= 2) {
     cache_->AddVictim(table_id_);
   }
 }

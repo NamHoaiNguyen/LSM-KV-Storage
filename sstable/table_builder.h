@@ -95,6 +95,8 @@ public:
   // ok
   std::string_view GetLargestKey() const;
 
+  std::string_view GetFilename() const;
+
   // For testing
   BlockBuilder *GetBlockData();
 

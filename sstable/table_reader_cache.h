@@ -49,9 +49,10 @@ public:
 
   const LRUTableItem *
   AddNewTableReaderThenGet(SSTId table_id,
-                           std::unique_ptr<TableReader> table_reader) const;
+                           std::unique_ptr<LRUTableItem> lru_table_item,
+                           bool need_to_get) const;
 
-  const LRUTableItem *GetTableReader(SSTId table_id) const;
+  const LRUTableItem *GetLRUTableItem(SSTId table_id) const;
 
   void AddVictim(SSTId table_id) const;
 
@@ -60,6 +61,8 @@ private:
   void Evict() const;
 
   void EvictV2() const;
+
+  void PeriodicCleanupCache() const;
 
   const int capacity_;
 
@@ -71,8 +74,6 @@ private:
   mutable std::list<SSTId> free_list_;
 
   mutable std::shared_mutex mutex_;
-
-  std::thread evict_thread_;
 
   mutable std::condition_variable_any cv_;
 

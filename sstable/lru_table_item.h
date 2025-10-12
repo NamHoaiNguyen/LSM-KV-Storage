@@ -33,6 +33,8 @@ public:
   LRUTableItem(LRUTableItem &&) = default;
   LRUTableItem &operator=(LRUTableItem &&) = default;
 
+  uint64_t GetRefCount() const;
+
   void IncRef() const;
 
   // It must be called each time an operation is finished
@@ -43,7 +45,7 @@ public:
   friend class TableReaderCache;
 
 private:
-  mutable std::atomic<uint64_t> ref_count_;
+  mutable std::atomic<int64_t> ref_count_;
 
   SSTId table_id_;
 

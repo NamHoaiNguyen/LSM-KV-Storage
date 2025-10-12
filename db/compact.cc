@@ -196,7 +196,7 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       // const sstable::TableReader *table_reader =
       //     table_reader_cache_->GetTableReader(table_id);
       const sstable::LRUTableItem *table_reader =
-          table_reader_cache_->GetTableReader(table_id);
+          table_reader_cache_->GetLRUTableItem(table_id);
       if (table_reader && table_reader->GetTableReader()) {
         // If table reader had already been in cache, just create table iterator
         table_reader_iterators.emplace_back(
@@ -211,6 +211,8 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
           std::move(filename), table_id, file_size);
       if (!new_table_reader) {
+        std::string filename = files_need_compaction_[level][i]->filename;
+        db_->WakeupBgThreadToCleanupFiles(filename);
         return nullptr;
       }
 
@@ -218,9 +220,12 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       // const sstable::TableReader *table_reader_inserted =
       //     table_reader_cache_->AddNewTableReaderThenGet(
       //         table_id, std::move(new_table_reader));
+
+      auto lru_table_item = std::make_unique<sstable::LRUTableItem>(
+          table_id, std::move(new_table_reader), table_reader_cache_);
       const sstable::LRUTableItem *table_reader_inserted =
           table_reader_cache_->AddNewTableReaderThenGet(
-              table_id, std::move(new_table_reader));
+              table_id, std::move(lru_table_item), true /*need_to_get*/);
       assert(table_reader_inserted);
 
       // create iterator for new table
@@ -242,6 +247,7 @@ bool Compact::DoCompactJob() {
   auto new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                          db_->GetConfig());
   if (!new_sst->Open()) {
+    db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
     return false;
   }
 
@@ -284,6 +290,7 @@ bool Compact::DoCompactJob() {
                                                         db_->GetConfig());
 
       if (!new_sst->Open()) {
+        db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
         return false;
       }
     }

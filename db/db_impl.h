@@ -16,6 +16,7 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <queue>
 #include <ranges>
 #include <shared_mutex>
 #include <string>
@@ -89,6 +90,10 @@ public:
 
   std::string GetDBPath() const;
 
+  void CleanupTrashFiles();
+
+  void WakeupBgThreadToCleanupFiles(std::string_view filename) const;
+
   friend class Compact;
 
   // For testing
@@ -159,6 +164,14 @@ private:
   std::shared_mutex mutex_;
 
   std::condition_variable_any cv_;
+
+  mutable std::queue<std::string> trash_files_;
+
+  mutable std::mutex trash_files_mutex_;
+
+  mutable std::condition_variable trash_files_cv_;
+
+  std::atomic<bool> shutdown_{false};
 };
 
 } // namespace db

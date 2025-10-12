@@ -64,6 +64,9 @@ public:
 
   void EvictV2() const;
 
+  void AddNewBlockReader(std::pair<SSTId, BlockOffset> block_info,
+                         std::unique_ptr<LRUBlockItem> lru_block_item) const;
+
 private:
   // NOT THREAD-SAFE
   void Evict() const;

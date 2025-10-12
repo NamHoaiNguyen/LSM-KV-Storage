@@ -117,7 +117,7 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
   // // Wait a little bit
   // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
-  std::cout << "namnh GetWithRetryOp after sleep 5s" << std::endl;
+  // std::cout << "namnh GetWithRetryOp after sleep 5s" << std::endl;
 
   for (int i = 0; i < miss_keys.size(); i++) {
     status = db->Get(key, 0 /*txn_id*/);
@@ -133,7 +133,7 @@ TEST(DBTest, LRUTableReaderCache) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
-  const int nums_elem_each_thread = 1000000;
+  const int nums_elem_each_thread = 5000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not
@@ -202,7 +202,7 @@ TEST(DBTest, RecoverDB) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
-  const int nums_elem_each_thread = 500000;
+  const int nums_elem_each_thread = 1000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not

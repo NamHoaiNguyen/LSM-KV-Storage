@@ -31,7 +31,8 @@ public:
   ThreadPool &operator=(ThreadPool &&) = delete;
 
   template <typename Functor, typename... Args>
-  inline decltype(auto) Enqueue(Functor &&functor, Args &&...args) const;
+  // inline decltype(auto) Enqueue(Functor &&functor, Args &&...args) const;
+  inline void Enqueue(Functor &&functor, Args &&...args) const;
 
 private:
   mutable std::condition_variable cv_;
@@ -88,7 +89,8 @@ ThreadPool::~ThreadPool() {
 }
 
 template <typename Functor, typename... Args>
-decltype(auto) ThreadPool::Enqueue(Functor &&functor, Args &&...args) const {
+// decltype(auto) ThreadPool::Enqueue(Functor &&functor, Args &&...args) const {
+void ThreadPool::Enqueue(Functor &&functor, Args &&...args) const {
   using ReturnType = std::invoke_result_t<Functor, Args...>;
   auto task = std::make_shared<std::packaged_task<ReturnType()>>(
       std::bind(std::forward<Functor>(functor), std::forward<Args>(args)...));
@@ -102,11 +104,15 @@ decltype(auto) ThreadPool::Enqueue(Functor &&functor, Args &&...args) const {
 
   {
     std::scoped_lock lock(mutex_);
+    // if (jobs_.size() >= 4000000) {
+    //   return;
+    // }
+
     jobs_.emplace(std::move(job));
   }
 
   cv_.notify_one();
-  return result;
+  // return result;
 }
 
 } // namespace kvs

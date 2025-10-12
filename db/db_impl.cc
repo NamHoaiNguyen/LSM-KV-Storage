@@ -61,11 +61,16 @@ DBImpl::DBImpl(bool is_testing)
           std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
       block_reader_cache_(
           std::make_unique<sstable::BlockReaderCache>(thread_pool_)),
-      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {}
+      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
+  // thread_pool_->Enqueue(&DBImpl::CleanupTrashFiles, this);
+}
 
 DBImpl::~DBImpl() {
   block_reader_cache_.reset();
   table_reader_cache_.reset();
+
+  shutdown_ = true;
+  trash_files_cv_.notify_one();
 
   delete thread_pool_;
   thread_pool_ = nullptr;
@@ -201,6 +206,39 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
   filter_add_files.clear();
 
   return version_edit;
+}
+
+void DBImpl::CleanupTrashFiles() {
+  while (!shutdown_) {
+    {
+      std::unique_lock rwlock(trash_files_mutex_);
+      trash_files_cv_.wait(rwlock, [this]() {
+        return this->shutdown_ || !this->trash_files_.empty();
+      });
+
+      if (this->shutdown_) {
+        return;
+      }
+
+      while (!trash_files_.empty()) {
+        std::string filename = trash_files_.front();
+        trash_files_.pop();
+
+        fs::path file_path(filename);
+        if (fs::exists(file_path) && fs::is_regular_file(file_path)) {
+          fs::remove(file_path);
+        }
+      }
+    }
+  }
+}
+
+void DBImpl::WakeupBgThreadToCleanupFiles(std::string_view filename) const {
+  // std::string file_name = std::string(filename);
+
+  // std::scoped_lock rwlock(trash_files_mutex_);
+  // trash_files_.push(std::move(file_name));
+  // trash_files_cv_.notify_one();
 }
 
 GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
@@ -505,6 +543,7 @@ void DBImpl::ExecuteBackgroundCompaction() {
     version->DecreaseRefCount();
 
     background_compaction_scheduled_.store(false);
+    // std::this_thread::sleep_for(std::chrono::milliseconds(150));
     MaybeScheduleCompaction();
 
     return;

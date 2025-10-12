@@ -53,12 +53,13 @@ const LRUBlockItem *BlockReaderCache::AddNewBlockReaderThenGet(
   std::scoped_lock rwlock(mutex_);
 
   if (block_reader_cache_.size() >= capacity_) {
-    // Evict();
-    batch_.fetch_add(1);
-    if (batch_.load() >= 100) {
-      deleted_.store(false);
-      cv_.notify_one();
-    }
+    Evict();
+    // batch_.fetch_add(1);
+    // if (batch_.load() >= 1000) {
+    //   // deleted_.store(false);
+    //   cv_.notify_one();
+    // }
+    // cv_.notify_one();
   }
 
   bool success =
@@ -96,7 +97,8 @@ void BlockReaderCache::Evict() const {
   while (iterator != block_reader_cache_.end() &&
          iterator->second->ref_count_ > 0 && !free_list_.empty()) {
     // std::cout << table_id
-    //           << " table_id is in picked process to evict with ref_count = "
+    //           << " table_id is in picked process to evict with ref_count =
+    //           "
     //           << iterator->second->ref_count_ << std::endl;
 
     block_info = free_list_.front();
@@ -205,6 +207,34 @@ bool BlockReaderCache::CanCreateNewBlockReader() const {
   return block_reader_cache_.size() >= capacity_;
 }
 
+void BlockReaderCache::AddNewBlockReader(
+    std::pair<SSTId, BlockOffset> block_info,
+    std::unique_ptr<LRUBlockItem> lru_block_item) const {
+  // Insert new block reader into cache
+  std::scoped_lock rwlock(mutex_);
+
+  if (block_reader_cache_.size() >= capacity_) {
+    // std::cout << "namnh AddNewBlockReader return because size exceed"
+    //           << std::endl;
+    return;
+  }
+
+  bool success =
+      block_reader_cache_.insert({block_info, std::move(lru_block_item)})
+          .second;
+
+  // Get block reader that MAYBE inserted
+  auto iterator = block_reader_cache_.find(block_info);
+
+  // Increase ref count
+  if (success) {
+    // First time
+    iterator->second->ref_count_.fetch_add(1);
+  }
+
+  assert(iterator->second->ref_count_.load() >= 1);
+}
+
 db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
     std::string_view key, TxnId txn_id,
     std::pair<SSTId, BlockOffset> block_info, uint64_t block_size,
@@ -225,9 +255,8 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
     block_reader->IncRef();
     assert(block_reader->ref_count_ >= 2);
     status = block_reader->block_reader_->SearchKey(key, txn_id, block_reader);
-    // block_reader->Unref();
     thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
-    // table_reader->Unref();
+    // thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
 
     return status;
   }
@@ -251,23 +280,23 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
   status = new_lru_block_item->GetBlockReader()->SearchKey(
       key, txn_id, new_lru_block_item.get());
 
-  if (CanCreateNewBlockReader()) {
-    AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
-                             false /*need_to0_get*/);
-  }
+  // if (CanCreateNewBlockReader()) {
+  AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
+                           false /*need_to_get*/);
+  // AddNewBlockReader(block_info, std::move(new_lru_block_item));
+  // }
 
   // thread_pool_->Enqueue(
   //     [this, block_info, table_reader,
   //      new_lru_block_item = std::move(new_lru_block_item)]() mutable {
-  //       if (CanCreateNewBlockReader()) {
-  //         AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
-  //                                  false /*need_to_get*/);
-  //       }
+  //       // if (CanCreateNewBlockReader()) {
+  //       AddNewBlockReader(block_info, std::move(new_lru_block_item));
+  //       // }
 
   //       // table_reader->Unref();
   //     });
 
-  // table_reader->Unref();
+  // thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
 
   return status;
 }

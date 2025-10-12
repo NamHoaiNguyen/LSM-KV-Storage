@@ -24,7 +24,8 @@ public:
                std::unique_ptr<BlockReader> block_reader,
                const BlockReaderCache *cache_);
 
-  ~LRUBlockItem() = default;
+  // ~LRUBlockItem() = default;
+  ~LRUBlockItem();
 
   // No copy allowed
   LRUBlockItem(const LRUBlockItem &) = delete;
