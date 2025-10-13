@@ -64,6 +64,12 @@ const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
     iterator->second->IncRef();
   }
 
+  // This tableReader should be put in free_list_ ?
+  if (iterator->second->GetRefCount() <= 1) {
+    // TODO(namnh, IMPORTANCE) : Recheck. It affects performance
+    free_list_.push_back(table_id);
+  }
+
   return iterator->second.get();
 }
 
