@@ -86,6 +86,10 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
     value = "value" + std::to_string(nums_elem * index + i);
     status = db->Get(key, 0 /*txn_id*/);
 
+    EXPECT_TRUE(status.type == ValueType::PUT ||
+                status.type == ValueType::DELETED ||
+                status.type == ValueType::kTooManyOpenFiles);
+
     if (status.type == ValueType::kTooManyOpenFiles) {
       int retry = 0;
       while (retry < 3) {
@@ -104,10 +108,6 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
         miss_keys.push_back({key, value});
         continue;
       }
-    } else if (status.type == ValueType::NOT_FOUND) {
-      std::cout << "namnh key missed " << key << std::endl;
-      miss_keys.push_back({key, value});
-      continue;
     }
 
     EXPECT_EQ(status.type, ValueType::PUT);
@@ -133,7 +133,7 @@ TEST(DBTest, LRUTableReaderCache) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
-  const int nums_elem_each_thread = 1000000;
+  const int nums_elem_each_thread = 2000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not
@@ -180,16 +180,13 @@ TEST(DBTest, LRUTableReaderCache) {
 
   std::cout << "LRUTableReaderCache all_reads_done finished " << std::endl;
 
-  // Wait a little bit for compaction. Otherwise, test is crashed
-  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-
   for (auto &thread : threads) {
     thread.join();
   }
   threads.clear();
 
   // // Wait a little bit for compaction. Otherwise, test is crashed
-  // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   // Number of SST files in directory should be equal to number of SST files in
   // version after reloading

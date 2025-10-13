@@ -170,8 +170,8 @@ LinuxReadOnlyFile::~LinuxReadOnlyFile() { Close(); }
 bool LinuxReadOnlyFile::Open() {
   fd_ = ::open(filename_.c_str(), O_RDONLY);
   if (fd_ == -1) {
-    std::cerr << "LinuxReadOnlyFile Error message: " << std::strerror(errno)
-              << std::endl;
+    // std::cerr << "LinuxReadOnlyFile Error message: " << std::strerror(errno)
+    //           << " " << filename_ << std::endl;
     return false;
   }
   return true;

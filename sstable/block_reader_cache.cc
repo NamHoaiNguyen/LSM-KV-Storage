@@ -192,8 +192,6 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
     assert(block_reader->ref_count_ >= 2);
     status = block_reader->block_reader_->SearchKey(key, txn_id);
     thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
-    // thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
-
     return status;
   }
 
@@ -202,6 +200,7 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
       table_reader->GetTableReader()->CreateAndSetupDataForBlockReader(
           block_info.second, block_size);
   if (!new_block_reader) {
+    status.type = db::ValueType::kTooManyOpenFiles;
     return status;
   }
 
@@ -222,8 +221,6 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
   //           std::move(new_lru_block_item));
   //       lru_block_item->Unref();
   //     });
-
-  // thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
 
   return status;
 }

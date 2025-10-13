@@ -79,7 +79,6 @@ void TableReaderCache::Evict() const {
 
     if (iterator != table_readers_cache_.end() &&
         iterator->second->ref_count_.load() <= 1) {
-      std::cout << "namnh Try to evict table file descriptor" << std::endl;
       table_readers_cache_.erase(table_id);
     }
   }
@@ -95,14 +94,11 @@ void TableReaderCache::EvictV2() const {
       });
 
       if (this->shutdown_) {
-        std::cout << "namnh MUST SHUTDOWN BlockReaderCache::EvictV2"
-                  << std::endl;
         return;
       }
 
-      SSTId table_id = free_list_.front();
+      SSTId table_id{0};
       while (!free_list_.empty() && !table_readers_cache_.empty()) {
-        // while (table_readers_cache_.size() >= capacity_) {
         table_id = free_list_.front();
         auto iterator = table_readers_cache_.find(table_id);
         free_list_.pop_front();
@@ -122,8 +118,10 @@ void TableReaderCache::PeriodicCleanupCache() const {
       std::scoped_lock rwlock(mutex_);
       cv_.notify_one();
     }
+
+    // TODO(namnh) : dynamic this configuration
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
 }
 
 void TableReaderCache::AddVictim(SSTId table_id) const {
@@ -161,9 +159,6 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   if (!new_table_reader) {
     // throw std::runtime_error("Can't open SST file to read");
     status.type = db::ValueType::kTooManyOpenFiles;
-
-    filename = db_->GetDBPath() + std::to_string(table_id) + ".sst";
-    db_->WakeupBgThreadToCleanupFiles(filename);
     return status;
   }
 

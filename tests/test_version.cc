@@ -336,14 +336,46 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
                  &all_reads_done](int index) {
     std::string key, value;
     GetStatus status;
+    std::vector<std::pair<std::string, std::string>> miss_keys;
 
     for (size_t i = 0; i < nums_elem; i++) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
       status = db->Get(key, 0 /*txn_id*/);
+
+      EXPECT_TRUE(status.type == ValueType::PUT ||
+                  status.type == ValueType::kTooManyOpenFiles);
+
+      if (status.type == ValueType::kTooManyOpenFiles) {
+        int retry = 0;
+        while (retry < 3) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+          status = db->Get(key, 0 /*txn_id*/);
+          if (status.type == ValueType::PUT ||
+              status.type == ValueType::DELETED) {
+            break;
+          }
+
+          retry++;
+        }
+
+        if (status.type == ValueType::kTooManyOpenFiles) {
+          miss_keys.push_back({key, value});
+          continue;
+        }
+      }
+
       EXPECT_EQ(status.type, ValueType::PUT);
       EXPECT_EQ(status.value.value(), value);
     }
+
+    for (int i = 0; i < miss_keys.size(); i++) {
+      status = db->Get(key, 0 /*txn_id*/);
+      EXPECT_TRUE(status.type == ValueType::PUT);
+      EXPECT_EQ(status.value.value(), value);
+    }
+
     all_reads_done.count_down();
   };
 
@@ -364,6 +396,8 @@ TEST(VersionTest, SequentialConcurrentPutGet) {
 TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
+
+  ClearAllSstFiles(db.get());
 
   const int nums_elem_each_thread = 1000000;
   unsigned int num_threads = std::thread::hardware_concurrency();

@@ -236,6 +236,9 @@ void DBImpl::CleanupTrashFiles() {
 void DBImpl::WakeupBgThreadToCleanupFiles(std::string_view filename) const {
   std::string file_name = std::string(filename);
 
+  // std::cout << "namnh WakeupBgThreadToCleanupFiles clean up " << filename
+  //           << std::endl;
+
   std::scoped_lock rwlock(trash_files_mutex_);
   trash_files_.push(std::move(file_name));
   trash_files_cv_.notify_one();
@@ -391,6 +394,8 @@ void DBImpl::CreateNewSST(
   sstable::TableBuilder new_sst(std::move(filename), config_.get());
 
   if (!new_sst.Open()) {
+    filename = db_path_ + std::to_string(sst_id) + ".sst";
+    WakeupBgThreadToCleanupFiles(filename);
     work_done.count_down();
     return;
   }
@@ -543,7 +548,7 @@ void DBImpl::ExecuteBackgroundCompaction() {
     version->DecreaseRefCount();
 
     background_compaction_scheduled_.store(false);
-    // std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     MaybeScheduleCompaction();
 
     return;

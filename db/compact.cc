@@ -211,8 +211,6 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
           std::move(filename), table_id, file_size);
       if (!new_table_reader) {
-        std::string filename = files_need_compaction_[level][i]->filename;
-        db_->WakeupBgThreadToCleanupFiles(filename);
         return nullptr;
       }
 
@@ -247,6 +245,8 @@ bool Compact::DoCompactJob() {
   auto new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                          db_->GetConfig());
   if (!new_sst->Open()) {
+    std::cout << "WakeupBgThreadToCleanupFiles is called at place 2"
+              << std::endl;
     db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
     return false;
   }
@@ -290,6 +290,8 @@ bool Compact::DoCompactJob() {
                                                         db_->GetConfig());
 
       if (!new_sst->Open()) {
+        std::cout << "WakeupBgThreadToCleanupFiles is called at place 3"
+                  << std::endl;
         db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
         return false;
       }
