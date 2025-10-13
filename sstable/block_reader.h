@@ -101,8 +101,7 @@ public:
   BlockReader(BlockReader &&other) = delete;
   BlockReader &operator=(BlockReader &&other) = delete;
 
-  db::GetStatus SearchKey(std::string_view key, TxnId txn_id,
-                          const LRUBlockItem *lru_block_item) const;
+  db::GetStatus SearchKey(std::string_view key, TxnId txn_id) const;
 
   friend class BlockReaderIterator;
 

@@ -51,8 +51,7 @@ public:
 
   const LRUBlockItem *
   AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
-                           std::unique_ptr<LRUBlockItem> block_reader,
-                           bool need_to_get) const;
+                           std::unique_ptr<LRUBlockItem> block_reader) const;
 
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,
@@ -63,9 +62,6 @@ public:
   void AddVictim(std::pair<SSTId, BlockOffset> block_info) const;
 
   void EvictV2() const;
-
-  void AddNewBlockReader(std::pair<SSTId, BlockOffset> block_info,
-                         std::unique_ptr<LRUBlockItem> lru_block_item) const;
 
 private:
   // NOT THREAD-SAFE

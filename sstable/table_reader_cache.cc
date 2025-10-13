@@ -43,10 +43,6 @@ const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
 const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
     SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item,
     bool need_to_get) const {
-  // auto lru_table_item =
-  //     std::make_unique<LRUTableItem>(table_id, std::move(table_reader),
-  //     this);
-
   std::scoped_lock rwlock(mutex_);
   if (table_readers_cache_.size() >= capacity_) {
     // Evict();
@@ -60,13 +56,20 @@ const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
   auto iterator = table_readers_cache_.find(table_id);
   if (success) {
     // Increase ref count
-    iterator->second->ref_count_.fetch_add(1);
+    iterator->second->IncRef();
   }
 
   if (need_to_get) {
     // Increase ref count
-    iterator->second->ref_count_.fetch_add(1);
+    iterator->second->IncRef();
   }
+
+  // if (iterator->second->ref_count_.load() >= 2) {
+  //   std::cout << "namnh ASSERT THAT
+  //   TableReaderCache::AddNewBlockReaderThenGeT "
+  //                " REF COUNT must be larger than "
+  //             << iterator->second->ref_count_.load() << std::endl;
+  // }
 
   return iterator->second.get();
 }
@@ -216,6 +219,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
     // if table reader had already been in cache
     status = table_reader->table_reader_->SearchKey(
         key, txn_id, block_reader_cache, table_reader);
+    thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
     return status;
   }
 
@@ -229,7 +233,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
     // throw std::runtime_error("Can't open SST file to read");
     status.type = db::ValueType::kTooManyOpenFiles;
 
-    std::string filename = db_->GetDBPath() + std::to_string(table_id) + ".sst";
+    filename = db_->GetDBPath() + std::to_string(table_id) + ".sst";
     db_->WakeupBgThreadToCleanupFiles(filename);
     return status;
   }
@@ -242,9 +246,9 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   thread_pool_->Enqueue(
       [this, table_id,
        new_lru_table_item = std::move(new_lru_table_item)]() mutable {
-        AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item),
-                                 true /*need_to_get*/);
-        // table_reader->Unref();
+        const LRUTableItem *new_table_added = AddNewTableReaderThenGet(
+            table_id, std::move(new_lru_table_item), true /*need_to_get*/);
+        new_table_added->Unref();
       });
 
   return status;
