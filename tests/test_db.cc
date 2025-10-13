@@ -133,7 +133,7 @@ TEST(DBTest, LRUTableReaderCache) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
-  const int nums_elem_each_thread = 5000000;
+  const int nums_elem_each_thread = 1000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not

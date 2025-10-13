@@ -16,7 +16,7 @@ namespace sstable {
 BlockReaderCache::BlockReaderCache(kvs::ThreadPool *thread_pool)
     : capacity_(100000), shutdown_(false), deleted_(false), batch_(0),
       thread_pool_(thread_pool) {
-  thread_pool_->Enqueue(&BlockReaderCache::EvictV2, this);
+  // thread_pool_->Enqueue(&BlockReaderCache::EvictV2, this);
 }
 
 BlockReaderCache::~BlockReaderCache() {
@@ -83,11 +83,12 @@ void BlockReaderCache::Evict() const {
   }
 
   std::pair<SSTId, BlockOffset> block_info = free_list_.front();
+  assert(!free_list_.empty());
   free_list_.pop_front();
   auto iterator = block_reader_cache_.find(block_info);
 
   while (iterator != block_reader_cache_.end() &&
-         iterator->second->ref_count_ > 0 && !free_list_.empty()) {
+         iterator->second->ref_count_ > 1 && !free_list_.empty()) {
     // std::cout << table_id
     //           << " table_id is in picked process to evict with ref_count =
     //           "
@@ -209,13 +210,18 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
 
   status = new_lru_block_item->GetBlockReader()->SearchKey(key, txn_id);
 
-  thread_pool_->Enqueue(
-      [this, block_info, table_reader,
-       new_lru_block_item = std::move(new_lru_block_item)]() mutable {
-        const LRUBlockItem *lru_block_item =
-            AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item));
-        lru_block_item->Unref();
-      });
+  const LRUBlockItem *lru_block_item =
+      AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item));
+  lru_block_item->Unref();
+
+  // thread_pool_->Enqueue(
+  //     [this, block_info, table_reader,
+  //      new_lru_block_item = std::move(new_lru_block_item)]() mutable {
+  //       const LRUBlockItem *lru_block_item =
+  //           AddNewBlockReaderThenGet(block_info,
+  //           std::move(new_lru_block_item));
+  //       lru_block_item->Unref();
+  //     });
 
   // thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
 

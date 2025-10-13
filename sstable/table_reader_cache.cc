@@ -41,12 +41,11 @@ const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
 }
 
 const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
-    SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item,
-    bool need_to_get) const {
+    SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item) const {
   std::scoped_lock rwlock(mutex_);
   if (table_readers_cache_.size() >= capacity_) {
-    // Evict();
-    cv_.notify_one();
+    Evict();
+    // cv_.notify_one();
   }
 
   bool success =
@@ -59,10 +58,8 @@ const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
     iterator->second->IncRef();
   }
 
-  if (need_to_get) {
-    // Increase ref count
-    iterator->second->IncRef();
-  }
+  // Increase ref count
+  iterator->second->IncRef();
 
   // if (iterator->second->ref_count_.load() >= 2) {
   //   std::cout << "namnh ASSERT THAT
@@ -155,34 +152,6 @@ void TableReaderCache::EvictV2() const {
         }
       }
     }
-
-    // {
-    //   std::unique_lock rwlock(mutex_);
-    //   cv_.wait(rwlock, [this]() {
-    //     return this->shutdown_ ||
-    //            (!this->free_list_.empty() && !this->deleted_.load());
-    //   });
-
-    //   std::pair<SSTId, BlockOffset> block_info = free_list_.front();
-    //   free_list_.pop_front();
-    //   auto iterator = block_reader_cache_.find(block_info);
-
-    //   while (iterator != block_reader_cache_.end() &&
-    //          iterator->second->ref_count_ > 0 && !free_list_.empty()) {
-    //     block_info = free_list_.front();
-    //     iterator = block_reader_cache_.find(block_info);
-    //     free_list_.pop_front();
-    //   }
-
-    //   // Erase from cache
-    //   if (iterator != block_reader_cache_.end() &&
-    //       iterator->second->ref_count_ == 0) {
-    //     auto removed = block_reader_cache_.erase(block_info);
-    //     if (removed == 1) {
-    //       deleted_.store(true);
-    //     }
-    //   }
-    // }
   }
 }
 
@@ -246,8 +215,8 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   thread_pool_->Enqueue(
       [this, table_id,
        new_lru_table_item = std::move(new_lru_table_item)]() mutable {
-        const LRUTableItem *new_table_added = AddNewTableReaderThenGet(
-            table_id, std::move(new_lru_table_item), true /*need_to_get*/);
+        const LRUTableItem *new_table_added =
+            AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item));
         new_table_added->Unref();
       });
 

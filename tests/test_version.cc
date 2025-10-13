@@ -114,7 +114,7 @@ TEST(VersionTest, CreateMultipleVersions) {
 
   // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
-  ClearAllSstFiles(db.get());
+  // ClearAllSstFiles(db.get());
 }
 
 TEST(VersionTest, ConcurrencyPut) {

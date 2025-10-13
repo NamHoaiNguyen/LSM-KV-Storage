@@ -24,7 +24,6 @@ TableReaderIterator::TableReaderIterator(
     const LRUTableItem *lru_table_item)
     : block_reader_iterator_(nullptr), current_block_offset_index_(0),
       lru_table_item_(lru_table_item), block_reader_cache_(block_reader_cache) {
-  // lru_table_item_->IncRef();
   assert(lru_table_item->GetRefCount() >= 2);
   table_reader_ = lru_table_item_->GetTableReader();
   assert(block_reader_cache_ && lru_table_item_ && table_reader_);

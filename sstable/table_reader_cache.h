@@ -49,8 +49,7 @@ public:
 
   const LRUTableItem *
   AddNewTableReaderThenGet(SSTId table_id,
-                           std::unique_ptr<LRUTableItem> lru_table_item,
-                           bool need_to_get) const;
+                           std::unique_ptr<LRUTableItem> lru_table_item) const;
 
   const LRUTableItem *GetLRUTableItem(SSTId table_id) const;
 

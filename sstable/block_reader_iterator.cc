@@ -16,7 +16,6 @@ BlockReaderIterator::BlockReaderIterator(const LRUBlockItem *lru_block_item)
     : lru_block_item_(lru_block_item),
       block_reader_(lru_block_item_->GetBlockReader()),
       current_offset_index_(0) {
-  // lru_block_item_->IncRef();
   assert(lru_block_item_->GetRefCount() >= 2);
   assert(lru_block_item_ && block_reader_);
 }
