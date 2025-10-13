@@ -41,7 +41,8 @@ const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
 }
 
 const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
-    SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item) const {
+    SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item,
+    bool take_then_get) const {
   std::scoped_lock rwlock(mutex_);
   if (table_readers_cache_.size() >= capacity_) {
     Evict();
@@ -59,7 +60,9 @@ const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
   }
 
   // Increase ref count
-  iterator->second->IncRef();
+  if (take_then_get) {
+    iterator->second->IncRef();
+  }
 
   return iterator->second.get();
 }
@@ -170,9 +173,8 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   thread_pool_->Enqueue(
       [this, table_id,
        new_lru_table_item = std::move(new_lru_table_item)]() mutable {
-        const LRUTableItem *new_table_added =
-            AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item));
-        new_table_added->Unref();
+        AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item),
+                                 false /*take_then_get*/);
       });
 
   return status;

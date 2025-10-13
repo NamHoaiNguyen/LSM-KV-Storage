@@ -223,7 +223,7 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
           table_id, std::move(new_table_reader), table_reader_cache_);
       const sstable::LRUTableItem *table_reader_inserted =
           table_reader_cache_->AddNewTableReaderThenGet(
-              table_id, std::move(lru_table_item));
+              table_id, std::move(lru_table_item), true /*take_then_get*/);
       assert(table_reader_inserted);
 
       // create iterator for new table
