@@ -44,7 +44,7 @@ const LRUBlockItem *BlockReaderCache::GetBlockReader(
 
 const LRUBlockItem *BlockReaderCache::AddNewBlockReaderThenGet(
     std::pair<SSTId, BlockOffset> block_info,
-    std::unique_ptr<LRUBlockItem> lru_block_item) const {
+    std::unique_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
   // Insert new block reader into cache
   std::scoped_lock rwlock(mutex_);
 
@@ -71,7 +71,13 @@ const LRUBlockItem *BlockReaderCache::AddNewBlockReaderThenGet(
     iterator->second->ref_count_.fetch_add(1);
   }
 
-  iterator->second->ref_count_.fetch_add(1);
+  if (add_then_get) {
+    iterator->second->ref_count_.fetch_add(1);
+  }
+
+  if (iterator->second->ref_count_.load() <= 1) {
+    free_list_.push_back(block_info);
+  }
 
   return iterator->second.get();
 }
@@ -209,9 +215,12 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
 
   status = new_lru_block_item->GetBlockReader()->SearchKey(key, txn_id);
 
-  const LRUBlockItem *lru_block_item =
-      AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item));
-  lru_block_item->Unref();
+  // const LRUBlockItem *lru_block_item = AddNewBlockReaderThenGet(
+  //     block_info, std::move(new_lru_block_item), false /*need_to_get*/);
+  // lru_block_item->Unref();
+
+  AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
+                           false /*need_to_get*/);
 
   // thread_pool_->Enqueue(
   //     [this, block_info, table_reader,

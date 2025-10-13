@@ -51,7 +51,8 @@ public:
 
   const LRUBlockItem *
   AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
-                           std::unique_ptr<LRUBlockItem> block_reader) const;
+                           std::unique_ptr<LRUBlockItem> block_reader,
+                           bool add_then_get) const;
 
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,
