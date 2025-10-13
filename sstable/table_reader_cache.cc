@@ -15,7 +15,7 @@ TableReaderCache::TableReaderCache(const db::DBImpl *db,
                                    kvs::ThreadPool *thread_pool)
     : capacity_(1000), shutdown_(false), db_(db), thread_pool_(thread_pool) {
   assert(db_ && thread_pool_);
-  thread_pool_->Enqueue(&TableReaderCache::EvictV2, this);
+  // thread_pool_->Enqueue(&TableReaderCache::EvictV2, this);
   // thread_pool_->Enqueue(&TableReaderCache::PeriodicCleanupCache, this);
 }
 
@@ -61,13 +61,6 @@ const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
   // Increase ref count
   iterator->second->IncRef();
 
-  // if (iterator->second->ref_count_.load() >= 2) {
-  //   std::cout << "namnh ASSERT THAT
-  //   TableReaderCache::AddNewBlockReaderThenGeT "
-  //                " REF COUNT must be larger than "
-  //             << iterator->second->ref_count_.load() << std::endl;
-  // }
-
   return iterator->second.get();
 }
 
@@ -76,38 +69,6 @@ void TableReaderCache::Evict() const {
   if (free_list_.empty()) {
     return;
   }
-
-  // SSTId table_id = free_list_.front();
-  // free_list_.pop_front();
-  // auto iterator = table_readers_cache_.find(table_id);
-
-  // // if (iterator != table_readers_cache_.end()) {
-  // //   std::cout << "NAMNH CHECK ref count of FIRST VICTIM "
-  // //             << iterator->second->ref_count_ << std::endl;
-  // // }
-
-  // while (iterator != table_readers_cache_.end() &&
-  //        iterator->second->ref_count_ > 0 && !free_list_.empty()) {
-  //   // std::cout << table_id
-  //   //           << " table_id is in picked process to evict with ref_count =
-  //   "
-  //   //           << iterator->second->ref_count_ << std::endl;
-
-  //   table_id = free_list_.front();
-  //   iterator = table_readers_cache_.find(table_id);
-  //   free_list_.pop_front();
-  // }
-
-  // // Erase from cache
-  // if (iterator != table_readers_cache_.end() &&
-  //     iterator->second->ref_count_ == 0) {
-  //   std::cout << table_id << " is evicted from cache when ref_count = "
-  //             << iterator->second->ref_count_ << std::endl;
-  //   auto deleted = table_readers_cache_.erase(table_id);
-  //   if (deleted == 0) {
-  //     Evict();
-  //   }
-  // }
 
   SSTId table_id = free_list_.front();
   while (!free_list_.empty() && !table_readers_cache_.empty()) {
@@ -167,7 +128,6 @@ void TableReaderCache::PeriodicCleanupCache() const {
 
 void TableReaderCache::AddVictim(SSTId table_id) const {
   std::scoped_lock rwlock(mutex_);
-
   free_list_.push_back(table_id);
 }
 

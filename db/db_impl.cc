@@ -234,11 +234,11 @@ void DBImpl::CleanupTrashFiles() {
 }
 
 void DBImpl::WakeupBgThreadToCleanupFiles(std::string_view filename) const {
-  // std::string file_name = std::string(filename);
+  std::string file_name = std::string(filename);
 
-  // std::scoped_lock rwlock(trash_files_mutex_);
-  // trash_files_.push(std::move(file_name));
-  // trash_files_cv_.notify_one();
+  std::scoped_lock rwlock(trash_files_mutex_);
+  trash_files_.push(std::move(file_name));
+  trash_files_cv_.notify_one();
 }
 
 GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
