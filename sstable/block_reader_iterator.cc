@@ -7,11 +7,6 @@ namespace kvs {
 
 namespace sstable {
 
-// BlockReaderIterator::BlockReaderIterator(const BlockReader *block_reader)
-//     : block_reader_(block_reader), current_offset_index_(0) {
-//   assert(block_reader_);
-// }
-
 BlockReaderIterator::BlockReaderIterator(const LRUBlockItem *lru_block_item)
     : lru_block_item_(lru_block_item),
       block_reader_(lru_block_item_->GetBlockReader()),

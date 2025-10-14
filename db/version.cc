@@ -6,7 +6,6 @@
 #include "sstable/table_reader.h"
 
 #include <algorithm>
-#include <iostream>
 
 namespace kvs {
 
@@ -77,19 +76,12 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     // TODO(namnh) : Implement bloom filter for level >= 1
     status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
                                       file_candidate->file_size);
-    // if (status.type == db::ValueType::NOT_FOUND) {
-    //   std::cout << key << " can't be found at level 1 " << std::endl;
-    // }
-
     if (status.type == db::ValueType::PUT ||
         status.type == db::ValueType::DELETED ||
         status.type == db::ValueType::kTooManyOpenFiles) {
       return status;
     }
   }
-
-  // std::cout << "namnh check that we can't found the key " << key <<
-  // std::endl;
 
   return status;
 }

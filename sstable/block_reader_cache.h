@@ -33,7 +33,6 @@ class TableReader;
 
 class BlockReaderCache {
 public:
-  BlockReaderCache();
   explicit BlockReaderCache(kvs::ThreadPool *thread_pool);
 
   ~BlockReaderCache();
@@ -49,7 +48,8 @@ public:
   const LRUBlockItem *
   GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;
 
-  const LRUBlockItem *
+  // const LRUBlockItem *
+  std::pair<const LRUBlockItem *, std::unique_ptr<LRUBlockItem>>
   AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
                            std::unique_ptr<LRUBlockItem> block_reader,
                            bool add_then_get) const;
@@ -57,18 +57,13 @@ public:
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
                                      std::pair<SSTId, BlockOffset> block_info,
                                      uint64_t block_size,
-                                     //  const TableReader *table_reader) const;
-                                     const LRUTableItem *table_reader) const;
+                                     const TableReader *table_reader) const;
 
   void AddVictim(std::pair<SSTId, BlockOffset> block_info) const;
 
-  void EvictV2() const;
-
 private:
   // NOT THREAD-SAFE
-  void Evict() const;
-
-  // void EvictV2() const;
+  bool Evict() const;
 
   bool CanCreateNewBlockReader() const;
 

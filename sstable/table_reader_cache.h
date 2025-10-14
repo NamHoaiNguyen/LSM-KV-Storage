@@ -50,7 +50,7 @@ public:
   const LRUTableItem *
   AddNewTableReaderThenGet(SSTId table_id,
                            std::unique_ptr<LRUTableItem> lru_table_item,
-                           bool take_then_get) const;
+                           bool add_then_get) const;
 
   const LRUTableItem *GetLRUTableItem(SSTId table_id) const;
 
@@ -59,10 +59,6 @@ public:
 private:
   // NOT THREAD-SAFE
   void Evict() const;
-
-  void EvictV2() const;
-
-  void PeriodicCleanupCache() const;
 
   const int capacity_;
 

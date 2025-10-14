@@ -86,6 +86,10 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
     value = "value" + std::to_string(nums_elem * index + i);
     status = db->Get(key, 0 /*txn_id*/);
 
+    if (status.type == ValueType::NOT_FOUND) {
+      std::cout << "namnh buggg can't find " << key << std::endl;
+    }
+
     EXPECT_TRUE(status.type == ValueType::PUT ||
                 status.type == ValueType::DELETED ||
                 status.type == ValueType::kTooManyOpenFiles);
@@ -133,7 +137,7 @@ TEST(DBTest, LRUTableReaderCache) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
-  const int nums_elem_each_thread = 2000000;
+  const int nums_elem_each_thread = 5000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not

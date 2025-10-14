@@ -171,8 +171,7 @@ TableReader::TableReader(std::unique_ptr<TableReaderData> table_reader_data)
 db::GetStatus
 TableReader::SearchKey(std::string_view key, TxnId txn_id,
                        const sstable::BlockReaderCache *block_reader_cache,
-                       //  const TableReader *table_reader) const {
-                       const LRUTableItem *table_reader) const {
+                       const TableReader *table_reader) const {
   assert(block_reader_cache);
   auto [block_offset, block_size] = GetBlockOffsetAndSize(key);
 

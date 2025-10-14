@@ -11,14 +11,6 @@ namespace kvs {
 
 namespace sstable {
 
-// TableReaderIterator::TableReaderIterator(
-//     const BlockReaderCache *block_reader_cache, const TableReader
-//     *table_reader) : block_reader_iterator_(nullptr),
-//     current_block_offset_index_(0),
-//       block_reader_cache_(block_reader_cache), table_reader_(table_reader) {
-//   assert(block_reader_cache_ && table_reader_);
-// }
-
 TableReaderIterator::TableReaderIterator(
     const BlockReaderCache *block_reader_cache,
     const LRUTableItem *lru_table_item)
@@ -144,23 +136,30 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
   std::unique_ptr<BlockReader> new_block_reader =
       table_reader_->CreateAndSetupDataForBlockReader(block_info.first,
                                                       block_info.second);
+  if (!new_block_reader) {
+    return;
+  }
 
   auto new_lru_block_item = std::make_unique<LRUBlockItem>(
       std::make_pair(table_id, block_info.first), std::move(new_block_reader),
       block_reader_cache_);
 
-  // Insert new blockreader into cache
-  // const LRUBlockItem *block_reader_inserted =
-  //     block_reader_cache_->AddNewBlockReaderThenGet(
-  //         {table_id, block_info.first}, std::move(new_block_reader));
-  const LRUBlockItem *block_reader_inserted =
+  auto [block_reader_inserted, lru_block_item] =
       block_reader_cache_->AddNewBlockReaderThenGet(
           {table_id, block_info.first}, std::move(new_lru_block_item),
           true /*add_then_get*/);
-  assert(block_reader_inserted);
 
-  // Create new BlockReaderIterator
-  block_reader_iterator_.reset(new BlockReaderIterator(block_reader_inserted));
+  if (block_reader_inserted) {
+    // If added successfully
+    block_reader_iterator_.reset(
+        new BlockReaderIterator(block_reader_inserted));
+    return;
+  }
+
+  // Else can't add because cache is full
+  block_reader_iterator_.reset(new BlockReaderIterator(lru_block_item.get()));
+  // Extend lifetime
+  list_lru_blocks_.push_back(std::move(lru_block_item));
 }
 
 } // namespace sstable

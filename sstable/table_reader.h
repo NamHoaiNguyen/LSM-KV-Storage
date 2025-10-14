@@ -95,8 +95,7 @@ public:
 
   db::GetStatus SearchKey(std::string_view key, TxnId txn_id,
                           const sstable::BlockReaderCache *block_reader_cache,
-                          // const TableReader *table_reader) const;
-                          const LRUTableItem *table_reader) const;
+                          const TableReader *table_reader) const;
 
   std::unique_ptr<BlockReader>
   CreateAndSetupDataForBlockReader(BlockOffset offset,

@@ -16,10 +16,8 @@ class LRUBlockItem;
 
 class BlockReaderIterator : public kvs::BaseIterator {
 public:
-  // explicit BlockReaderIterator(const BlockReader *block_reader);
   explicit BlockReaderIterator(const LRUBlockItem *block_reader);
 
-  // ~BlockReaderIterator() = default;
   ~BlockReaderIterator();
 
   // No copy allowed

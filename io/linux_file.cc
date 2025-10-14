@@ -79,8 +79,6 @@ LinuxWriteOnlyFile::LinuxWriteOnlyFile(std::string_view filename)
 LinuxWriteOnlyFile::~LinuxWriteOnlyFile() { Close(); }
 
 bool LinuxWriteOnlyFile::Close() {
-  // std::cout << "LinuxWriteOnlyFile is closed" << std::endl;
-
   if (::close(fd_) == -1) {
     std::cerr << "Error message: " << std::strerror(errno) << std::endl;
     return false;
@@ -170,8 +168,8 @@ LinuxReadOnlyFile::~LinuxReadOnlyFile() { Close(); }
 bool LinuxReadOnlyFile::Open() {
   fd_ = ::open(filename_.c_str(), O_RDONLY);
   if (fd_ == -1) {
-    // std::cerr << "LinuxReadOnlyFile Error message: " << std::strerror(errno)
-    //           << " " << filename_ << std::endl;
+    std::cerr << "LinuxReadOnlyFile Error message: " << std::strerror(errno)
+              << " " << filename_ << std::endl;
     return false;
   }
   return true;

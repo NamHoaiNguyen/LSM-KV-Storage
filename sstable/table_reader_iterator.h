@@ -14,6 +14,7 @@ namespace sstable {
 
 class BlockReaderCache;
 class BlockReaderIterator;
+class LRUBlockItem;
 class LRUTableItem;
 class TableReader;
 
@@ -71,6 +72,8 @@ private:
   const LRUTableItem *lru_table_item_;
 
   const TableReader *table_reader_;
+
+  std::vector<std::unique_ptr<LRUBlockItem>> list_lru_blocks_;
 };
 
 } // namespace sstable

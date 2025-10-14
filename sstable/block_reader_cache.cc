@@ -15,9 +15,7 @@ namespace sstable {
 
 BlockReaderCache::BlockReaderCache(kvs::ThreadPool *thread_pool)
     : capacity_(100000), shutdown_(false), deleted_(false), batch_(0),
-      thread_pool_(thread_pool) {
-  // thread_pool_->Enqueue(&BlockReaderCache::EvictV2, this);
-}
+      thread_pool_(thread_pool) {}
 
 BlockReaderCache::~BlockReaderCache() {
   shutdown_ = true;
@@ -37,25 +35,20 @@ const LRUBlockItem *BlockReaderCache::GetBlockReader(
   // Increase ref count
   iterator->second->IncRef();
 
-  assert(iterator->second->GetRefCount() >= 2);
-
   return iterator->second.get();
 }
 
-const LRUBlockItem *BlockReaderCache::AddNewBlockReaderThenGet(
+std::pair<const LRUBlockItem *, std::unique_ptr<LRUBlockItem>>
+BlockReaderCache::AddNewBlockReaderThenGet(
     std::pair<SSTId, BlockOffset> block_info,
     std::unique_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
   // Insert new block reader into cache
   std::scoped_lock rwlock(mutex_);
 
   if (block_reader_cache_.size() >= capacity_) {
-    Evict();
-    // batch_.fetch_add(1);
-    // if (batch_.load() >= 1000) {
-    //   // deleted_.store(false);
-    //   cv_.notify_one();
-    // }
-    // cv_.notify_one();
+    if (!Evict()) {
+      return {nullptr, std::move(lru_block_item)};
+    }
   }
 
   bool success =
@@ -79,13 +72,13 @@ const LRUBlockItem *BlockReaderCache::AddNewBlockReaderThenGet(
     free_list_.push_back(block_info);
   }
 
-  return iterator->second.get();
+  return {iterator->second.get(), nullptr};
 }
 
 // NOT THREAD-SAFE
-void BlockReaderCache::Evict() const {
+bool BlockReaderCache::Evict() const {
   if (free_list_.empty()) {
-    return;
+    return false;
   }
 
   std::pair<SSTId, BlockOffset> block_info = free_list_.front();
@@ -95,73 +88,14 @@ void BlockReaderCache::Evict() const {
 
   while (iterator != block_reader_cache_.end() &&
          iterator->second->ref_count_ > 1 && !free_list_.empty()) {
-    // std::cout << table_id
-    //           << " table_id is in picked process to evict with ref_count =
-    //           "
-    //           << iterator->second->ref_count_ << std::endl;
-
     block_info = free_list_.front();
     iterator = block_reader_cache_.find(block_info);
     free_list_.pop_front();
   }
 
   // Erase from cache
-  if (iterator != block_reader_cache_.end() &&
-      // iterator->second->ref_count_ == 0) {
-      iterator->second->ref_count_.load() <= 1) {
-    // std::cout << block_info.first << " and " << block_info.second
-    //           << " is evicted from cache when ref_count = "
-    //           << iterator->second->ref_count_ << std::endl;
-    auto deleted = block_reader_cache_.erase(block_info);
-    if (deleted == 0) {
-      Evict();
-    }
-  }
-}
-
-// NOT THREAD-SAFE
-void BlockReaderCache::EvictV2() const {
-  while (!shutdown_) {
-    {
-      std::unique_lock rwlock(mutex_);
-      cv_.wait(rwlock, [this]() {
-        return this->shutdown_ || !this->free_list_.empty();
-      });
-
-      // cv_.wait(rwlock, [this]() {
-      //   return this->shutdown_ ||
-      //          (!this->deleted_.load() && !this->free_list_.empty());
-      // });
-
-      if (this->shutdown_) {
-        return;
-      }
-
-      std::pair<SSTId, BlockOffset> block_info = free_list_.front();
-      while (!free_list_.empty() && !block_reader_cache_.empty() &&
-             batch_.load() > 0) {
-        block_info = free_list_.front();
-        auto iterator = block_reader_cache_.find(block_info);
-        free_list_.pop_front();
-
-        if (iterator != block_reader_cache_.end() &&
-            iterator->second->ref_count_.load() <= 1) {
-          // std::cout << "namnh EVICTv2 with ref_count "
-          //           << iterator->second->ref_count_ << " and block offset "
-          //           << block_info.first << " and block size "
-          //           << block_info.second << std::endl;
-
-          // std::cout << "Size of block_reader_cache_ before erase "
-          //           << block_reader_cache_.size() << std::endl;
-          block_reader_cache_.erase(block_info);
-
-          // std::cout << "Size of block_reader_cache_ after erase "
-          //           << block_reader_cache_.size() << std::endl;
-          batch_.fetch_sub(1);
-        }
-      }
-    }
-  }
+  auto deleted = block_reader_cache_.erase(block_info);
+  return (deleted == 0) ? Evict() : true;
 }
 
 void BlockReaderCache::AddVictim(
@@ -169,7 +103,6 @@ void BlockReaderCache::AddVictim(
   // std::cout << block_info.first << " and " << block_info.second
   //           << " victim is added" << std::endl;
   std::scoped_lock rwlock(mutex_);
-
   free_list_.push_back(block_info);
 }
 
@@ -178,20 +111,14 @@ bool BlockReaderCache::CanCreateNewBlockReader() const {
   return block_reader_cache_.size() >= capacity_;
 }
 
-db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
-    std::string_view key, TxnId txn_id,
-    std::pair<SSTId, BlockOffset> block_info, uint64_t block_size,
-    //  const TableReader *table_reader) const {
-    const LRUTableItem *table_reader) const {
+db::GetStatus
+BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
+                                       std::pair<SSTId, BlockOffset> block_info,
+                                       uint64_t block_size,
+                                       const TableReader *table_reader) const {
   assert(table_reader);
   db::GetStatus status;
 
-  // TODO(namnh) : After getting BlockReader from BlockReaderCache, lock is
-  // released. It means that we need a mechansim to ensure that TableReader is
-  // not freed until operation is finished.
-  // Temporarily, because of lacking cache eviction mechanism. everything is
-  // fine. But when cache eviction algorithm is implemented, ref count for
-  // BlockReader should be also done too
   const LRUBlockItem *block_reader = GetBlockReader(block_info);
   if (block_reader && block_reader->block_reader_) {
     // if tablereader had already been in cache
@@ -202,9 +129,8 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
   }
 
   // Create new tablereader
-  auto new_block_reader =
-      table_reader->GetTableReader()->CreateAndSetupDataForBlockReader(
-          block_info.second, block_size);
+  auto new_block_reader = table_reader->CreateAndSetupDataForBlockReader(
+      block_info.second, block_size);
   if (!new_block_reader) {
     status.type = db::ValueType::kTooManyOpenFiles;
     return status;
@@ -215,20 +141,14 @@ db::GetStatus BlockReaderCache::GetKeyFromBlockCache(
 
   status = new_lru_block_item->GetBlockReader()->SearchKey(key, txn_id);
 
-  // const LRUBlockItem *lru_block_item = AddNewBlockReaderThenGet(
-  //     block_info, std::move(new_lru_block_item), false /*need_to_get*/);
-  // lru_block_item->Unref();
-
   AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
                            false /*need_to_get*/);
 
   // thread_pool_->Enqueue(
   //     [this, block_info, table_reader,
   //      new_lru_block_item = std::move(new_lru_block_item)]() mutable {
-  //       const LRUBlockItem *lru_block_item =
-  //           AddNewBlockReaderThenGet(block_info,
-  //           std::move(new_lru_block_item));
-  //       lru_block_item->Unref();
+  //       AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
+  //                                false /*need_to_get*/);
   //     });
 
   return status;

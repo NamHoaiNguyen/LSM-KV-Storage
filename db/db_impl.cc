@@ -235,10 +235,6 @@ void DBImpl::CleanupTrashFiles() {
 
 void DBImpl::WakeupBgThreadToCleanupFiles(std::string_view filename) const {
   std::string file_name = std::string(filename);
-
-  // std::cout << "namnh WakeupBgThreadToCleanupFiles clean up " << filename
-  //           << std::endl;
-
   std::scoped_lock rwlock(trash_files_mutex_);
   trash_files_.push(std::move(file_name));
   trash_files_cv_.notify_one();
@@ -275,15 +271,7 @@ GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
 
   version->IncreaseRefCount();
   status = version->Get(key, txn_id);
-  // if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-  //   return status;
-  // }
-
   version->DecreaseRefCount();
-
-  // if (status.type == ValueType::NOT_FOUND) {
-  //   std::cout << "namnh check value of type 2" << status.type << std::endl;
-  // }
 
   return status;
 }
