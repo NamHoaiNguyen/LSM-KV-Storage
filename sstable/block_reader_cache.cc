@@ -15,13 +15,6 @@ BlockReaderCache::BlockReaderCache(kvs::ThreadPool *thread_pool)
     : capacity_(100000), shutdown_(false), deleted_(false), batch_(0),
       thread_pool_(thread_pool) {}
 
-BlockReaderCache::~BlockReaderCache() {
-  shutdown_ = true;
-
-  // Finish remaining jobs
-  cv_.notify_one();
-}
-
 const LRUBlockItem *BlockReaderCache::GetBlockReader(
     std::pair<SSTId, BlockOffset> block_info) const {
   std::shared_lock rlock(mutex_);

@@ -12,7 +12,6 @@ namespace mvcc {
 TransactionManager::TransactionManager(db::DBImpl *db) : db_(db) {}
 
 Transaction *TransactionManager::CreateNewTransaction() {
-  std::scoped_lock<std::mutex> lock(mutex_);
   TxnId new_txn_id = GetNextTransactionId();
   auto new_txn =
       std::make_unique<Transaction>(this, db_, new_txn_id, GetIsolationLevel());
