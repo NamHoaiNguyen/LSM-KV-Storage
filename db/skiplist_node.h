@@ -31,7 +31,6 @@ private:
 
   std::optional<std::string> value_;
 
-  // TODO(namnh) : recheck
   TxnId txn_id_;
 
   // Number of level that this node appears

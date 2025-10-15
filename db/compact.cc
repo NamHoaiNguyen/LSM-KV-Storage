@@ -51,7 +51,6 @@ bool Compact::PickCompact() {
 
 bool Compact::DoL0L1Compact() {
   // Get oldest sst level 0(the first lvl 0 file. Because sst files are sorted)
-  // TODO(namnh) : Recheck this logic
   assert(!version_->levels_sst_info_[0].empty());
 
   // Get OLDEST lvl 0 sst(smallest number Lvl 0 sst file)
@@ -296,7 +295,6 @@ bool Compact::DoCompactJob() {
     }
 
     new_sst->AddEntry(key, value, txn_id, type);
-    // TODO(namnh) : Should have a seperate config for size of sst
     if (new_sst->GetDataSize() >= db_->GetConfig()->GetPerMemTableSizeLimit()) {
       new_sst->Finish();
       std::string filename =

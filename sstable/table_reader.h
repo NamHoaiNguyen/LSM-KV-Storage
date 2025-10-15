@@ -77,8 +77,6 @@ struct TableReaderData {
   std::unique_ptr<io::ReadOnlyFile> read_file_object;
 };
 
-// TODO(namnh) : With this design, a need for table reader cache becomes an
-// indispensable requirement
 class TableReader {
 public:
   explicit TableReader(std::unique_ptr<TableReaderData> table_reader_data);
