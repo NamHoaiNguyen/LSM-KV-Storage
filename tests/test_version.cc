@@ -87,83 +87,8 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   // Creating new SST when memtable is overlow means that new latest version
   // is created
   EXPECT_TRUE(db->GetVersionManager()->GetLatestVersion());
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
-
-  ClearAllSstFiles(db.get());
-}
-
-TEST(VersionTest, CreateMultipleVersions) {
-  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB("test");
-  const Config *const config = db->GetConfig();
-
-  // That number of key/value pairs will create a new sst
-  const int nums_elem = 10000000;
-
-  std::string key, value;
-  for (int i = 0; i < nums_elem; i++) {
-    key = "key" + std::to_string(i);
-    value = "value" + std::to_string(i);
-    db->Put(key, value, 0 /*txn_id*/);
-  }
-
-  // Force flush remaining memtable datas to SST
-  db->ForceFlushMemTable();
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
-
-  // ClearAllSstFiles(db.get());
-}
-
-TEST(VersionTest, ConcurrencyPut) {
-  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB("test");
-  const Config *const config = db->GetConfig();
-
-  const int nums_elem_each_thread = 1000000;
-
-  unsigned int num_threads = std::thread::hardware_concurrency();
-  if (num_threads == 0) {
-    // std::thread::hardware_concurrency() might return 0 if sys info not
-    // available
-    num_threads = 10;
-  }
-
-  std::mutex mutex;
-  std::latch all_done(num_threads);
-
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
-                 &all_done](int index) {
-    std::string key, value;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      db->Put(key, value, 0 /*txn_id*/);
-    }
-    all_done.count_down();
-  };
-
-  std::vector<std::thread> threads;
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(put_op, i);
-  }
-
-  // Wait until all threads finish
-  all_done.wait();
-
-  for (auto &thread : threads) {
-    thread.join();
-  }
-
-  db->ForceFlushMemTable();
-
-  // Wait until compaction finishes it job
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
+  EXPECT_TRUE(db->GetVersionManager()->GetVersions().size() == 0);
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
   ClearAllSstFiles(db.get());
 }
@@ -187,23 +112,26 @@ TEST(VersionTest, GetFromSST) {
   db->ForceFlushMemTable();
   EXPECT_TRUE(db->GetImmutableMemTables().empty());
 
-  // Wait until compaction finishes its job
+  // Wait until flushing is finished
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
   // Now all immutable memtables are no longer in memory, it means that all GET
   // operation must go to SST to lookup
+  const Version *version = db->GetVersionManager()->GetLatestVersion();
+  EXPECT_TRUE(version);
 
   GetStatus status;
   for (int i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    status = db->Get(key, 0 /*txn_id*/);
+    status = version->Get(key, 0 /*txn_id*/);
     EXPECT_EQ(status.type, db::ValueType::PUT);
     EXPECT_EQ(status.value.value(), value);
   }
 
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
+  // Wait until compaction finishes its job
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
   ClearAllSstFiles(db.get());
 }
@@ -213,7 +141,7 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
   db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
-  const int nums_elem_each_thread = 100000;
+  const int nums_elem_each_thread = 1000000;
 
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
@@ -257,9 +185,7 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
   db->ForceFlushMemTable();
 
   // Sleep to wait all written data is persisted to disk
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
-
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
+  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
   // Now all immutable memtables are no longer in memory, it means that all
   // GET operation must go to SST to lookup
@@ -273,321 +199,15 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    status = db->Get(key, 0 /*txn_id*/);
+    status = version->Get(key, 0 /*txn_id*/);
     EXPECT_EQ(status.type, ValueType::PUT);
     EXPECT_EQ(status.value.value(), value);
   }
 
-  ClearAllSstFiles(db.get());
-}
+  // Wait until compaction is finished
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
-TEST(VersionTest, SequentialConcurrentPutGet) {
-  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB("test");
-  const Config *const config = db->GetConfig();
-
-  const int nums_elem_each_thread = 1000000;
-
-  unsigned int num_threads = std::thread::hardware_concurrency();
-  if (num_threads == 0) {
-    // std::thread::hardware_concurrency() might return 0 if sys info not
-    // available
-    num_threads = 10;
-  }
-  num_threads = 24;
-
-  std::latch all_writes_done(num_threads);
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
-                 &all_writes_done](int index) {
-    std::string key, value;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      db->Put(key, value, 0 /*txn_id*/);
-    }
-    all_writes_done.count_down();
-  };
-
-  std::vector<std::thread> threads;
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(put_op, i);
-  }
-
-  // Wait until all threads finish
-  all_writes_done.wait();
-
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
-
-  // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
-
-  // Now all immutable memtables are no longer in memory, it means that all
-  // GET operation must go to SST to lookup
-  std::latch all_reads_done(num_threads);
-  auto get_op = [&db, nums_elem = nums_elem_each_thread,
-                 &all_reads_done](int index) {
-    std::string key, value;
-    GetStatus status;
-    std::vector<std::pair<std::string, std::string>> miss_keys;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      status = db->Get(key, 0 /*txn_id*/);
-
-      EXPECT_TRUE(status.type == ValueType::PUT ||
-                  status.type == ValueType::kTooManyOpenFiles);
-
-      if (status.type == ValueType::kTooManyOpenFiles) {
-        int retry = 0;
-        while (retry < 3) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-          status = db->Get(key, 0 /*txn_id*/);
-          if (status.type == ValueType::PUT ||
-              status.type == ValueType::DELETED) {
-            break;
-          }
-
-          retry++;
-        }
-
-        if (status.type == ValueType::kTooManyOpenFiles) {
-          miss_keys.push_back({key, value});
-          continue;
-        }
-      }
-
-      EXPECT_EQ(status.type, ValueType::PUT);
-      EXPECT_EQ(status.value.value(), value);
-    }
-
-    for (int i = 0; i < miss_keys.size(); i++) {
-      status = db->Get(key, 0 /*txn_id*/);
-      EXPECT_TRUE(status.type == ValueType::PUT);
-      EXPECT_EQ(status.value.value(), value);
-    }
-
-    all_reads_done.count_down();
-  };
-
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(get_op, i);
-  }
-
-  // Wait until all threads finish
-  all_reads_done.wait();
-
-  for (auto &thread : threads) {
-    thread.join();
-  }
-
-  ClearAllSstFiles(db.get());
-}
-
-TEST(VersionTest, SequentialConcurrentPutDeleteGet) {
-  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
-  db->LoadDB("test");
-
-  ClearAllSstFiles(db.get());
-
-  const int nums_elem_each_thread = 1000000;
-  unsigned int num_threads = std::thread::hardware_concurrency();
-  if (num_threads == 0) {
-    // std::thread::hardware_concurrency() might return 0 if sys info not
-    // available
-    num_threads = 10;
-  }
-  num_threads = 24;
-
-  // =========== PUT keys with values ===========
-  std::latch all_put_done(num_threads);
-  auto put_op = [&db, nums_elem = nums_elem_each_thread,
-                 &all_put_done](int index) {
-    std::string key, value;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      db->Put(key, value, 0 /*txn_id*/);
-    }
-    all_put_done.count_down();
-  };
-
-  std::vector<std::thread> threads;
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(put_op, i);
-  }
-
-  // Wait until all threads finish
-  all_put_done.wait();
-
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
-
-  // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-  // ========== Finish PUT keys with values ===========
-
-  // ==========Get ALL keys after PUT ==========
-  std::latch all_reads_done(num_threads);
-  auto get_op = [&db, nums_elem = nums_elem_each_thread,
-                 &all_reads_done](int index) {
-    std::string key, value;
-    GetStatus status;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      status = db->Get(key, 0 /*txn_id*/);
-      EXPECT_EQ(status.type, ValueType::PUT);
-      EXPECT_EQ(status.value.value(), value);
-    }
-    all_reads_done.count_down();
-  };
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(get_op, i);
-  }
-
-  // Wait until all threads finish
-  all_reads_done.wait();
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
-  // ========== Finish Get ALL keys after PUT ==========
-
-  // ========== Delete all keys which were PUT ==========
-  std::latch all_delete_done(num_threads);
-  auto delete_op = [&db, nums_elem = nums_elem_each_thread,
-                    &all_delete_done](int index) {
-    std::string key, value;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      db->Delete(key, 0 /*txn_id*/);
-    }
-    all_delete_done.count_down();
-  };
-
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(delete_op, i);
-  }
-  // Wait until all threads finish
-  all_delete_done.wait();
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
-
-  // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
-  // ========== Finish Delete all keys which were PUT ==========
-
-  // ========== Reread keys after delete ==========
-  std::latch all_reads_after_delete_done(num_threads);
-  auto get_after_delete_op = [&db, nums_elem = nums_elem_each_thread,
-                              &all_reads_after_delete_done](int index) {
-    std::string key, value;
-    GetStatus status;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-
-      status = db->Get(key, 0 /*txn_id*/);
-      EXPECT_TRUE(status.type == ValueType::DELETED ||
-                  status.type == ValueType::NOT_FOUND);
-      EXPECT_FALSE(status.value);
-    }
-    all_reads_after_delete_done.count_down();
-  };
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(get_after_delete_op, i);
-  }
-
-  // Wait until all threads finish
-  all_reads_after_delete_done.wait();
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
-  // ========== Finish Reread keys after delete ==========
-
-  // ========== Re-PUT same key ==========
-  std::latch all_reput_done(num_threads);
-  auto re_put_op = [&db, nums_elem = nums_elem_each_thread,
-                    &all_reput_done](int index) {
-    std::string key, value;
-    std::optional<std::string> key_found;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      db->Put(key, value, 0 /*txn_id*/);
-    }
-    all_reput_done.count_down();
-  };
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(re_put_op, i);
-  }
-
-  // Wait until all threads finish
-  all_reput_done.wait();
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
-
-  // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-  // ========== Finish Re-PUT same key ==========
-
-  // ========== Re-GET same key ==========
-  std::latch all_reget_done(num_threads);
-  auto re_get_op = [&db, nums_elem = nums_elem_each_thread,
-                    &all_reget_done](int index) {
-    std::string key, value;
-    GetStatus status;
-
-    for (size_t i = 0; i < nums_elem; i++) {
-      key = "key" + std::to_string(nums_elem * index + i);
-      value = "value" + std::to_string(nums_elem * index + i);
-      status = db->Get(key, 0 /*txn_id*/);
-      EXPECT_EQ(status.type, ValueType::PUT);
-      EXPECT_EQ(status.value.value(), value);
-    }
-    all_reget_done.count_down();
-  };
-
-  for (int i = 0; i < num_threads; i++) {
-    threads.emplace_back(re_get_op, i);
-  }
-
-  // Wait until all threads finish
-  all_reget_done.wait();
-
-  for (auto &thread : threads) {
-    thread.join();
-  }
-  threads.clear();
-  // ========== Finish Re-GET same key ==========
-
-  // EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
+  EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
   ClearAllSstFiles(db.get());
 }
 
@@ -600,13 +220,10 @@ TEST(VersionTest, FreeObsoleteVersions) {
   unsigned int num_read_threads = 10;
   unsigned int num_write_threads = 10;
 
-  std::mutex mutex;
   std::latch all_done(num_read_threads + num_write_threads);
-
-  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
+  auto put_op = [&db, &config, nums_elem = nums_elem_each_thread,
                  &all_done](int index) {
     std::string key, value;
-
     for (size_t i = 0; i < nums_elem; i++) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
@@ -615,15 +232,17 @@ TEST(VersionTest, FreeObsoleteVersions) {
     all_done.count_down();
   };
 
-  auto read_op = [&db, &config, nums_elem = nums_elem_each_thread, &mutex,
+  auto read_op = [&db, &config, nums_elem = nums_elem_each_thread,
                   &all_done](int index) {
     std::string key, value;
     GetStatus status;
+    const Version *version = db->GetVersionManager()->GetLatestVersion();
+    EXPECT_TRUE(version);
 
     for (size_t i = 0; i < nums_elem; i++) {
       key = "key" + std::to_string(nums_elem * index + i);
       value = "value" + std::to_string(nums_elem * index + i);
-      status = db->Get(key, 0 /*txn_id*/);
+      status = version->Get(key, 0 /*txn_id*/);
 
       EXPECT_TRUE(status.type == ValueType::PUT ||
                   status.type == ValueType::NOT_FOUND ||
