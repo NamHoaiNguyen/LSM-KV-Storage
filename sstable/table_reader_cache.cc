@@ -17,12 +17,6 @@ TableReaderCache::TableReaderCache(const db::DBImpl *db,
   assert(db_ && thread_pool_);
 }
 
-TableReaderCache::~TableReaderCache() {
-  shutdown_.store(true);
-
-  cv_.notify_one();
-}
-
 const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
   std::shared_lock rlock(mutex_);
   auto iterator = table_readers_cache_.find(table_id);
@@ -75,7 +69,6 @@ void TableReaderCache::Evict() const {
 
   SSTId table_id = free_list_.front();
   while (!free_list_.empty() && !table_readers_cache_.empty()) {
-    // while (table_readers_cache_.size() >= capacity_) {
     table_id = free_list_.front();
     auto iterator = table_readers_cache_.find(table_id);
     free_list_.pop_front();

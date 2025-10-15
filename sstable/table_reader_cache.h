@@ -33,7 +33,7 @@ class TableReaderCache {
 public:
   TableReaderCache(const db::DBImpl *db, kvs::ThreadPool *thread_pool);
 
-  ~TableReaderCache();
+  ~TableReaderCache() = default;
 
   // No copy allowed
   TableReaderCache(const TableReaderCache &) = delete;
@@ -70,8 +70,6 @@ private:
   mutable std::list<SSTId> free_list_;
 
   mutable std::shared_mutex mutex_;
-
-  mutable std::condition_variable_any cv_;
 
   const db::DBImpl *db_;
 

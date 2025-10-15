@@ -35,7 +35,7 @@ class BlockReaderCache {
 public:
   explicit BlockReaderCache(kvs::ThreadPool *thread_pool);
 
-  ~BlockReaderCache();
+  ~BlockReaderCache() = default;
 
   // No copy allowed
   BlockReaderCache(const BlockReaderCache &) = delete;
@@ -104,8 +104,6 @@ private:
   mutable std::atomic<bool> deleted_;
 
   mutable std::atomic<uint64_t> batch_;
-
-  mutable std::condition_variable_any cv_;
 
   kvs::ThreadPool *thread_pool_;
 };

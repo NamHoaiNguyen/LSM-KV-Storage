@@ -213,11 +213,6 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
         return nullptr;
       }
 
-      // Insert new blockreader into cache
-      // const sstable::TableReader *table_reader_inserted =
-      //     table_reader_cache_->AddNewTableReaderThenGet(
-      //         table_id, std::move(new_table_reader));
-
       auto lru_table_item = std::make_unique<sstable::LRUTableItem>(
           table_id, std::move(new_table_reader), table_reader_cache_);
       const sstable::LRUTableItem *table_reader_inserted =
@@ -287,8 +282,6 @@ bool Compact::DoCompactJob() {
                                                         db_->GetConfig());
 
       if (!new_sst->Open()) {
-        std::cout << "WakeupBgThreadToCleanupFiles is called at place 3"
-                  << std::endl;
         db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
         return false;
       }
