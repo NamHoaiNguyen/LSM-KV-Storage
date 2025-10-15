@@ -86,10 +86,6 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
     value = "value" + std::to_string(nums_elem * index + i);
     status = db->Get(key, 0 /*txn_id*/);
 
-    if (status.type == ValueType::NOT_FOUND) {
-      std::cout << "namnh buggg can't find " << key << std::endl;
-    }
-
     EXPECT_TRUE(status.type == ValueType::PUT ||
                 status.type == ValueType::DELETED ||
                 status.type == ValueType::kTooManyOpenFiles);
@@ -117,11 +113,6 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
     EXPECT_EQ(status.type, ValueType::PUT);
     EXPECT_EQ(status.value.value(), value);
   }
-
-  // // Wait a little bit
-  // std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-
-  // std::cout << "namnh GetWithRetryOp after sleep 5s" << std::endl;
 
   for (int i = 0; i < miss_keys.size(); i++) {
     status = db->Get(key, 0 /*txn_id*/);

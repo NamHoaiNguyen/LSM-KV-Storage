@@ -7,8 +7,6 @@
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
 
-#include <iostream>
-
 namespace kvs {
 
 namespace sstable {
@@ -100,8 +98,6 @@ bool BlockReaderCache::Evict() const {
 
 void BlockReaderCache::AddVictim(
     std::pair<SSTId, BlockOffset> block_info) const {
-  // std::cout << block_info.first << " and " << block_info.second
-  //           << " victim is added" << std::endl;
   std::scoped_lock rwlock(mutex_);
   free_list_.push_back(block_info);
 }

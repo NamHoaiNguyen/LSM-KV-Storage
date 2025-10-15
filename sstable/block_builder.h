@@ -106,7 +106,6 @@ private:
 
   uint64_t num_entries_;
 
-  // TODO(namnh) : Is there any way to avoid copying?
   std::vector<Byte> data_buffer_;
 
   std::vector<Byte> offset_buffer_;

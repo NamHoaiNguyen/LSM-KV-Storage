@@ -245,8 +245,6 @@ bool Compact::DoCompactJob() {
   auto new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                          db_->GetConfig());
   if (!new_sst->Open()) {
-    std::cout << "WakeupBgThreadToCleanupFiles is called at place 2"
-              << std::endl;
     db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
     return false;
   }

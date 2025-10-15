@@ -56,7 +56,6 @@ public:
   // If key existed, update new value.
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
-  // TODO(namnh) : check type
   size_t GetCurrentSize();
 
   // Return random number of levels that a node is inserted
