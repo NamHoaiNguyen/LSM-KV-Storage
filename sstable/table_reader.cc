@@ -4,8 +4,7 @@
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
-
-#include <iostream>
+#include "sstable/lru_table_item.h"
 
 namespace {
 

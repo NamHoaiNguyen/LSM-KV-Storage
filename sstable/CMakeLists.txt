@@ -9,6 +9,10 @@ add_library(sstable
   block_reader_iterator.h
   block_reader.cc
   block_reader.h
+  lru_block_item.cc
+  lru_block_item.h
+  lru_table_item.cc
+  lru_table_item.h
   table_builder.cc
   table_builder.h
   table_reader_cache.cc

@@ -2,6 +2,7 @@
 
 #include "io/buffer.h"
 #include "io/linux_file.h"
+#include "sstable/lru_block_item.h"
 
 #include <cassert>
 

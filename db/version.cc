@@ -55,7 +55,10 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   for (const auto &candidate : sst_lvl0_candidates_) {
     status = version_manager_->GetKey(key, txn_id, candidate->table_id,
                                       candidate->file_size);
-    if (status.type != db::ValueType::NOT_FOUND) {
+
+    if (status.type == db::ValueType::PUT ||
+        status.type == db::ValueType::DELETED ||
+        status.type == db::ValueType::kTooManyOpenFiles) {
       return status;
     }
   }
@@ -73,7 +76,9 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     // TODO(namnh) : Implement bloom filter for level >= 1
     status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
                                       file_candidate->file_size);
-    if (status.type != db::ValueType::NOT_FOUND) {
+    if (status.type == db::ValueType::PUT ||
+        status.type == db::ValueType::DELETED ||
+        status.type == db::ValueType::kTooManyOpenFiles) {
       return status;
     }
   }

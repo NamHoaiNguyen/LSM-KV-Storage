@@ -8,6 +8,7 @@
 #include "db/version.h"
 #include "sstable/block_builder.h"
 #include "sstable/block_reader_iterator.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
@@ -29,27 +30,27 @@ Compact::Compact(const sstable::BlockReaderCache *block_reader_cache,
   assert(block_reader_cache_ && table_reader_cache_ && version_ && db_);
 }
 
-void Compact::PickCompact() {
+bool Compact::PickCompact() {
   if (!version_) {
-    return;
+    return false;
   }
 
   if (!version_->GetLevelToCompact()) {
-    return;
+    return false;
   }
 
   level_to_compact_ = version_->GetLevelToCompact().value();
   if (level_to_compact_ == 0) {
-    DoL0L1Compact();
-    return;
+    return DoL0L1Compact();
   }
 
   // DoOtherLevelsCompact();
+
+  return false;
 }
 
-void Compact::DoL0L1Compact() {
+bool Compact::DoL0L1Compact() {
   // Get oldest sst level 0(the first lvl 0 file. Because sst files are sorted)
-  // TODO(namnh) : Recheck this logic
   assert(!version_->levels_sst_info_[0].empty());
 
   // Get OLDEST lvl 0 sst(smallest number Lvl 0 sst file)
@@ -76,7 +77,7 @@ void Compact::DoL0L1Compact() {
   GetOverlappingSSTNextLvl(1 /*level*/, smallest_key_final /*smallest_key*/,
                            largest_key_final /*largest_key*/);
   // Execute compaction
-  DoCompactJob();
+  return DoCompactJob();
 }
 
 std::pair<std::string_view, std::string_view>
@@ -191,9 +192,11 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       // filename = files_need_compaction_[level][i]->filename;
       table_id = files_need_compaction_[level][i]->table_id;
       // Find table in cache
-      const sstable::TableReader *table_reader =
-          table_reader_cache_->GetTableReader(table_id);
-      if (table_reader) {
+      // const sstable::TableReader *table_reader =
+      //     table_reader_cache_->GetTableReader(table_id);
+      const sstable::LRUTableItem *table_reader =
+          table_reader_cache_->GetLRUTableItem(table_id);
+      if (table_reader && table_reader->GetTableReader()) {
         // If table reader had already been in cache, just create table iterator
         table_reader_iterators.emplace_back(
             std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
@@ -210,10 +213,11 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
         return nullptr;
       }
 
-      // Insert new blockreader into cache
-      const sstable::TableReader *table_reader_inserted =
+      auto lru_table_item = std::make_unique<sstable::LRUTableItem>(
+          table_id, std::move(new_table_reader), table_reader_cache_);
+      const sstable::LRUTableItem *table_reader_inserted =
           table_reader_cache_->AddNewTableReaderThenGet(
-              table_id, std::move(new_table_reader));
+              table_id, std::move(lru_table_item), true /*add_then_get*/);
       assert(table_reader_inserted);
 
       // create iterator for new table
@@ -226,7 +230,7 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
   return std::make_unique<MergeIterator>(std::move(table_reader_iterators));
 }
 
-void Compact::DoCompactJob() {
+bool Compact::DoCompactJob() {
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
   uint64_t new_sst_id = db_->GetNextSSTId();
@@ -235,12 +239,13 @@ void Compact::DoCompactJob() {
   auto new_sst = std::make_unique<sstable::TableBuilder>(std::move(filename),
                                                          db_->GetConfig());
   if (!new_sst->Open()) {
-    return;
+    db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
+    return false;
   }
 
   std::unique_ptr<MergeIterator> iterator = CreateMergeIterator();
   if (!iterator) {
-    return;
+    return false;
   }
 
   std::string_view last_current_key = std::string_view{};
@@ -277,12 +282,12 @@ void Compact::DoCompactJob() {
                                                         db_->GetConfig());
 
       if (!new_sst->Open()) {
-        return;
+        db_->WakeupBgThreadToCleanupFiles(new_sst->GetFilename());
+        return false;
       }
     }
 
     new_sst->AddEntry(key, value, txn_id, type);
-    // TODO(namnh) : Should have a seperate config for size of sst
     if (new_sst->GetDataSize() >= db_->GetConfig()->GetPerMemTableSizeLimit()) {
       new_sst->Finish();
       std::string filename =
@@ -313,6 +318,8 @@ void Compact::DoCompactJob() {
                                  files_need_compaction_[level][i]->level);
     }
   }
+
+  return true;
 }
 
 bool Compact::ShouldKeepEntry(std::string_view last_current_key,

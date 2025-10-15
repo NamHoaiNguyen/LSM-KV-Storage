@@ -19,6 +19,8 @@ class ReadOnlyFile;
 
 namespace sstable {
 
+class LRUBlockItem;
+
 struct BlockReaderData {
   BlockReaderData(uint64_t block_size) {
     assert(block_size > 0);

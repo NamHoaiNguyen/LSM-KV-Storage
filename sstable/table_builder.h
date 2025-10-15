@@ -95,6 +95,8 @@ public:
   // ok
   std::string_view GetLargestKey() const;
 
+  std::string_view GetFilename() const;
+
   // For testing
   BlockBuilder *GetBlockData();
 
@@ -114,7 +116,6 @@ private:
 
   std::unique_ptr<io::WriteOnlyFile> write_file_object_;
 
-  // TODO(namnh) : unique_ptr or shared_ptr?
   std::unique_ptr<BlockBuilder> block_data_;
 
   // Smallest key of each block

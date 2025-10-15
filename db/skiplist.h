@@ -40,7 +40,6 @@ public:
 
   void Delete(std::string_view key, TxnId txn_id);
 
-  // TODO(namnh) : shoud we use std::string?
   std::vector<std::pair<std::string, GetStatus>>
   BatchGet(std::span<std::string_view> keys, TxnId txn_id);
 
@@ -56,7 +55,6 @@ public:
   // If key existed, update new value.
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
-  // TODO(namnh) : check type
   size_t GetCurrentSize();
 
   // Return random number of levels that a node is inserted

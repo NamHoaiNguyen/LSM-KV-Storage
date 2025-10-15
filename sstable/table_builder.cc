@@ -33,8 +33,6 @@ bool TableBuilder::Open() {
 
 void TableBuilder::AddEntry(std::string_view key, std::string_view value,
                             TxnId txn_id, db::ValueType value_type) {
-  assert(value_type != db::ValueType::INVALID && txn_id != INVALID_TXN_ID);
-
   if (table_smallest_key_.empty()) {
     table_smallest_key_ = std::string(key);
   }
@@ -86,11 +84,6 @@ void TableBuilder::FlushBlock() {
   std::span<const Byte> extra_buffer = block_data_->GetExtraView();
   write_file_object_->Append(extra_buffer, current_offset_);
   current_offset_ += extra_buffer.size();
-
-  // Ensure that data is persisted to disk from page cache
-  // TODO(namnh, IMPORTANCE) : Do we need to do that right now? it significantly
-  // degrades performance
-  // write_file_object_->Flush();
 
   // Build MetaEntry format (block_meta)
   AddIndexBlockEntry(block_smallest_key_, block_largest_key_,
@@ -237,6 +230,8 @@ io::WriteOnlyFile *TableBuilder::GetWriteOnlyFileObject() {
 uint64_t TableBuilder::GetFileSize() const { return current_offset_ + 1; }
 
 uint64_t TableBuilder::GetDataSize() const { return data_size_; }
+
+std::string_view TableBuilder::GetFilename() const { return filename_; }
 
 } // namespace sstable
 

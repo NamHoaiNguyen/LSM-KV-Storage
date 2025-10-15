@@ -12,8 +12,10 @@
 #include "sstable/block_index.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_iterator.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
 #include "sstable/table_reader.h"
+#include "sstable/table_reader_cache.h"
 #include "sstable/table_reader_iterator.h"
 
 // libC++
@@ -312,9 +314,12 @@ TEST(TableTest, TableReaderIterator) {
   std::unique_ptr<sstable::TableReader> table_reader =
       sstable::CreateAndSetupDataForTableReader(
           std::move(filename), 1 /*sst_id*/, sst_metadata[0][0]->file_size);
+  // Mock LRU table item
+  auto lru_table_item = std::make_unique<LRUTableItem>(
+      1 /*table_id*/, std::move(table_reader), db->GetTableReaderCache());
 
   auto iterator = std::make_unique<sstable::TableReaderIterator>(
-      db->GetBlockReaderCache(), table_reader.get());
+      db->GetBlockReaderCache(), lru_table_item.get());
 
   int total_elems = 0;
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
@@ -326,7 +331,7 @@ TEST(TableTest, TableReaderIterator) {
     EXPECT_EQ(key_found, list_key_value[total_elems].first);
     EXPECT_EQ(value_found, list_key_value[total_elems].second);
 
-    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id).value.value());
 
     total_elems++;
   }
@@ -341,7 +346,7 @@ TEST(TableTest, TableReaderIterator) {
     EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
     EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
 
-    EXPECT_EQ(value_found, db->Get(key_found, txn_id));
+    EXPECT_EQ(value_found, db->Get(key_found, txn_id).value.value());
 
     last_elem_index--;
   }

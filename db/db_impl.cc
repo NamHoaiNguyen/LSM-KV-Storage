@@ -24,6 +24,8 @@
 #include "sstable/block_builder.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
+#include "sstable/lru_block_item.h"
+#include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
@@ -55,11 +57,21 @@ DBImpl::DBImpl(bool is_testing)
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
-      table_reader_cache_(std::make_unique<sstable::TableReaderCache>(this)),
-      block_reader_cache_(std::make_unique<sstable::BlockReaderCache>()),
-      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {}
+      table_reader_cache_(
+          std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
+      block_reader_cache_(
+          std::make_unique<sstable::BlockReaderCache>(thread_pool_)),
+      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
+  thread_pool_->Enqueue(&DBImpl::CleanupTrashFiles, this);
+}
 
 DBImpl::~DBImpl() {
+  block_reader_cache_.reset();
+  table_reader_cache_.reset();
+
+  shutdown_ = true;
+  trash_files_cv_.notify_one();
+
   delete thread_pool_;
   thread_pool_ = nullptr;
 }
@@ -196,15 +208,48 @@ std::unique_ptr<VersionEdit> DBImpl::Recover(std::string_view manifest_path) {
   return version_edit;
 }
 
-std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
+void DBImpl::CleanupTrashFiles() {
+  while (!shutdown_) {
+    {
+      std::unique_lock rwlock(trash_files_mutex_);
+      trash_files_cv_.wait(rwlock, [this]() {
+        return this->shutdown_ || !this->trash_files_.empty();
+      });
+
+      if (this->shutdown_) {
+        return;
+      }
+
+      while (!trash_files_.empty()) {
+        std::string filename = trash_files_.front();
+        trash_files_.pop();
+
+        fs::path file_path(filename);
+        if (fs::exists(file_path) && fs::is_regular_file(file_path)) {
+          fs::remove(file_path);
+        }
+      }
+    }
+  }
+}
+
+void DBImpl::WakeupBgThreadToCleanupFiles(std::string_view filename) const {
+  std::string file_name = std::string(filename);
+  std::scoped_lock rwlock(trash_files_mutex_);
+  trash_files_.push(std::move(file_name));
+  trash_files_cv_.notify_one();
+}
+
+GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
   GetStatus status;
+
   {
     std::shared_lock rlock(mutex_);
 
     // Find data from Memtable
     status = memtable_->Get(key, txn_id);
     if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-      return status.value;
+      return status;
     }
 
     // If key is not found, continue finding from immutable memtables
@@ -212,7 +257,7 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
          immutable_memtables_ | std::views::reverse) {
       status = immu_memtable->Get(key, txn_id);
       if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-        return status.value;
+        return status;
       }
     }
   }
@@ -220,33 +265,26 @@ std::optional<std::string> DBImpl::Get(std::string_view key, TxnId txn_id) {
   // TODO(nanmh) : Does it need to acquire lock when looking up key in SSTs?
   const Version *version = version_manager_->GetLatestVersion();
   if (!version) {
-    return std::nullopt;
+    return status;
   }
 
   version->IncreaseRefCount();
   status = version->Get(key, txn_id);
-  if (status.type == ValueType::PUT || status.type == ValueType::DELETED) {
-    return status.value;
-  }
   version->DecreaseRefCount();
 
-  return std::nullopt;
+  return status;
 }
 
 void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   // TODO(namnh) : // Change when transaction is supported
   sequence_number_++;
   Put_(key, value, sequence_number_.load());
-
-  // Put_(key, value, txn_id);
 }
 
 void DBImpl::Delete(std::string_view key, TxnId txn_id) {
   // TODO(namnh) : // Change when transaction is supported
   sequence_number_++;
   Put_(key, std::string_view{}, sequence_number_.load());
-
-  // Put_(key, std::string_view{}, txn_id);
 }
 
 void DBImpl::Put_(std::string_view key, std::string_view value, TxnId txn_id) {
@@ -339,6 +377,8 @@ void DBImpl::CreateNewSST(
   sstable::TableBuilder new_sst(std::move(filename), config_.get());
 
   if (!new_sst.Open()) {
+    filename = db_path_ + std::to_string(sst_id) + ".sst";
+    WakeupBgThreadToCleanupFiles(filename);
     work_done.count_down();
     return;
   }
@@ -454,7 +494,6 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
       reinterpret_cast<const uint8_t *>(buffer.GetString()), buffer.GetSize());
 
   // TODO(namnh, IMPORTANT) : What if append fail ?
-  // TODO(namnh, IMPORTANT) : Do we need to lock file ?
   manifest_write_object_->Append(bytes);
 }
 
@@ -486,7 +525,17 @@ void DBImpl::ExecuteBackgroundCompaction() {
   auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
                                            table_reader_cache_.get(), version,
                                            version_edit.get(), this);
-  compact->PickCompact();
+  bool compact_success = compact->PickCompact();
+  if (!compact_success) {
+    version->DecreaseRefCount();
+
+    background_compaction_scheduled_.store(false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    MaybeScheduleCompaction();
+
+    return;
+  }
+
   version->DecreaseRefCount();
 
   version_edit->SetNextTableId(GetNextSSTId());

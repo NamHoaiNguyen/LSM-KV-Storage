@@ -16,6 +16,7 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <queue>
 #include <ranges>
 #include <shared_mutex>
 #include <string>
@@ -65,7 +66,7 @@ public:
   DBImpl(DBImpl &&) = default;
   DBImpl &operator=(DBImpl &&) = default;
 
-  std::optional<std::string> Get(std::string_view key, TxnId txn_id);
+  GetStatus Get(std::string_view key, TxnId txn_id);
 
   void Put(std::string_view key, std::string_view value, TxnId txn_id);
 
@@ -88,6 +89,10 @@ public:
   const sstable::TableReaderCache *GetTableReaderCache() const;
 
   std::string GetDBPath() const;
+
+  void CleanupTrashFiles();
+
+  void WakeupBgThreadToCleanupFiles(std::string_view filename) const;
 
   friend class Compact;
 
@@ -159,6 +164,14 @@ private:
   std::shared_mutex mutex_;
 
   std::condition_variable_any cv_;
+
+  mutable std::queue<std::string> trash_files_;
+
+  mutable std::mutex trash_files_mutex_;
+
+  mutable std::condition_variable trash_files_cv_;
+
+  std::atomic<bool> shutdown_{false};
 };
 
 } // namespace db
