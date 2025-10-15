@@ -85,11 +85,6 @@ void TableBuilder::FlushBlock() {
   write_file_object_->Append(extra_buffer, current_offset_);
   current_offset_ += extra_buffer.size();
 
-  // Ensure that data is persisted to disk from page cache
-  // TODO(namnh, IMPORTANCE) : Do we need to do that right now? it significantly
-  // degrades performance
-  // write_file_object_->Flush();
-
   // Build MetaEntry format (block_meta)
   AddIndexBlockEntry(block_smallest_key_, block_largest_key_,
                      block_starting_offset,

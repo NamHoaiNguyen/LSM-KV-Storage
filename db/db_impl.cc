@@ -265,7 +265,6 @@ GetStatus DBImpl::Get(std::string_view key, TxnId txn_id) {
   // TODO(nanmh) : Does it need to acquire lock when looking up key in SSTs?
   const Version *version = version_manager_->GetLatestVersion();
   if (!version) {
-    // std::cout << "namnh check value of type " << status.type << std::endl;
     return status;
   }
 
@@ -499,7 +498,6 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
       reinterpret_cast<const uint8_t *>(buffer.GetString()), buffer.GetSize());
 
   // TODO(namnh, IMPORTANT) : What if append fail ?
-  // TODO(namnh, IMPORTANT) : Do we need to lock file ?
   manifest_write_object_->Append(bytes);
 }
 

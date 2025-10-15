@@ -37,8 +37,8 @@ class VersionManager;
 // of SSTs that needed to be compacted.
 
 // NOTE: A version is IMMUTABLE snapshot after be built. In other worlds, DO NOT
-//  execute methods that changing data of  version
-//  TODO(namnh) : have any other designs for this ?
+// execute methods that changing data of version
+// TODO(namnh) : have any other designs for this ?
 
 class Version {
 public:
