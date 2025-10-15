@@ -6,8 +6,6 @@
 #include "sstable/block_reader_cache.h"
 #include "sstable/lru_table_item.h"
 
-#include <iostream>
-
 namespace {
 
 uint64_t GetDataEntryOffset(uint64_t offset_section, int entry_index,
