@@ -54,13 +54,13 @@ const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
     iterator->second->IncRef();
   }
 
-  // Increase ref count
   if (add_then_get) {
+    // Increase ref count if need to get
     iterator->second->IncRef();
   }
 
-  // This tableReader should be put in free_list_ ?
   if (iterator->second->GetRefCount() <= 1) {
+    // This TableReader should be put in free_list_
     free_list_.push_back(table_id);
   }
 

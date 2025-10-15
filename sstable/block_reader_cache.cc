@@ -63,10 +63,12 @@ BlockReaderCache::AddNewBlockReaderThenGet(
   }
 
   if (add_then_get) {
+    // Increase ref count if need to get
     iterator->second->ref_count_.fetch_add(1);
   }
 
   if (iterator->second->ref_count_.load() <= 1) {
+    // This BlockReader should be put in free_list_
     free_list_.push_back(block_info);
   }
 
