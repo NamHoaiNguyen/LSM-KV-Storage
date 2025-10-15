@@ -279,16 +279,12 @@ void DBImpl::Put(std::string_view key, std::string_view value, TxnId txn_id) {
   // TODO(namnh) : // Change when transaction is supported
   sequence_number_++;
   Put_(key, value, sequence_number_.load());
-
-  // Put_(key, value, txn_id);
 }
 
 void DBImpl::Delete(std::string_view key, TxnId txn_id) {
   // TODO(namnh) : // Change when transaction is supported
   sequence_number_++;
   Put_(key, std::string_view{}, sequence_number_.load());
-
-  // Put_(key, std::string_view{}, txn_id);
 }
 
 void DBImpl::Put_(std::string_view key, std::string_view value, TxnId txn_id) {
