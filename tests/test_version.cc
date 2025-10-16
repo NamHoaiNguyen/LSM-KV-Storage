@@ -199,7 +199,7 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    status = version->Get(key, 0 /*txn_id*/);
+    status = db->Get(key, 0 /*txn_id*/);
     EXPECT_EQ(status.type, ValueType::PUT);
     EXPECT_EQ(status.value.value(), value);
   }
