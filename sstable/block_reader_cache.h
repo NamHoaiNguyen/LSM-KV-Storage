@@ -85,7 +85,7 @@ private:
 
   // Each key of block reader item in block reader cache is the combination
   // of table id and block offset
-  // mutable std::unordered_map<std::pair<SSTId, BlockOff set>,
+  // mutable std::unordered_map<std::pair<SSTId, BlockOffset>,
   //                            std::unique_ptr<LRUBlockItem>, pair_hash,
   //                            pair_equal>
   //     block_reader_cache_;
@@ -98,12 +98,6 @@ private:
   mutable std::list<std::pair<SSTId, BlockOffset>> free_list_;
 
   mutable std::shared_mutex mutex_;
-
-  std::atomic<bool> shutdown_;
-
-  mutable std::atomic<bool> deleted_;
-
-  mutable std::atomic<uint64_t> batch_;
 
   kvs::ThreadPool *thread_pool_;
 };

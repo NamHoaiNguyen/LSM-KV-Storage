@@ -12,8 +12,7 @@ namespace kvs {
 namespace sstable {
 
 BlockReaderCache::BlockReaderCache(kvs::ThreadPool *thread_pool)
-    : capacity_(100000), shutdown_(false), deleted_(false), batch_(0),
-      thread_pool_(thread_pool) {}
+    : capacity_(100000), thread_pool_(thread_pool) {}
 
 const LRUBlockItem *BlockReaderCache::GetBlockReader(
     std::pair<SSTId, BlockOffset> block_info) const {
