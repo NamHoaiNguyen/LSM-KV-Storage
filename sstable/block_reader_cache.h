@@ -85,12 +85,9 @@ private:
 
   // Each key of block reader item in block reader cache is the combination
   // of table id and block offset
-  // mutable std::unordered_map<std::pair<SSTId, BlockOffset>,
-  //                            std::unique_ptr<LRUBlockItem>, pair_hash,
-  //                            pair_equal>
-  //     block_reader_cache_;
-
-  mutable std::map<std::pair<SSTId, BlockOffset>, std::unique_ptr<LRUBlockItem>>
+  mutable std::unordered_map<std::pair<SSTId, BlockOffset>,
+                             std::unique_ptr<LRUBlockItem>, pair_hash,
+                             pair_equal>
       block_reader_cache_;
 
   const int capacity_;
