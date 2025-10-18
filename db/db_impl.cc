@@ -52,7 +52,7 @@ namespace kvs {
 namespace db {
 
 DBImpl::DBImpl(bool is_testing)
-    : next_sstable_id_(1), memtable_version_(1),
+    : next_sstable_id_(1), memtable_version_(1), sequence_number_(0),
       memtable_(std::make_unique<MemTable>(memtable_version_)),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
       config_(std::make_unique<Config>(is_testing)),

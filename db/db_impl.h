@@ -117,8 +117,6 @@ private:
 
   void ExecuteBackgroundCompaction();
 
-  std::atomic<uint64_t> next_sstable_id_;
-
   struct PairHash {
     std::size_t
     operator()(const std::pair<uint64_t, uint8_t> &p) const noexcept {
@@ -129,7 +127,14 @@ private:
 
   std::string db_path_;
 
+  std::atomic<uint64_t> next_sstable_id_;
+
   std::atomic<uint64_t> memtable_version_;
+
+  // TODO(namnh)
+  // An increasing monotonic number assigned to each put/delete operation.
+  // it will be used until transaction module is supported
+  std::atomic<uint64_t> sequence_number_;
 
   std::unique_ptr<BaseMemTable> memtable_;
 
@@ -142,11 +147,6 @@ private:
   std::unique_ptr<Config> config_;
 
   std::atomic<bool> background_compaction_scheduled_;
-
-  // TODO(namnh)
-  // An increasing monotonic number assigned to each put/delete operation.
-  // it will be used until transaction module is supported
-  std::atomic<uint64_t> sequence_number_{0};
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
