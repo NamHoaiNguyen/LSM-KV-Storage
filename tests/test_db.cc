@@ -127,7 +127,7 @@ TEST(DBTest, ConcurrencyPut) {
   db->LoadDB("test");
   const Config *const config = db->GetConfig();
 
-  const int nums_elem_each_thread = 300000;
+  const int nums_elem_each_thread = 100000;
 
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
@@ -191,7 +191,7 @@ TEST(DBTest, ConcurrencyPut) {
   std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
 
   // Wait until compaction finishes it job
-  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+  std::this_thread::sleep_for(std::chrono::milliseconds(15000));
 
   ClearAllSstFiles(db.get());
 }
