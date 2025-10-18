@@ -21,9 +21,9 @@ class SkipList;
 
 class MemTable : public BaseMemTable {
 public:
-  MemTable();
+  explicit MemTable(uint64_t version);
 
-  ~MemTable() override = default;
+  ~MemTable() = default;
 
   // Copy constructor/assignment
   MemTable(const MemTable &) = delete;
@@ -53,10 +53,12 @@ public:
 
   const SkipList *GetMemTable() const override;
 
+  uint64_t GetVersion() const override;
+
 private:
   std::atomic<bool> is_flushing_;
 
-  std::atomic<uint64_t> sequence_number_;
+  const uint64_t version_;
 
   std::unique_ptr<SkipList> table_;
 };

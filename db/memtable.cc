@@ -7,7 +7,8 @@ namespace kvs {
 
 namespace db {
 
-MemTable::MemTable() : table_(std::make_unique<SkipList>()) {}
+MemTable::MemTable(uint64_t version)
+    : version_(version), table_(std::make_unique<SkipList>()) {}
 
 void MemTable::BatchDelete(std::span<std::string_view> keys, TxnId txn_id) {
   std::vector<std::pair<std::string, bool>> result;
@@ -94,6 +95,8 @@ const SkipList *MemTable::GetMemTable() const {
   }
   return table_.get();
 }
+
+uint64_t MemTable::GetVersion() const { return version_; }
 
 } // namespace db
 

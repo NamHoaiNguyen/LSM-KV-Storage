@@ -38,6 +38,8 @@ public:
   virtual size_t GetMemTableSize() const = 0;
 
   virtual const SkipList *GetMemTable() const = 0;
+
+  virtual uint64_t GetVersion() const = 0;
 };
 
 } // namespace db

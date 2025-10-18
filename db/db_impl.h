@@ -106,7 +106,7 @@ private:
 
   std::unique_ptr<VersionEdit> Recover(std::string_view manifest_path);
 
-  void FlushMemTableJob();
+  void FlushMemTableJob(uint64_t version, int num_flush_memtables);
 
   void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
                     VersionEdit *version_edit, std::latch &work_done);
@@ -117,8 +117,6 @@ private:
 
   void ExecuteBackgroundCompaction();
 
-  std::atomic<uint64_t> next_sstable_id_;
-
   struct PairHash {
     std::size_t
     operator()(const std::pair<uint64_t, uint8_t> &p) const noexcept {
@@ -128,6 +126,15 @@ private:
   };
 
   std::string db_path_;
+
+  std::atomic<uint64_t> next_sstable_id_;
+
+  std::atomic<uint64_t> memtable_version_;
+
+  // TODO(namnh)
+  // An increasing monotonic number assigned to each put/delete operation.
+  // it will be used until transaction module is supported
+  std::atomic<uint64_t> sequence_number_;
 
   std::unique_ptr<BaseMemTable> memtable_;
 
@@ -140,11 +147,6 @@ private:
   std::unique_ptr<Config> config_;
 
   std::atomic<bool> background_compaction_scheduled_;
-
-  // TODO(namnh)
-  // An increasing monotonic number assigned to each put/delete operation.
-  // it will be used until transaction module is supported
-  std::atomic<uint64_t> sequence_number_{0};
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
