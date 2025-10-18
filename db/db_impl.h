@@ -3,7 +3,6 @@
 
 #include "common/macros.h"
 #include "db/version.h"
-#include <rapidjson/filereadstream.h>
 
 // libC++
 #include <algorithm>
@@ -66,11 +65,11 @@ public:
   DBImpl(DBImpl &&) = default;
   DBImpl &operator=(DBImpl &&) = default;
 
-  GetStatus Get(std::string_view key, TxnId txn_id);
+  GetStatus Get(std::string_view key, TxnId txn_id = 0);
 
-  void Put(std::string_view key, std::string_view value, TxnId txn_id);
+  void Put(std::string_view key, std::string_view value, TxnId txn_id = 0);
 
-  void Delete(std::string_view key, TxnId txn_id);
+  void Delete(std::string_view key, TxnId txn_id = 0);
 
   uint64_t GetNextSSTId();
 
