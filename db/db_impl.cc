@@ -289,13 +289,7 @@ void DBImpl::Delete(std::string_view key, TxnId txn_id) {
 }
 
 void DBImpl::Put_(std::string_view key, std::string_view value, TxnId txn_id) {
-  std::unique_lock rwlock(mutex_);
-  // Stop writing when numbers of immutable memtable reach to threshold
-  // TODO(namnh): Write Stop problem. Improve in future
-  // cv_.wait(rwlock, [this]() {
-  //   return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
-  // });
-
+  std::scoped_lock rwlock(mutex_);
   if (value == std::string_view{}) {
     memtable_->Delete(key, txn_id);
   } else {
@@ -348,20 +342,14 @@ void DBImpl::ForceFlushMemTable() {
 
 void DBImpl::FlushMemTableJob(uint64_t version, int num_flush_memtables) {
   // Create new SSTs
-  // std::latch all_done(immutable_memtables_.size());
   std::latch all_done(num_flush_memtables);
-
-  // std::vector<std::reference_wrapper<const std::unique_ptr<BaseMemTable>>>
-  //     list_flush;
   auto version_edit = std::make_unique<VersionEdit>(config_->GetSSTNumLvels());
 
-  // int total_flushed_memtables = 0;
   {
     std::scoped_lock rwlock(mutex_);
     for (const auto &immutable_memtable : immutable_memtables_) {
 
       if (immutable_memtable->GetVersion() == version) {
-        // total_flushed_memtables++;
         thread_pool_->Enqueue(&DBImpl::CreateNewSST, this,
                               std::cref(immutable_memtable), version_edit.get(),
                               std::ref(all_done));
@@ -371,14 +359,6 @@ void DBImpl::FlushMemTableJob(uint64_t version, int num_flush_memtables) {
 
   // Wait until all workers have finished
   all_done.wait();
-
-  // if (total_flushed_memtables > version_edit->GetImmutableNewFiles().size())
-  // {
-  //   std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  //   thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this,
-  //                         memtable_version_.load(), num_flush_memtables);
-  //   return;
-  // }
 
   version_edit->SetNextTableId(GetNextSSTId());
   version_edit->SetSequenceNumber(sequence_number_);
@@ -393,15 +373,12 @@ void DBImpl::FlushMemTableJob(uint64_t version, int num_flush_memtables) {
   // NOTE: new writes are only allowed after new version is VISIBLE
   {
     std::scoped_lock rwlock(mutex_);
-    // immutable_memtables_.clear();
     immutable_memtables_.erase(
         std::remove_if(immutable_memtables_.begin(), immutable_memtables_.end(),
                        [version](const auto &elem) {
                          return elem->GetVersion() == version;
                        }),
         immutable_memtables_.end());
-
-    // cv_.notify_all();
   }
 
   MaybeScheduleCompaction();
