@@ -20,6 +20,9 @@ add_subdirectory(sstable)
 add_subdirectory(third_party)
 # add_subdirectory(storage)
 
+# Add example
+add_subdirectory(example)
+
 # add_executable(lsm_kv_storage main.cc)
 # target_link_libraries(lsm_kv_storage common mvcc db io sstable storage)
 
