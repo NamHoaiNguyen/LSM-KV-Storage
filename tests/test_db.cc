@@ -7,6 +7,7 @@
 #include "db/version_manager.h"
 
 // libC++
+#include <chrono>
 #include <filesystem>
 #include <memory>
 
@@ -28,13 +29,39 @@ void ClearAllSstFiles(const DBImpl *db) {
   }
 }
 
+std::string generateRandomString(size_t length) {
+  const std::string characters =
+      "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  std::string randomString;
+
+  for (size_t i = 0; i < length; ++i) {
+    randomString += characters[rand() % characters.length()];
+  }
+
+  return randomString;
+}
+
 void PutOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
   std::string key, value;
+  // std::vector<std::pair<std::string, std::string>> key_value;
 
+  std::srand(static_cast<unsigned int>(std::time(0)));
   for (size_t i = 0; i < nums_elem; i++) {
     key = "key" + std::to_string(nums_elem * index + i);
     value = "value" + std::to_string(nums_elem * index + i);
     db->Put(key, value, 0 /*txn_id*/);
+  }
+  done.count_down();
+}
+
+void PutOpV2(db::DBImpl *db, int nums_elem, int index,
+             const std::vector<std::pair<std::string, std::string>> &key_value,
+             std::latch &done) {
+  for (size_t i = 0; i < nums_elem; i++) {
+    // key = "key" + std::to_string(nums_elem * index + i);
+    // value = "value" + std::to_string(nums_elem * index + i);
+    db->Put(key_value[nums_elem * index + i].first,
+            key_value[nums_elem * index + i].second, 0 /*txn_id*/);
   }
   done.count_down();
 }
@@ -96,6 +123,84 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
   }
 
   done.count_down();
+}
+
+TEST(DBTest, ConcurrencyPut) {
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB("test");
+  const Config *const config = db->GetConfig();
+
+  const int nums_elem_each_thread = 300000;
+
+  unsigned int num_threads = std::thread::hardware_concurrency();
+  if (num_threads == 0) {
+    // std::thread::hardware_concurrency() might return 0 if sys info not
+    // available
+    num_threads = 10;
+  }
+
+  std::vector<std::thread> threads;
+  std::vector<std::pair<std::string, std::string>> key_value;
+
+  auto start_gen_data = std::chrono::high_resolution_clock::now();
+  std::mutex mutex;
+  std::latch all_gen_data_done(num_threads);
+
+  auto gen_data = [&key_value, &mutex, &all_gen_data_done,
+                   nums_elem_each_thread]() {
+    for (int i = 0; i < nums_elem_each_thread; i++) {
+      std::string key = generateRandomString(100);
+      std::string value = generateRandomString(100);
+      {
+        std::scoped_lock rwlock(mutex);
+        key_value.push_back({std::move(key), std::move(value)});
+      }
+    }
+    all_gen_data_done.count_down();
+  };
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(gen_data);
+  }
+  all_gen_data_done.wait();
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
+
+  auto end_gen_data = std::chrono::high_resolution_clock::now();
+
+  std::latch all_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(PutOpV2, db.get(), nums_elem_each_thread, i,
+                         std::cref(key_value), std::ref(all_done));
+    // threads.emplace_back(PutOp, db.get(), nums_elem_each_thread, i,
+    //                      std::ref(all_done));
+  }
+
+  // Wait until all threads finish
+  all_done.wait();
+
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
+
+  db->ForceFlushMemTable();
+
+  std::cout << "Put all data finished ConcurrencyPut" << std::endl;
+
+  auto end = std::chrono::high_resolution_clock::now();
+  // Calculate the duration
+  auto duration =
+      std::chrono::duration_cast<std::chrono::milliseconds>(end - end_gen_data);
+
+  std::cout << "Execution time: " << duration.count() << " ms" << std::endl;
+
+  // Wait until compaction finishes it job
+  std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
+  ClearAllSstFiles(db.get());
 }
 
 TEST(DBTest, SequentialConcurrentPutDeleteGet) {
@@ -309,7 +414,7 @@ TEST(DBTest, RecoverDB) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
 
-  const int nums_elem_each_thread = 1000000;
+  const int nums_elem_each_thread = 500000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not

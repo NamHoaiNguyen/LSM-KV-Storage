@@ -110,15 +110,16 @@ TEST(VersionTest, GetFromSST) {
 
   // Force clearing all immutable memtables
   db->ForceFlushMemTable();
-  EXPECT_TRUE(db->GetImmutableMemTables().empty());
 
   // Wait until flushing is finished
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  EXPECT_TRUE(db->GetImmutableMemTables().empty());
 
   // Now all immutable memtables are no longer in memory, it means that all GET
   // operation must go to SST to lookup
   const Version *version = db->GetVersionManager()->GetLatestVersion();
   EXPECT_TRUE(version);
+  version->IncreaseRefCount();
 
   GetStatus status;
   for (int i = 0; i < nums_elem; i++) {
@@ -129,6 +130,7 @@ TEST(VersionTest, GetFromSST) {
     EXPECT_EQ(status.type, db::ValueType::PUT);
     EXPECT_EQ(status.value.value(), value);
   }
+  version->DecreaseRefCount();
 
   // Wait until compaction finishes its job
   std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -191,6 +193,7 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
   // GET operation must go to SST to lookup
   const Version *version = db->GetVersionManager()->GetLatestVersion();
   EXPECT_TRUE(version);
+  version->IncreaseRefCount();
 
   GetStatus status;
   std::string key, value;
@@ -199,10 +202,11 @@ TEST(VersionTest, ConcurrentPutSingleGet) {
     key = "key" + std::to_string(i);
     value = "value" + std::to_string(i);
 
-    status = db->Get(key, 0 /*txn_id*/);
+    status = version->Get(key, 0 /*txn_id*/);
     EXPECT_EQ(status.type, ValueType::PUT);
     EXPECT_EQ(status.value.value(), value);
   }
+  version->DecreaseRefCount();
 
   // Wait until compaction is finished
   std::this_thread::sleep_for(std::chrono::milliseconds(5000));
@@ -238,6 +242,7 @@ TEST(VersionTest, FreeObsoleteVersions) {
     GetStatus status;
     const Version *version = db->GetVersionManager()->GetLatestVersion();
     EXPECT_TRUE(version);
+    version->IncreaseRefCount();
 
     for (size_t i = 0; i < nums_elem; i++) {
       key = "key" + std::to_string(nums_elem * index + i);
@@ -253,6 +258,8 @@ TEST(VersionTest, FreeObsoleteVersions) {
         EXPECT_FALSE(status.value);
       }
     }
+    version->DecreaseRefCount();
+
     all_done.count_down();
   };
 

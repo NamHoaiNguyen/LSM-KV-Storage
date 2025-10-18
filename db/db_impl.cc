@@ -52,7 +52,8 @@ namespace kvs {
 namespace db {
 
 DBImpl::DBImpl(bool is_testing)
-    : next_sstable_id_(1), memtable_(std::make_unique<MemTable>()),
+    : next_sstable_id_(1), memtable_version_(1),
+      memtable_(std::make_unique<MemTable>(memtable_version_)),
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
@@ -291,9 +292,9 @@ void DBImpl::Put_(std::string_view key, std::string_view value, TxnId txn_id) {
   std::unique_lock rwlock(mutex_);
   // Stop writing when numbers of immutable memtable reach to threshold
   // TODO(namnh): Write Stop problem. Improve in future
-  cv_.wait(rwlock, [this]() {
-    return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
-  });
+  // cv_.wait(rwlock, [this]() {
+  //   return immutable_memtables_.size() < config_->GetMaxImmuMemTablesInMem();
+  // });
 
   if (value == std::string_view{}) {
     memtable_->Delete(key, txn_id);
@@ -304,48 +305,80 @@ void DBImpl::Put_(std::string_view key, std::string_view value, TxnId txn_id) {
   if (memtable_->GetMemTableSize() >= config_->GetPerMemTableSizeLimit()) {
     immutable_memtables_.push_back(std::move(memtable_));
 
-    if (immutable_memtables_.size() >= config_->GetMaxImmuMemTablesInMem()) {
+    // immutable_memtables_.size() >= config_->GetMaxImmuMemTablesInMem()
+    int num_flush_memtables =
+        std::count_if(immutable_memtables_.begin(), immutable_memtables_.end(),
+                      [version = memtable_version_.load()](const auto &elem) {
+                        return elem->GetVersion() == version;
+                      });
+
+    if (num_flush_memtables >= config_->GetMaxImmuMemTablesInMem()) {
       // Flush thread to flush memtable to disk
-      thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this);
+      thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this,
+                            memtable_version_.load(), num_flush_memtables);
+      memtable_version_.fetch_add(1);
     }
 
     // Create new empty mutable memtable
-    memtable_ = std::make_unique<MemTable>();
+    memtable_ = std::make_unique<MemTable>(memtable_version_);
   }
 }
 
 // Just for testing
 void DBImpl::ForceFlushMemTable() {
-  {
-    std::scoped_lock lock(mutex_);
-    if (memtable_->GetMemTableSize() != 0) {
-      immutable_memtables_.push_back(std::move(memtable_));
-      // Create new empty mutable memtable
-      memtable_ = std::make_unique<MemTable>();
-    }
-  }
+  int num_flush_memtables{0};
 
-  FlushMemTableJob();
+  std::scoped_lock lock(mutex_);
+  if (memtable_->GetMemTableSize() != 0) {
+    immutable_memtables_.push_back(std::move(memtable_));
+  }
+  num_flush_memtables =
+      std::count_if(immutable_memtables_.begin(), immutable_memtables_.end(),
+                    [version = memtable_version_.load()](const auto &elem) {
+                      return elem->GetVersion() == version;
+                    });
+  // FlushMemTableJob(memtable_version_.load(), num_flush_memtables);
+  thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this,
+                        memtable_version_.load(), num_flush_memtables);
+  memtable_version_.fetch_add(1);
+
+  // Create new memtable
+  memtable_ = std::make_unique<MemTable>(memtable_version_.load());
 }
 
-void DBImpl::FlushMemTableJob() {
+void DBImpl::FlushMemTableJob(uint64_t version, int num_flush_memtables) {
   // Create new SSTs
-  std::latch all_done(immutable_memtables_.size());
+  // std::latch all_done(immutable_memtables_.size());
+  std::latch all_done(num_flush_memtables);
 
-  std::vector<std::shared_ptr<SSTMetadata>> new_ssts_info;
+  // std::vector<std::reference_wrapper<const std::unique_ptr<BaseMemTable>>>
+  //     list_flush;
   auto version_edit = std::make_unique<VersionEdit>(config_->GetSSTNumLvels());
 
+  // int total_flushed_memtables = 0;
   {
     std::scoped_lock rwlock(mutex_);
     for (const auto &immutable_memtable : immutable_memtables_) {
-      thread_pool_->Enqueue(&DBImpl::CreateNewSST, this,
-                            std::cref(immutable_memtable), version_edit.get(),
-                            std::ref(all_done));
+
+      if (immutable_memtable->GetVersion() == version) {
+        // total_flushed_memtables++;
+        thread_pool_->Enqueue(&DBImpl::CreateNewSST, this,
+                              std::cref(immutable_memtable), version_edit.get(),
+                              std::ref(all_done));
+      }
     }
   }
 
   // Wait until all workers have finished
   all_done.wait();
+
+  // if (total_flushed_memtables > version_edit->GetImmutableNewFiles().size())
+  // {
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //   thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this,
+  //                         memtable_version_.load(), num_flush_memtables);
+  //   return;
+  // }
 
   version_edit->SetNextTableId(GetNextSSTId());
   version_edit->SetSequenceNumber(sequence_number_);
@@ -360,8 +393,15 @@ void DBImpl::FlushMemTableJob() {
   // NOTE: new writes are only allowed after new version is VISIBLE
   {
     std::scoped_lock rwlock(mutex_);
-    immutable_memtables_.clear();
-    cv_.notify_all();
+    // immutable_memtables_.clear();
+    immutable_memtables_.erase(
+        std::remove_if(immutable_memtables_.begin(), immutable_memtables_.end(),
+                       [version](const auto &elem) {
+                         return elem->GetVersion() == version;
+                       }),
+        immutable_memtables_.end());
+
+    // cv_.notify_all();
   }
 
   MaybeScheduleCompaction();

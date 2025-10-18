@@ -11,7 +11,7 @@
 namespace kvs {
 
 TEST(MemTableTest, BasicOperations) {
-  auto memtable = std::make_unique<db::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>(1 /*memtable_version*/);
 
   memtable->Put("k1", "v1", 0);
   EXPECT_TRUE(memtable->Get("k1", 0).type == db::ValueType::PUT);
@@ -29,7 +29,7 @@ TEST(MemTableTest, BasicOperations) {
 }
 
 TEST(MemTableTest, LargeScalePutAndGet) {
-  auto memtable = std::make_unique<db::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>(1 /*memtable_version*/);
 
   const int num_keys = 100000;
   std::string key{}, value{};
@@ -64,7 +64,7 @@ TEST(MemTableTest, LargeScalePutAndGet) {
 }
 
 TEST(MemTableTest, LargeScaleOnlyDelete) {
-  auto memtable = std::make_unique<db::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>(1 /*memtable_version*/);
   const int num_keys = 100000;
   std::string key{};
   for (int i = 0; i < num_keys; i++) {
@@ -80,7 +80,7 @@ TEST(MemTableTest, LargeScaleOnlyDelete) {
 }
 
 TEST(MemTableTest, LargeScaleDelete) {
-  auto memtable = std::make_unique<db::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>(1 /*memtable_version*/);
 
   const int num_keys = 100000;
   std::string key{}, value{};
@@ -107,7 +107,7 @@ TEST(MemTableTest, LargeScaleDelete) {
 }
 
 TEST(MemTableTest, Iterator) {
-  auto memtable = std::make_unique<db::MemTable>();
+  auto memtable = std::make_unique<db::MemTable>(1 /*memtable_version*/);
 
   const int num_keys = 10;
   std::string key{}, value{};

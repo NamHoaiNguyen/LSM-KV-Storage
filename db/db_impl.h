@@ -106,7 +106,7 @@ private:
 
   std::unique_ptr<VersionEdit> Recover(std::string_view manifest_path);
 
-  void FlushMemTableJob();
+  void FlushMemTableJob(uint64_t version, int num_flush_memtables);
 
   void CreateNewSST(const std::unique_ptr<BaseMemTable> &immutable_memtable,
                     VersionEdit *version_edit, std::latch &work_done);
@@ -145,6 +145,10 @@ private:
   // An increasing monotonic number assigned to each put/delete operation.
   // it will be used until transaction module is supported
   std::atomic<uint64_t> sequence_number_{0};
+
+  std::atomic<uint64_t> total_flushing_{0};
+
+  std::atomic<uint64_t> memtable_version_;
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves
