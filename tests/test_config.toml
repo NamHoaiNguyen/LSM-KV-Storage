@@ -3,7 +3,7 @@
 
 [lsm]
 # Per-memory table size limit (4MB)
-LSM_PER_MEM_SIZE_LIMIT = 33554432
+LSM_PER_MEM_SIZE_LIMIT = 33554432  # 32 * 1024 * 1024
 
 # Maximum number of immutable memtables in memory
 MAX_IMMUTABLE_MEMTABLES_IN_MEMORY = 3
