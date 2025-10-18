@@ -33,7 +33,7 @@ class TableReader;
 
 class BlockReaderCache {
 public:
-  explicit BlockReaderCache(kvs::ThreadPool *thread_pool);
+  BlockReaderCache(kvs::ThreadPool *thread_pool, int capacity);
 
   ~BlockReaderCache() = default;
 

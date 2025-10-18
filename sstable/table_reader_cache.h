@@ -62,8 +62,6 @@ private:
 
   const int capacity_;
 
-  mutable std::atomic<bool> shutdown_;
-
   mutable std::unordered_map<SSTId, std::unique_ptr<LRUTableItem>>
       table_readers_cache_;
 
