@@ -28,7 +28,7 @@ Run program that have "test_" prefix
 ## Usage
 
 Here is an example demonstrating how to use
-```
+```cpp
 #include "db/db_impl.h"
 
 #include <iostream>
