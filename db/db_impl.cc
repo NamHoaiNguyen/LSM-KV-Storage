@@ -60,8 +60,8 @@ DBImpl::DBImpl(bool is_testing)
       thread_pool_(new kvs::ThreadPool()),
       table_reader_cache_(
           std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
-      block_reader_cache_(
-          std::make_unique<sstable::BlockReaderCache>(thread_pool_)),
+      block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
+          thread_pool_, config_->GetTotalBlocksCache())),
       version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
   thread_pool_->Enqueue(&DBImpl::CleanupTrashFiles, this);
 }

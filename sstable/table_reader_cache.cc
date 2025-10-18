@@ -1,6 +1,7 @@
 #include "sstable/table_reader_cache.h"
 
 #include "common/thread_pool.h"
+#include "db/config.h"
 #include "db/db_impl.h"
 #include "sstable/block_reader.h"
 #include "sstable/block_reader_cache.h"
@@ -13,7 +14,8 @@ namespace sstable {
 
 TableReaderCache::TableReaderCache(const db::DBImpl *db,
                                    kvs::ThreadPool *thread_pool)
-    : capacity_(1000), shutdown_(false), db_(db), thread_pool_(thread_pool) {
+    : capacity_(db->GetConfig()->GetTotalTablesCache()), db_(db),
+      thread_pool_(thread_pool) {
   assert(db_ && thread_pool_);
 }
 
