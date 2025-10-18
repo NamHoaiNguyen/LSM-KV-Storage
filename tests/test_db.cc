@@ -43,7 +43,6 @@ std::string generateRandomString(size_t length) {
 
 void PutOp(db::DBImpl *db, int nums_elem, int index, std::latch &done) {
   std::string key, value;
-  // std::vector<std::pair<std::string, std::string>> key_value;
 
   std::srand(static_cast<unsigned int>(std::time(0)));
   for (size_t i = 0; i < nums_elem; i++) {
@@ -58,8 +57,6 @@ void PutOpV2(db::DBImpl *db, int nums_elem, int index,
              const std::vector<std::pair<std::string, std::string>> &key_value,
              std::latch &done) {
   for (size_t i = 0; i < nums_elem; i++) {
-    // key = "key" + std::to_string(nums_elem * index + i);
-    // value = "value" + std::to_string(nums_elem * index + i);
     db->Put(key_value[nums_elem * index + i].first,
             key_value[nums_elem * index + i].second, 0 /*txn_id*/);
   }
@@ -174,8 +171,6 @@ TEST(DBTest, ConcurrencyPut) {
   for (int i = 0; i < num_threads; i++) {
     threads.emplace_back(PutOpV2, db.get(), nums_elem_each_thread, i,
                          std::cref(key_value), std::ref(all_done));
-    // threads.emplace_back(PutOp, db.get(), nums_elem_each_thread, i,
-    //                      std::ref(all_done));
   }
 
   // Wait until all threads finish
@@ -187,8 +182,6 @@ TEST(DBTest, ConcurrencyPut) {
   threads.clear();
 
   db->ForceFlushMemTable();
-
-  std::cout << "Put all data finished ConcurrencyPut" << std::endl;
 
   auto end = std::chrono::high_resolution_clock::now();
   // Calculate the duration

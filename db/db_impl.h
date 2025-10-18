@@ -129,6 +129,8 @@ private:
 
   std::string db_path_;
 
+  std::atomic<uint64_t> memtable_version_;
+
   std::unique_ptr<BaseMemTable> memtable_;
 
   std::vector<std::unique_ptr<BaseMemTable>> immutable_memtables_;
@@ -145,10 +147,6 @@ private:
   // An increasing monotonic number assigned to each put/delete operation.
   // it will be used until transaction module is supported
   std::atomic<uint64_t> sequence_number_{0};
-
-  std::atomic<uint64_t> total_flushing_{0};
-
-  std::atomic<uint64_t> memtable_version_;
 
   // Threadppol ISN'T COPYABLE AND MOVEABLE
   // So, we must allocate/deallocate by ourselves

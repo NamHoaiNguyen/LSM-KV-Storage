@@ -174,6 +174,7 @@ TEST(TableTest, CreateTable) {
 
   // Force creating a new sst
   db->ForceFlushMemTable();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   const std::vector<std::vector<std::shared_ptr<db::SSTMetadata>>>
       &level_sst_info =
@@ -219,6 +220,7 @@ TEST(TableTest, BasicTableReader) {
 
   // Force creating a new sst
   db->ForceFlushMemTable();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
