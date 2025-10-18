@@ -1,6 +1,8 @@
-`LSM_KV Storage` is a educational project to implement a simple key-value database from scratch, using Log Structured Merge tree(LSM) as the storage engine. The project is inspired by [leveldb](https://github.com/google/leveldb) and [rockdb](https://github.com/facebook/rocksdb).
+# Log Structured Merge Tree Key-Value Storage
 
-# Build Configuration
+`LSM_KV_Storage` is a educational project to implement a simple key-value database from scratch, using Log Structured Merge tree(LSM) as the storage engine. The project is inspired by [leveldb](https://github.com/google/leveldb) and [rockdb](https://github.com/facebook/rocksdb).
+
+## Build Configuration
 
 The project uses xmake as the build system. Below is the xmake configuration for building the project and running tests:
 
@@ -23,19 +25,19 @@ cd build/tests
 Run program that have "test_" prefix
 ```
 
-# Usage
+## Usage
 
 Here is an example demonstrating how to use
 ```
 ```
 
-# Features && TODO
+## Features && TODO
 - [x] SkipList
-  - [x] get/put/remove
-  - [x] iterator
+  - [x] Get/Put/Delete
+  - [x] Iterator
 - [x] MemTable
   - [x] Iterator
-  - [x] flush to sst
+  - [x] Flush to sst
 - [x] SST
   - [x] Encode/Decode
   - [x] Cache Eviction for Block and Table
@@ -60,5 +62,5 @@ Here is an example demonstrating how to use
 - [x] Config
   - [x] Toml Config
 
-# License
+## License
 This project is licensed under the MIT License.
