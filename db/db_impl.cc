@@ -84,7 +84,7 @@ bool DBImpl::LoadDB(std::string_view dbname) {
   db_path_ = config_->GetSavedDataPath() + std::string(dbname) + "/";
   fs::path db_path_fs(db_path_);
   if (!fs::exists(db_path_fs)) {
-    if (!fs::create_directory(db_path_fs)) {
+    if (!fs::create_directories(db_path_fs)) {
       return false;
     }
   }

@@ -114,7 +114,8 @@ bool Config::LoadConfigFromPath() {
     return false;
   }
   // Safe. Because limit of block size is less than 4 bytes
-  data_path_ = result["lsm"]["DATA_PATH"].as_string()->get();
+  // data_path_ = result["lsm"]["DATA_PATH"].as_string()->get();
+  data_path_ = project_dir.string() + "/data/";
   if (data_path_.empty()) {
     return false;
   }
