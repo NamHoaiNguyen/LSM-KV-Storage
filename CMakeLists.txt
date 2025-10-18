@@ -18,7 +18,6 @@ add_subdirectory(io)
 add_subdirectory(mvcc)
 add_subdirectory(sstable)
 add_subdirectory(third_party)
-# add_subdirectory(storage)
 
 # Add example
 add_subdirectory(example)
