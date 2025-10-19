@@ -12,10 +12,11 @@ namespace kvs {
 
 namespace sstable {
 
-TableReaderCache::TableReaderCache(int capacity, std::string_view db_path,
+TableReaderCache::TableReaderCache(const db::DBImpl *db,
                                    kvs::ThreadPool *thread_pool)
-    : capacity_(capacity), db_path_(db_path), thread_pool_(thread_pool) {
-  assert(db_ && thread_pool_);
+    : capacity_(db->GetConfig()->GetTotalTablesCache()), db_(db),
+      thread_pool_(thread_pool) {
+  assert(thread_pool_);
 }
 
 const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
@@ -105,7 +106,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   }
 
   // if table hadn't been in cache, create new table and load into cache
-  std::string filename = db_path_ + std::to_string(table_id) + ".sst";
+  std::string filename = db_->GetDBPath() + std::to_string(table_id) + ".sst";
 
   // Create new table reader
   auto new_table_reader = CreateAndSetupDataForTableReader(std::move(filename),

@@ -58,9 +58,8 @@ DBImpl::DBImpl(bool is_testing)
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
       thread_pool_(new kvs::ThreadPool()),
-      table_reader_cache_(std::make_unique<sstable::TableReaderCache>(
-          config_->GetTotalTablesCache(), config_->GetSavedDataPath(),
-          thread_pool_)),
+      table_reader_cache_(
+          std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
       block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
           config_->GetTotalBlocksCache(), thread_pool_)),
       version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
