@@ -197,11 +197,6 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       const sstable::LRUTableItem *table_reader =
           table_reader_cache_->GetLRUTableItem(table_id);
       if (table_reader && table_reader->GetTableReader()) {
-        if (table_id == 2) {
-          std::cout << "namnh check ref count " << table_reader->GetRefCount()
-                    << std::endl;
-        }
-
         // If table reader had already been in cache, just create table iterator
         table_reader_iterators.emplace_back(
             std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
@@ -229,11 +224,6 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       table_reader_iterators.emplace_back(
           std::make_unique<sstable::TableReaderIterator>(
               block_reader_cache_, table_reader_inserted));
-
-      if (table_id == 2) {
-        std::cout << "namnh check ref count "
-                  << table_reader_inserted->GetRefCount() << std::endl;
-      }
     }
   }
 
