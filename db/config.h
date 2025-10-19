@@ -45,8 +45,6 @@ public:
 private:
   bool LoadConfigFromPath();
 
-  void LoadDefaultConfig();
-
   size_t lsm_per_mem_size_limit_;
 
   int max_immutable_memtables_in_mem_;

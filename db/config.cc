@@ -13,17 +13,11 @@ namespace fs = std::filesystem;
 namespace {
 constexpr size_t kDefaultMemtableSizeLimit = 4 * 1024 * 1024; // 4MB
 
-constexpr int kDefaultMaxImmuMemtablesInMemory = 2;
-
 constexpr size_t KDefaultSSTBlockSize = 4 * 1024; // 4KB
 
 constexpr int kDefaultSSTNumLevels = 7;
 
-constexpr int kDefaultLvl0CompactionTrigger = 4;
-
 constexpr int kDefaultTotalTablesInMem = 1000;
-
-constexpr int kDefaultTotalBlocksInMem = 100000;
 
 } // namespace
 
@@ -134,7 +128,7 @@ bool Config::LoadConfigFromPath() {
 
   total_tables_in_mem_ =
       static_cast<int>(result["lsm"]["TOTAL_TABLES_CACHE"].as_integer()->get());
-  if (total_tables_in_mem_ <= 0 ||
+  if (total_tables_in_mem_ < 0 ||
       total_tables_in_mem_ > kDefaultTotalTablesInMem) {
     std::cout << "LVL0_COMPACTION_TRIGGER isn't valid(1-1000)" << std::endl;
     return false;
@@ -153,22 +147,6 @@ bool Config::LoadConfigFromPath() {
   }
 
   return true;
-}
-
-void Config::LoadDefaultConfig() {
-  lsm_per_mem_size_limit_ = kDefaultMemtableSizeLimit;
-  max_immutable_memtables_in_mem_ = kDefaultMaxImmuMemtablesInMemory;
-  sst_block_size_ = KDefaultSSTBlockSize;
-  lsm_sst_num_levels_ = kDefaultSSTNumLevels;
-  lvl0_compaction_trigger_ = kDefaultLvl0CompactionTrigger;
-
-  fs::path exe_dir = fs::current_path();
-  fs::path project_dir = exe_dir.parent_path();
-
-  data_path_ = (project_dir / "data/").string();
-
-  total_tables_in_mem_ = kDefaultTotalTablesInMem;
-  total_blocks_in_mem_ = kDefaultTotalBlocksInMem;
 }
 
 size_t Config::GetPerMemTableSizeLimit() const {
