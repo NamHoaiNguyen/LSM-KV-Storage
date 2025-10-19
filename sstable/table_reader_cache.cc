@@ -16,7 +16,7 @@ TableReaderCache::TableReaderCache(const db::DBImpl *db,
                                    kvs::ThreadPool *thread_pool)
     : capacity_(db->GetConfig()->GetTotalTablesCache()), db_(db),
       thread_pool_(thread_pool) {
-  assert(thread_pool_);
+  assert(db_ && thread_pool_);
 }
 
 const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {

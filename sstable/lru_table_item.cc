@@ -3,8 +3,6 @@
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
 
-#include <iostream>
-
 namespace kvs {
 
 namespace sstable {
