@@ -31,7 +31,8 @@ class TableReader;
 
 class TableReaderCache {
 public:
-  TableReaderCache(const db::DBImpl *db, kvs::ThreadPool *thread_pool);
+  TableReaderCache(int capacity, std::string_view db_path,
+                   kvs::ThreadPool *thread_pool);
 
   ~TableReaderCache() = default;
 
@@ -61,6 +62,8 @@ private:
   void Evict() const;
 
   const int capacity_;
+
+  const std::string db_path_;
 
   mutable std::unordered_map<SSTId, std::unique_ptr<LRUTableItem>>
       table_readers_cache_;

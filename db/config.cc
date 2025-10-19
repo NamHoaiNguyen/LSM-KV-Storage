@@ -4,6 +4,7 @@
 #include "third_party/toml.hpp"
 
 // libC++
+#include <exception>
 #include <filesystem>
 #include <iostream>
 
@@ -31,13 +32,13 @@ namespace kvs {
 namespace db {
 
 Config::Config(bool is_testing, bool invalid_config)
-    : is_testing_(is_testing), invalid_config_(invalid_config) {}
-
-void Config::LoadConfig() {
-  if (!LoadConfigFromPath()) {
-    LoadDefaultConfig();
+    : is_testing_(is_testing), invalid_config_(invalid_config) {
+  if (!LoadConfig()) {
+    std::terminate();
   }
 }
+
+bool Config::LoadConfig() { return LoadConfigFromPath(); }
 
 bool Config::LoadConfigFromPath() {
   fs::path exe_dir = fs::current_path();

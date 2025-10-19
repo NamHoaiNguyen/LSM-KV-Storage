@@ -24,7 +24,7 @@ public:
   Config(Config &&) = default;
   Config &operator=(Config &&) = default;
 
-  void LoadConfig();
+  bool LoadConfig();
 
   size_t GetPerMemTableSizeLimit() const;
 

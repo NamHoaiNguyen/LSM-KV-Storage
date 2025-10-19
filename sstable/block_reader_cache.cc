@@ -11,7 +11,7 @@ namespace kvs {
 
 namespace sstable {
 
-BlockReaderCache::BlockReaderCache(kvs::ThreadPool *thread_pool, int capacity)
+BlockReaderCache::BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool)
     : capacity_(capacity), thread_pool_(thread_pool) {}
 
 const LRUBlockItem *BlockReaderCache::GetBlockReader(
@@ -70,6 +70,10 @@ BlockReaderCache::AddNewBlockReaderThenGet(
 // NOT THREAD-SAFE
 bool BlockReaderCache::Evict() const {
   if (free_list_.empty()) {
+    return false;
+  }
+
+  if (block_reader_cache_.empty()) {
     return false;
   }
 
