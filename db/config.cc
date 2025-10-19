@@ -4,20 +4,20 @@
 #include "third_party/toml.hpp"
 
 // libC++
+#include <exception>
 #include <filesystem>
+#include <iostream>
 
 namespace fs = std::filesystem;
 
 namespace {
 constexpr size_t kDefaultMemtableSizeLimit = 4 * 1024 * 1024; // 4MB
 
-constexpr int kDefaultMaxImmuMemtablesInMemory = 2;
-
 constexpr size_t KDefaultSSTBlockSize = 4 * 1024; // 4KB
 
 constexpr int kDefaultSSTNumLevels = 7;
 
-constexpr int kDefaultLvl0CompactionTrigger = 4;
+constexpr int kDefaultTotalTablesInMem = 1000;
 
 } // namespace
 
@@ -26,13 +26,13 @@ namespace kvs {
 namespace db {
 
 Config::Config(bool is_testing, bool invalid_config)
-    : is_testing_(is_testing), invalid_config_(invalid_config) {}
-
-void Config::LoadConfig() {
-  if (!LoadConfigFromPath()) {
-    LoadDefaultConfig();
+    : is_testing_(is_testing), invalid_config_(invalid_config) {
+  if (!LoadConfig()) {
+    std::terminate();
   }
 }
+
+bool Config::LoadConfig() { return LoadConfigFromPath(); }
 
 bool Config::LoadConfigFromPath() {
   fs::path exe_dir = fs::current_path();
@@ -51,6 +51,7 @@ bool Config::LoadConfigFromPath() {
   toml::parse_result result = toml::parse_file(config_path);
 
   if (!result) {
+    std::cout << "Can't parse config file" << std::endl;
     return false;
   }
 
@@ -63,7 +64,8 @@ bool Config::LoadConfigFromPath() {
   lsm_per_mem_size_limit_ = static_cast<size_t>(
       result["lsm"]["LSM_PER_MEM_SIZE_LIMIT"].as_integer()->get());
   if (lsm_per_mem_size_limit_ < kDefaultMemtableSizeLimit ||
-      lsm_per_mem_size_limit_ > kDefaultMemtableSizeLimit * 16 /*64MB*/) {
+      lsm_per_mem_size_limit_ > kDefaultMemtableSizeLimit * 256 /*1GB*/) {
+    std::cout << "Size of LSM must be in rage 4-1024MB" << std::endl;
     return false;
   }
   if (!result["lsm"]["MAX_IMMUTABLE_MEMTABLES_IN_MEMORY"].as_integer()) {
@@ -75,6 +77,7 @@ bool Config::LoadConfigFromPath() {
       result["lsm"]["MAX_IMMUTABLE_MEMTABLES_IN_MEMORY"].as_integer()->get());
   if (max_immutable_memtables_in_mem_ <= 0 ||
       max_immutable_memtables_in_mem_ > 16) {
+    std::cout << "Number of immutable memtables isn't valid(1-16)" << std::endl;
     return false;
   }
 
@@ -91,12 +94,14 @@ bool Config::LoadConfigFromPath() {
   }
 
   if (!result["lsm"]["LSM_SST_NUM_LEVELS"].as_integer()) {
+    std::cout << "LSM_SST_NUM_LEVELS is not integer" << std::endl;
     return false;
   }
   // Safe. Because limit of block size is less than 4 bytes
   lsm_sst_num_levels_ =
       static_cast<int>(result["lsm"]["LSM_SST_NUM_LEVELS"].as_integer()->get());
   if (lsm_sst_num_levels_ <= 0 || lsm_sst_num_levels_ > kDefaultSSTNumLevels) {
+    std::cout << "LSM_SST_NUM_LEVELS isn't valid(1-7)" << std::endl;
     return false;
   }
 
@@ -107,33 +112,41 @@ bool Config::LoadConfigFromPath() {
   lvl0_compaction_trigger_ = static_cast<int>(
       result["lsm"]["LVL0_COMPACTION_TRIGGER"].as_integer()->get());
   if (lvl0_compaction_trigger_ <= 0 || lvl0_compaction_trigger_ > 8) {
+    std::cout << "LVL0_COMPACTION_TRIGGER isn't valid(1-8)" << std::endl;
     return false;
   }
 
-  if (!result["lsm"]["DATA_PATH"].as_string()) {
-    return false;
-  }
-  // Safe. Because limit of block size is less than 4 bytes
-  // data_path_ = result["lsm"]["DATA_PATH"].as_string()->get();
   data_path_ = project_dir.string() + "/data/";
   if (data_path_.empty()) {
     return false;
   }
 
+  if (!result["lsm"]["TOTAL_TABLES_CACHE"].as_integer()) {
+    std::cout << "TOTAL_TABLES_CACHE is not integer" << std::endl;
+    return false;
+  }
+
+  total_tables_in_mem_ =
+      static_cast<int>(result["lsm"]["TOTAL_TABLES_CACHE"].as_integer()->get());
+  if (total_tables_in_mem_ < 0 ||
+      total_tables_in_mem_ > kDefaultTotalTablesInMem) {
+    std::cout << "LVL0_COMPACTION_TRIGGER isn't valid(1-1000)" << std::endl;
+    return false;
+  }
+
+  if (!result["lsm"]["TOTAL_BLOCKS_CACHE"].as_integer()) {
+    std::cout << "TOTAL_BLOCKS_CACHE is not integer" << std::endl;
+    return false;
+  }
+  total_blocks_in_mem_ =
+      static_cast<int>(result["lsm"]["TOTAL_BLOCKS_CACHE"].as_integer()->get());
+  if (total_blocks_in_mem_ <= 0) {
+    std::cout << "LVL0_COMPACTION_TRIGGER isn't valid(must be larger than 0)"
+              << std::endl;
+    return false;
+  }
+
   return true;
-}
-
-void Config::LoadDefaultConfig() {
-  lsm_per_mem_size_limit_ = kDefaultMemtableSizeLimit;
-  max_immutable_memtables_in_mem_ = kDefaultMaxImmuMemtablesInMemory;
-  sst_block_size_ = KDefaultSSTBlockSize;
-  lsm_sst_num_levels_ = kDefaultSSTNumLevels;
-  lvl0_compaction_trigger_ = kDefaultLvl0CompactionTrigger;
-
-  fs::path exe_dir = fs::current_path();
-  fs::path project_dir = exe_dir.parent_path();
-
-  data_path_ = (project_dir / "data/").string();
 }
 
 size_t Config::GetPerMemTableSizeLimit() const {
@@ -153,6 +166,10 @@ int Config::GetLvl0SSTCompactionTrigger() const {
 }
 
 std::string Config::GetSavedDataPath() const { return data_path_; }
+
+int Config::GetTotalTablesCache() const { return total_tables_in_mem_; }
+
+int Config::GetTotalBlocksCache() const { return total_blocks_in_mem_; }
 
 } // namespace db
 

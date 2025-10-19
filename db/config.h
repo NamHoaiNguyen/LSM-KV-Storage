@@ -24,7 +24,7 @@ public:
   Config(Config &&) = default;
   Config &operator=(Config &&) = default;
 
-  void LoadConfig();
+  bool LoadConfig();
 
   size_t GetPerMemTableSizeLimit() const;
 
@@ -38,10 +38,12 @@ public:
 
   std::string GetSavedDataPath() const;
 
+  int GetTotalTablesCache() const;
+
+  int GetTotalBlocksCache() const;
+
 private:
   bool LoadConfigFromPath();
-
-  void LoadDefaultConfig();
 
   size_t lsm_per_mem_size_limit_;
 
@@ -54,6 +56,10 @@ private:
   int lvl0_compaction_trigger_;
 
   std::string data_path_;
+
+  int total_tables_in_mem_;
+
+  int total_blocks_in_mem_;
 
   // For testing
   bool is_testing_;
