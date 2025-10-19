@@ -43,8 +43,6 @@ public:
 
   uint64_t GetRefCount() const;
 
-  friend class BlockReaderCache;
-
 private:
   mutable std::atomic<int64_t> ref_count_;
 
