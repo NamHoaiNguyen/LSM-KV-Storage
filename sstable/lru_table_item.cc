@@ -3,6 +3,8 @@
 #include "sstable/table_reader.h"
 #include "sstable/table_reader_cache.h"
 
+#include <iostream>
+
 namespace kvs {
 
 namespace sstable {
@@ -18,9 +20,22 @@ uint64_t LRUTableItem::GetRefCount() const { return ref_count_.load(); }
 void LRUTableItem::IncRef() const { ref_count_.fetch_add(1); }
 
 void LRUTableItem::Unref() const {
-  if (ref_count_.fetch_sub(1) <= 2) {
+  // if (ref_count_.fetch_sub(1) <= 2) {
+  //   cache_->AddVictim(table_id_);
+  // }
+  if (ref_count_.load() < 2) {
+    std::cout << "NAMNH LRUTableItem::Unref DANGEROUS!!!" << std::endl;
+    return;
+  }
+
+  if (ref_count_.fetch_sub(1) == 2) {
     cache_->AddVictim(table_id_);
   }
+
+  // if (ref_count_.load() <= 2) {
+  //   cache_->AddVictim(table_id_);
+  // }
+  // ref_count_.fetch_sub(1);
 }
 
 const TableReader *LRUTableItem::GetTableReader() const {

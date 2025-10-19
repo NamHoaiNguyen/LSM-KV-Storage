@@ -7,14 +7,27 @@ namespace kvs {
 
 namespace sstable {
 
-BlockReaderIterator::BlockReaderIterator(const LRUBlockItem *lru_block_item)
+// BlockReaderIterator::BlockReaderIterator(const LRUBlockItem *lru_block_item)
+//     : lru_block_item_(lru_block_item),
+//       block_reader_(lru_block_item_->GetBlockReader()),
+//       current_offset_index_(0) {
+//   assert(lru_block_item_ && block_reader_);
+// }
+
+BlockReaderIterator::BlockReaderIterator(
+    std::shared_ptr<LRUBlockItem> lru_block_item)
     : lru_block_item_(lru_block_item),
-      block_reader_(lru_block_item_->GetBlockReader()),
+      block_reader_(lru_block_item->GetBlockReader()),
       current_offset_index_(0) {
-  assert(lru_block_item_ && block_reader_);
+  assert(block_reader_);
 }
 
-BlockReaderIterator::~BlockReaderIterator() { lru_block_item_->Unref(); }
+BlockReaderIterator::~BlockReaderIterator() {
+  // lru_block_item_->Unref();
+  if (auto tmpPtr = lru_block_item_.lock()) {
+    tmpPtr->Unref();
+  }
+}
 
 std::optional<uint64_t> BlockReaderIterator::GetCurrentDataEntryOffset() {
   if (current_offset_index_ < 0 ||

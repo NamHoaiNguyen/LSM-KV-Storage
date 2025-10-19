@@ -14,7 +14,8 @@ namespace sstable {
 BlockReaderCache::BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool)
     : capacity_(capacity), thread_pool_(thread_pool) {}
 
-const LRUBlockItem *BlockReaderCache::GetBlockReader(
+// const LRUBlockItem *BlockReaderCache::GetBlockReader(
+std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
     std::pair<SSTId, BlockOffset> block_info) const {
   std::shared_lock rlock(mutex_);
   auto iterator = block_reader_cache_.find(block_info);
@@ -25,13 +26,17 @@ const LRUBlockItem *BlockReaderCache::GetBlockReader(
   // Increase ref count
   iterator->second->IncRef();
 
-  return iterator->second.get();
+  // return iterator->second.get();
+  return iterator->second;
 }
 
-std::pair<const LRUBlockItem *, std::unique_ptr<LRUBlockItem>>
+// std::pair<const LRUBlockItem *, std::unique_ptr<LRUBlockItem>>
+std::pair<std::shared_ptr<LRUBlockItem>, std::shared_ptr<LRUBlockItem>>
 BlockReaderCache::AddNewBlockReaderThenGet(
     std::pair<SSTId, BlockOffset> block_info,
-    std::unique_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
+    // std::unique_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
+    std::shared_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
+
   // Insert new block reader into cache
   std::scoped_lock rwlock(mutex_);
 
@@ -64,7 +69,8 @@ BlockReaderCache::AddNewBlockReaderThenGet(
     free_list_.push_back(block_info);
   }
 
-  return {iterator->second.get(), nullptr};
+  // return {iterator->second.get(), nullptr};
+  return {iterator->second, nullptr};
 }
 
 // NOT THREAD-SAFE
@@ -113,7 +119,8 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   assert(table_reader);
   db::GetStatus status;
 
-  const LRUBlockItem *block_reader = GetBlockReader(block_info);
+  // const LRUBlockItem *block_reader = GetBlockReader(block_info);
+  std::shared_ptr<LRUBlockItem> block_reader = GetLRUBlockItem(block_info);
   if (block_reader && block_reader->GetBlockReader()) {
     // if tablereader had already been in cache
     assert(block_reader->ref_count_ >= 2);
@@ -130,7 +137,9 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
     return status;
   }
 
-  auto new_lru_block_item = std::make_unique<LRUBlockItem>(
+  // auto new_lru_block_item = std::make_unique<LRUBlockItem>(
+  //     block_info, std::move(new_block_reader), this);
+  auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       block_info, std::move(new_block_reader), this);
 
   status = new_lru_block_item->GetBlockReader()->SearchKey(key, txn_id);
