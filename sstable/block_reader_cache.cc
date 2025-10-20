@@ -172,6 +172,7 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
     // thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
     {
       std::scoped_lock rwlock(unref_q_mutex_);
+      unref_queue_.push(block_reader);
       unref_cv_.notify_one();
     }
     return status;
@@ -194,6 +195,8 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   //                          false /*need_to_get*/);
   {
     std::scoped_lock rwlock(item_mutex_);
+    new_item_queue_.push(
+        {block_info, new_lru_block_item, false /*need_to_get*/});
     item_cv_.notify_one();
   }
 
