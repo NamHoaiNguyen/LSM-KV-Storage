@@ -14,7 +14,6 @@ namespace sstable {
 BlockReaderCache::BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool)
     : capacity_(capacity), thread_pool_(thread_pool) {}
 
-// const LRUBlockItem *BlockReaderCache::GetBlockReader(
 std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
     std::pair<SSTId, BlockOffset> block_info) const {
   std::shared_lock rlock(mutex_);
@@ -30,11 +29,8 @@ std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
   return iterator->second;
 }
 
-// std::pair<const LRUBlockItem *, std::unique_ptr<LRUBlockItem>>
-std::pair<std::shared_ptr<LRUBlockItem>, std::shared_ptr<LRUBlockItem>>
-BlockReaderCache::AddNewBlockReaderThenGet(
+std::shared_ptr<LRUBlockItem> BlockReaderCache::AddNewBlockReaderThenGet(
     std::pair<SSTId, BlockOffset> block_info,
-    // std::unique_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
     std::shared_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
 
   // Insert new block reader into cache
@@ -42,7 +38,7 @@ BlockReaderCache::AddNewBlockReaderThenGet(
 
   if (block_reader_cache_.size() >= capacity_) {
     if (!Evict()) {
-      return {nullptr, std::move(lru_block_item)};
+      return nullptr;
     }
   }
 
@@ -53,24 +49,17 @@ BlockReaderCache::AddNewBlockReaderThenGet(
   // Get block reader that MAYBE inserted
   auto iterator = block_reader_cache_.find(block_info);
 
-  // Increase ref count
-  if (success) {
-    // First time
-    iterator->second->IncRef();
-  }
-
   if (add_then_get) {
     // Increase ref count if need to get
     iterator->second->IncRef();
   }
 
-  if (iterator->second->GetRefCount() <= 1) {
+  if (iterator->second->GetRefCount() < 1) {
     // This BlockReader should be put in free_list_
     free_list_.push_back(block_info);
   }
 
-  // return {iterator->second.get(), nullptr};
-  return {iterator->second, nullptr};
+  return iterator->second;
 }
 
 // NOT THREAD-SAFE
@@ -89,7 +78,7 @@ bool BlockReaderCache::Evict() const {
   auto iterator = block_reader_cache_.find(block_info);
 
   while (iterator != block_reader_cache_.end() &&
-         iterator->second->GetRefCount() > 1 && !free_list_.empty()) {
+         iterator->second->GetRefCount() >= 1 && !free_list_.empty()) {
     block_info = free_list_.front();
     iterator = block_reader_cache_.find(block_info);
     free_list_.pop_front();
@@ -119,12 +108,13 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   assert(table_reader);
   db::GetStatus status;
 
-  // const LRUBlockItem *block_reader = GetBlockReader(block_info);
   std::shared_ptr<LRUBlockItem> block_reader = GetLRUBlockItem(block_info);
   if (block_reader && block_reader->GetBlockReader()) {
     // if tablereader had already been in cache
     assert(block_reader->ref_count_ >= 2);
     status = block_reader->GetBlockReader()->SearchKey(key, txn_id);
+    // TODO(namnh) : This can improve performance, but increase CPU usage
+    // significantly
     thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
     return status;
   }
@@ -137,22 +127,13 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
     return status;
   }
 
-  // auto new_lru_block_item = std::make_unique<LRUBlockItem>(
-  //     block_info, std::move(new_block_reader), this);
   auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       block_info, std::move(new_block_reader), this);
 
   status = new_lru_block_item->GetBlockReader()->SearchKey(key, txn_id);
 
-  AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
+  AddNewBlockReaderThenGet(block_info, new_lru_block_item,
                            false /*need_to_get*/);
-
-  // thread_pool_->Enqueue(
-  //     [this, block_info, table_reader,
-  //      new_lru_block_item = std::move(new_lru_block_item)]() mutable {
-  //       AddNewBlockReaderThenGet(block_info, std::move(new_lru_block_item),
-  //                                false /*need_to_get*/);
-  //     });
 
   return status;
 }

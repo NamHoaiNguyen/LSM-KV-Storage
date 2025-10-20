@@ -112,7 +112,6 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   auto new_table_reader = CreateAndSetupDataForTableReader(std::move(filename),
                                                            table_id, file_size);
   if (!new_table_reader) {
-    // throw std::runtime_error("Can't open SST file to read");
     status.type = db::ValueType::kTooManyOpenFiles;
     return status;
   }
@@ -128,6 +127,9 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
         AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item),
                                  false /*add_then_get*/);
       });
+
+  // AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item),
+  //                          false /*add_then_get*/);
 
   return status;
 }
