@@ -25,7 +25,6 @@ std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
   // Increase ref count
   iterator->second->IncRef();
 
-  // return iterator->second.get();
   return iterator->second;
 }
 

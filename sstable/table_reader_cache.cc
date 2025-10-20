@@ -128,9 +128,6 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
                                  false /*add_then_get*/);
       });
 
-  // AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item),
-  //                          false /*add_then_get*/);
-
   return status;
 }
 
