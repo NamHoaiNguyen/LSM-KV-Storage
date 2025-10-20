@@ -121,7 +121,8 @@ TEST(TableTest, MergeIterator) {
     }
   }
 
-  std::vector<std::unique_ptr<sstable::LRUTableItem>> lru_table_items;
+  // std::vector<std::unique_ptr<sstable::LRUTableItem>> lru_table_items;
+  std::vector<std::shared_ptr<sstable::LRUTableItem>> lru_table_items;
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
   for (int i = 0; i < sst_metadata[0].size(); i++) {
@@ -133,12 +134,12 @@ TEST(TableTest, MergeIterator) {
             sst_metadata[0][i]->file_size);
 
     // Mock LRU table item
-    auto lru_table_item = std::make_unique<sstable::LRUTableItem>(
+    auto lru_table_item = std::make_shared<sstable::LRUTableItem>(
         sst_metadata[0][i]->table_id /*table_id*/, std::move(table_reader),
         db->GetTableReaderCache());
 
     auto iterator = std::make_unique<sstable::TableReaderIterator>(
-        db->GetBlockReaderCache(), lru_table_item.get());
+        db->GetBlockReaderCache(), lru_table_item);
 
     lru_table_items.push_back(std::move(lru_table_item));
     table_reader_iterators.push_back(std::move(iterator));

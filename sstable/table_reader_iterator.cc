@@ -13,14 +13,18 @@ namespace sstable {
 
 TableReaderIterator::TableReaderIterator(
     const BlockReaderCache *block_reader_cache,
-    const LRUTableItem *lru_table_item)
+    std::shared_ptr<LRUTableItem> lru_table_item)
     : block_reader_iterator_(nullptr), current_block_offset_index_(0),
       lru_table_item_(lru_table_item), block_reader_cache_(block_reader_cache) {
-  table_reader_ = lru_table_item_->GetTableReader();
+  table_reader_ = lru_table_item_.lock()->GetTableReader();
   assert(block_reader_cache_ && lru_table_item_ && table_reader_);
 }
 
-TableReaderIterator::~TableReaderIterator() { lru_table_item_->Unref(); }
+TableReaderIterator::~TableReaderIterator() {
+  if (auto tmp_ptr = lru_table_item_.lock()) {
+    tmp_ptr->Unref();
+  }
+}
 
 std::string_view TableReaderIterator::GetKey() {
   return block_reader_iterator_->GetKey();

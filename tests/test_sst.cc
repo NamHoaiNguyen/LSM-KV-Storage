@@ -317,11 +317,11 @@ TEST(TableTest, TableReaderIterator) {
       sstable::CreateAndSetupDataForTableReader(
           std::move(filename), 1 /*sst_id*/, sst_metadata[0][0]->file_size);
   // Mock LRU table item
-  auto lru_table_item = std::make_unique<LRUTableItem>(
+  auto lru_table_item = std::make_shared<LRUTableItem>(
       1 /*table_id*/, std::move(table_reader), db->GetTableReaderCache());
 
   auto iterator = std::make_unique<sstable::TableReaderIterator>(
-      db->GetBlockReaderCache(), lru_table_item.get());
+      db->GetBlockReaderCache(), lru_table_item);
 
   int total_elems = 0;
   for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
