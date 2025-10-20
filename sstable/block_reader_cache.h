@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <shared_mutex>
 #include <string_view>
 #include <thread>
@@ -35,7 +36,8 @@ class BlockReaderCache {
 public:
   BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool);
 
-  ~BlockReaderCache() = default;
+  // ~BlockReaderCache() = default;
+  ~BlockReaderCache();
 
   // No copy allowed
   BlockReaderCache(const BlockReaderCache &) = delete;
@@ -66,6 +68,10 @@ private:
 
   bool CanCreateNewBlockReader() const;
 
+  void AddNewItemThread() const;
+
+  void UnrefThread() const;
+
   // Custom hash for pair<int, int>
   struct pair_hash {
     size_t operator()(const std::pair<SSTId, BlockOffset> &p) const noexcept {
@@ -91,7 +97,29 @@ private:
 
   mutable std::list<std::pair<SSTId, BlockOffset>> free_list_;
 
+  struct ItemQueue {
+    std::pair<SSTId, BlockOffset> info;
+
+    std::shared_ptr<LRUBlockItem> item;
+
+    bool add_then_get;
+  };
+
+  mutable std::queue<ItemQueue> new_item_queue_;
+
   mutable std::shared_mutex mutex_;
+
+  mutable std::mutex item_mutex_;
+
+  mutable std::condition_variable item_cv_;
+
+  mutable std::queue<std::shared_ptr<LRUBlockItem>> unref_queue_;
+
+  mutable std::mutex unref_q_mutex_;
+
+  mutable std::condition_variable unref_cv_;
+
+  std::atomic<bool> shutdown_{false};
 
   kvs::ThreadPool *thread_pool_;
 };
