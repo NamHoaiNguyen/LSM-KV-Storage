@@ -317,8 +317,6 @@ TEST(TableTest, TableReaderIterator) {
       sstable::CreateAndSetupDataForTableReader(
           std::move(filename), 1 /*sst_id*/, sst_metadata[0][0]->file_size);
   // Mock LRU table item
-  // auto lru_table_item = std::make_unique<LRUTableItem>(
-  //     1 /*table_id*/, std::move(table_reader), db->GetTableReaderCache());
   auto lru_table_item = std::make_shared<LRUTableItem>(
       1 /*table_id*/, std::move(table_reader), db->GetTableReaderCache());
 

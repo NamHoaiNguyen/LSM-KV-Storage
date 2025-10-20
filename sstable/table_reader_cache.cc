@@ -31,7 +31,6 @@ TableReaderCache::GetLRUTableItem(SSTId table_id) const {
   // Increase ref count
   iterator->second->IncRef();
 
-  // return iterator->second.get();
   return iterator->second;
 }
 
@@ -60,7 +59,6 @@ std::shared_ptr<LRUTableItem> TableReaderCache::AddNewTableReaderThenGet(
     free_list_.push_back(table_id);
   }
 
-  // return iterator->second.get();
   return iterator->second;
 }
 
@@ -97,9 +95,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
     const sstable::BlockReaderCache *block_reader_cache) const {
   db::GetStatus status;
 
-  // const LRUTableItem *table_reader = GetLRUTableItem(table_id);
   std::shared_ptr<LRUTableItem> table_reader = GetLRUTableItem(table_id);
-
   if (table_reader && table_reader->GetTableReader()) {
     // if table reader had already been in cache
     status = table_reader->table_reader_->SearchKey(

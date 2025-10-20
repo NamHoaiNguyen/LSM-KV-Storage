@@ -134,10 +134,6 @@ TEST(TableTest, MergeIterator) {
             sst_metadata[0][i]->file_size);
 
     // Mock LRU table item
-    // auto lru_table_item = std::make_unique<sstable::LRUTableItem>(
-    //     sst_metadata[0][i]->table_id /*table_id*/, std::move(table_reader),
-    //     db->GetTableReaderCache());
-
     auto lru_table_item = std::make_shared<sstable::LRUTableItem>(
         sst_metadata[0][i]->table_id /*table_id*/, std::move(table_reader),
         db->GetTableReaderCache());

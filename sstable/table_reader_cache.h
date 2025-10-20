@@ -47,13 +47,11 @@ public:
       std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
       const sstable::BlockReaderCache *block_reader_cache) const;
 
-  // const LRUTableItem *
   std::shared_ptr<LRUTableItem>
   AddNewTableReaderThenGet(SSTId table_id,
                            std::unique_ptr<LRUTableItem> lru_table_item,
                            bool add_then_get) const;
 
-  // const LRUTableItem *GetLRUTableItem(SSTId table_id) const;
   std::shared_ptr<LRUTableItem> GetLRUTableItem(SSTId table_id) const;
 
   void AddVictim(SSTId table_id) const;
@@ -64,8 +62,6 @@ private:
 
   const int capacity_;
 
-  // mutable std::unordered_map<SSTId, std::unique_ptr<LRUTableItem>>
-  //     table_readers_cache_;
   mutable std::unordered_map<SSTId, std::shared_ptr<LRUTableItem>>
       table_readers_cache_;
 
