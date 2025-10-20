@@ -45,13 +45,12 @@ public:
   BlockReaderCache(BlockReaderCache &&) = delete;
   BlockReaderCache &operator=(BlockReaderCache &&) = delete;
 
-  const LRUBlockItem *
-  GetBlockReader(std::pair<SSTId, BlockOffset> lock_info) const;
+  std::shared_ptr<LRUBlockItem>
+  GetLRUBlockItem(std::pair<SSTId, BlockOffset> lock_info) const;
 
-  // const LRUBlockItem *
-  std::pair<const LRUBlockItem *, std::unique_ptr<LRUBlockItem>>
+  std::shared_ptr<LRUBlockItem>
   AddNewBlockReaderThenGet(std::pair<SSTId, BlockOffset> block_info,
-                           std::unique_ptr<LRUBlockItem> block_reader,
+                           std::shared_ptr<LRUBlockItem> block_reader,
                            bool add_then_get) const;
 
   db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
@@ -83,10 +82,8 @@ private:
     }
   };
 
-  // Each key of block reader item in block reader cache is the combination
-  // of table id and block offset
   mutable std::unordered_map<std::pair<SSTId, BlockOffset>,
-                             std::unique_ptr<LRUBlockItem>, pair_hash,
+                             std::shared_ptr<LRUBlockItem>, pair_hash,
                              pair_equal>
       block_reader_cache_;
 

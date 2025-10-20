@@ -73,7 +73,7 @@ private:
 
   const TableReader *table_reader_;
 
-  std::vector<std::unique_ptr<LRUBlockItem>> list_lru_blocks_;
+  std::vector<std::shared_ptr<LRUBlockItem>> list_lru_blocks_;
 };
 
 } // namespace sstable

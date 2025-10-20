@@ -6,6 +6,7 @@
 
 // libC++
 #include <cassert>
+#include <memory>
 
 namespace kvs {
 
@@ -16,7 +17,7 @@ class LRUBlockItem;
 
 class BlockReaderIterator : public kvs::BaseIterator {
 public:
-  explicit BlockReaderIterator(const LRUBlockItem *block_reader);
+  explicit BlockReaderIterator(std::shared_ptr<LRUBlockItem> block_reader);
 
   ~BlockReaderIterator();
 
@@ -54,7 +55,7 @@ public:
 private:
   std::optional<uint64_t> GetCurrentDataEntryOffset();
 
-  const LRUBlockItem *lru_block_item_;
+  std::weak_ptr<LRUBlockItem> lru_block_item_;
 
   const BlockReader *block_reader_;
 

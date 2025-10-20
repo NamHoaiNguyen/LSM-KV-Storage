@@ -256,12 +256,13 @@ TEST(BlockTest, BlockReaderIterator) {
     std::unique_ptr<sstable::BlockReader> block_reader =
         table_reader->CreateAndSetupDataForBlockReader(block_offset,
                                                        block_size);
-    auto lru_block_item = std::make_unique<sstable::LRUBlockItem>(
+
+    auto lru_block_item = std::make_shared<sstable::LRUBlockItem>(
         std::make_pair(block_offset, block_size), std::move(block_reader),
         db->GetBlockReaderCache());
 
     auto iterator =
-        std::make_unique<sstable::BlockReaderIterator>(lru_block_item.get());
+        std::make_unique<sstable::BlockReaderIterator>(lru_block_item);
 
     std::string prev_key, prev_value;
 

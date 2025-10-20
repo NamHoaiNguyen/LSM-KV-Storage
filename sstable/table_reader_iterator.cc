@@ -123,8 +123,8 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
     std::pair<BlockOffset, BlockSize> block_info) {
   SSTId table_id = table_reader_->table_id_;
   // Look up block in cache
-  const LRUBlockItem *block_reader =
-      block_reader_cache_->GetBlockReader({table_id, block_info.first});
+  std::shared_ptr<LRUBlockItem> block_reader =
+      block_reader_cache_->GetLRUBlockItem({table_id, block_info.first});
   if (block_reader) {
     // if had already been in cache
     block_reader_iterator_.reset(new BlockReaderIterator(block_reader));
@@ -139,26 +139,16 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
     return;
   }
 
-  auto new_lru_block_item = std::make_unique<LRUBlockItem>(
+  auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       std::make_pair(table_id, block_info.first), std::move(new_block_reader),
       block_reader_cache_);
 
-  auto [block_reader_inserted, lru_block_item] =
+  std::shared_ptr<LRUBlockItem> block_reader_inserted =
       block_reader_cache_->AddNewBlockReaderThenGet(
-          {table_id, block_info.first}, std::move(new_lru_block_item),
+          {table_id, block_info.first}, new_lru_block_item,
           true /*add_then_get*/);
 
-  if (block_reader_inserted) {
-    // If added successfully
-    block_reader_iterator_.reset(
-        new BlockReaderIterator(block_reader_inserted));
-    return;
-  }
-
-  // Else can't add because cache is full
-  block_reader_iterator_.reset(new BlockReaderIterator(lru_block_item.get()));
-  // Extend lifetime
-  list_lru_blocks_.push_back(std::move(lru_block_item));
+  block_reader_iterator_.reset(new BlockReaderIterator(block_reader_inserted));
 }
 
 } // namespace sstable
