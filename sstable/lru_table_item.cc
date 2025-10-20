@@ -20,7 +20,7 @@ uint64_t LRUTableItem::GetRefCount() const { return ref_count_.load(); }
 void LRUTableItem::IncRef() const { ref_count_.fetch_add(1); }
 
 void LRUTableItem::Unref() const {
-  if (ref_count_.fetch_sub(1) == 2) {
+  if (ref_count_.fetch_sub(1) == 1) {
     cache_->AddVictim(table_id_);
   }
 }

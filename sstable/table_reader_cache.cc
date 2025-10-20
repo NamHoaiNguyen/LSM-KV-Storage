@@ -19,7 +19,9 @@ TableReaderCache::TableReaderCache(const db::DBImpl *db,
   assert(db_ && thread_pool_);
 }
 
-const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
+// const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
+std::shared_ptr<LRUTableItem>
+TableReaderCache::GetLRUTableItem(SSTId table_id) const {
   std::shared_lock rlock(mutex_);
   auto iterator = table_readers_cache_.find(table_id);
   if (iterator == table_readers_cache_.end()) {
@@ -29,10 +31,12 @@ const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
   // Increase ref count
   iterator->second->IncRef();
 
-  return iterator->second.get();
+  // return iterator->second.get();
+  return iterator->second;
 }
 
-const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
+// const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
+std::shared_ptr<LRUTableItem> TableReaderCache::AddNewTableReaderThenGet(
     SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item,
     bool add_then_get) const {
   std::scoped_lock rwlock(mutex_);
@@ -45,22 +49,19 @@ const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
 
   // Get block reader that MAYBE inserted
   auto iterator = table_readers_cache_.find(table_id);
-  if (success) {
-    // Increase ref count
-    iterator->second->IncRef();
-  }
 
   if (add_then_get) {
     // Increase ref count if need to get
     iterator->second->IncRef();
   }
 
-  if (iterator->second->GetRefCount() <= 1) {
+  if (iterator->second->GetRefCount() < 1) {
     // This TableReader should be put in free_list_
     free_list_.push_back(table_id);
   }
 
-  return iterator->second.get();
+  // return iterator->second.get();
+  return iterator->second;
 }
 
 // NOT THREAD-SAFE
@@ -80,7 +81,7 @@ void TableReaderCache::Evict() const {
     free_list_.pop_front();
 
     if (iterator != table_readers_cache_.end() &&
-        iterator->second->ref_count_.load() <= 1) {
+        iterator->second->ref_count_.load() < 1) {
       table_readers_cache_.erase(table_id);
     }
   }
@@ -96,7 +97,9 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
     const sstable::BlockReaderCache *block_reader_cache) const {
   db::GetStatus status;
 
-  const LRUTableItem *table_reader = GetLRUTableItem(table_id);
+  // const LRUTableItem *table_reader = GetLRUTableItem(table_id);
+  std::shared_ptr<LRUTableItem> table_reader = GetLRUTableItem(table_id);
+
   if (table_reader && table_reader->GetTableReader()) {
     // if table reader had already been in cache
     status = table_reader->table_reader_->SearchKey(
