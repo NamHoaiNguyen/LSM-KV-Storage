@@ -27,7 +27,7 @@ class Config;
 
 class VersionManager {
 public:
-  VersionManager(const DBImpl *db, const kvs::ThreadPool *thread_pool);
+  VersionManager(const DBImpl *db, kvs::ThreadPool *thread_pool);
 
   ~VersionManager() = default;
 
@@ -62,7 +62,7 @@ private:
   std::atomic<uint64_t> next_version_id_{0};
 
   // std::deque<std::unique_ptr<Version>> versions_;
-  std::unordered_map<uint64_t, std::unique_ptr<Version>> versions_;
+  mutable std::unordered_map<uint64_t, std::unique_ptr<Version>> versions_;
 
   std::unique_ptr<Version> latest_version_;
 
@@ -73,7 +73,7 @@ private:
 
   const Config *config_;
 
-  const kvs::ThreadPool *thread_pool_;
+  kvs::ThreadPool *thread_pool_;
 
   mutable std::mutex mutex_;
 };

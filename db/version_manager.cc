@@ -18,11 +18,9 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(const DBImpl *db,
-                               const kvs::ThreadPool *thread_pool)
+VersionManager::VersionManager(const DBImpl *db, kvs::ThreadPool *thread_pool)
     : db_(db), config_(db_->GetConfig()), thread_pool_(thread_pool) {
-  assert(db_ && config_ &&
-         thread_pool_);
+  assert(db_ && config_ && thread_pool_);
 }
 
 void VersionManager::RemoveObsoleteVersion(uint64_t version_id) const {
@@ -72,7 +70,7 @@ void VersionManager::InitVersionWhenLoadingDb(
   next_version_id_.fetch_add(1);
   uint64_t new_verions_id = next_version_id_;
   auto new_version = std::make_unique<Version>(
-      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, db_);
 
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
       &latest_version_sst_info = new_version->GetSSTMetadata();
@@ -132,7 +130,7 @@ void VersionManager::CreateNewVersion(
   next_version_id_.fetch_add(1);
   uint64_t new_verions_id = next_version_id_.load();
   auto new_version = std::make_unique<Version>(
-      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, db_);
 
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>

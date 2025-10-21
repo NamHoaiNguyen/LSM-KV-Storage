@@ -90,7 +90,7 @@ void TableReaderCache::AddVictim(SSTId table_id) const {
   free_list_.push_back(table_id);
 }
 
-db::GetStatus TableReaderCache::GetKey(
+db::GetStatus TableReaderCache::GetValue(
     std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
     const sstable::BlockReaderCache *block_reader_cache) const {
   db::GetStatus status;

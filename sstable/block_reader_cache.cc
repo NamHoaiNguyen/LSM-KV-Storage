@@ -155,10 +155,10 @@ void BlockReaderCache::UnrefThread() const {
 }
 
 db::GetStatus
-BlockReaderCache::GetKey(std::string_view key, TxnId txn_id,
-                         std::pair<SSTId, BlockOffset> block_info,
-                         uint64_t block_size,
-                         const TableReader *table_reader) const {
+BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
+                           std::pair<SSTId, BlockOffset> block_info,
+                           uint64_t block_size,
+                           const TableReader *table_reader) const {
   assert(table_reader);
   db::GetStatus status;
 
