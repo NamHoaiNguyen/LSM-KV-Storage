@@ -17,7 +17,7 @@ BlockReader::BlockReader(std::unique_ptr<BlockReaderData> block_reader_data)
           std::move(block_reader_data->data_entries_offset_info)),
       buffer_(std::move(block_reader_data->buffer)) {}
 
-db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
+db::GetStatus BlockReader::GetValue(std::string_view key, TxnId txn_id) const {
   db::GetStatus status;
 
   // Binary search key in block based on offset

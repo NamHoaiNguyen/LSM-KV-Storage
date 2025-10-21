@@ -43,7 +43,7 @@ class VersionManager;
 class Version {
 public:
   Version(uint64_t version_id, int num_sst_levels,
-          const kvs::ThreadPool *thread_pool, VersionManager *version_manager);
+          kvs::ThreadPool *thread_pool, const DBImpl* db);
 
   ~Version() = default;
 
@@ -110,9 +110,13 @@ private:
   // allocate/deallocate, etc... these objects.
   const Config *config_;
 
-  const kvs::ThreadPool *thread_pool_;
+  kvs::ThreadPool *thread_pool_;
 
-  VersionManager *version_manager_;
+  const VersionManager *version_manager_;
+
+  const sstable::BlockReaderCache* block_reader_cache_;
+
+  const sstable::TableReaderCache* table_reader_cache_;
 };
 
 } // namespace db

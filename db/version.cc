@@ -12,13 +12,15 @@ namespace kvs {
 namespace db {
 
 Version::Version(uint64_t version_id, int num_sst_levels,
-                 const kvs::ThreadPool *thread_pool,
-                 VersionManager *version_manager)
+                 kvs::ThreadPool *thread_pool,
+                 const DBImpl* db)
     : version_id_(version_id), levels_sst_info_(num_sst_levels),
       compaction_level_(0), compaction_score_(0), ref_count_(0),
       levels_score_(num_sst_levels, 0), thread_pool_(thread_pool),
-      version_manager_(version_manager) {
-  assert(thread_pool_ && version_manager_);
+      version_manager_(db->GetVersionManager()),
+      block_reader_cache_(db->GetBlockReaderCache()),
+      table_reader_cache_(db->GetTableReaderCache()) {
+  assert(thread_pool_ && version_manager_ && block_reader_cache_ && table_reader_cache_);
 }
 
 void Version::IncreaseRefCount() const { ref_count_.fetch_add(1); }
@@ -74,8 +76,11 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     }
 
     // TODO(namnh) : Implement bloom filter for level >= 1
-    status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
-                                      file_candidate->file_size);
+    // status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
+    //                                   file_candidate->file_size);
+    status = table_reader_cache_->GetKey(key, txn_id, file_candidate->table_id,
+                                         file_candidate->file_size,
+                                         block_reader_cache_);
     if (status.type == db::ValueType::PUT ||
         status.type == db::ValueType::DELETED ||
         status.type == db::ValueType::kTooManyOpenFiles) {

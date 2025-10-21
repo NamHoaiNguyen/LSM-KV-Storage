@@ -39,15 +39,12 @@ public:
   VersionManager(VersionManager &&) = default;
   VersionManager &operator=(VersionManager &&) = default;
 
-  void RemoveObsoleteVersion(uint64_t version_id);
+  void RemoveObsoleteVersion(uint64_t version_id) const;
 
   // Create latest version and apply new SSTs metadata
   void ApplyNewChanges(std::unique_ptr<VersionEdit> version_edit);
 
   bool NeedSSTCompaction() const;
-
-  GetStatus GetKey(std::string_view key, TxnId txn_id, SSTId table_id,
-                   uint64_t file_size) const;
 
   const std::unordered_map<uint64_t, std::unique_ptr<Version>> &
   GetVersions() const;
@@ -73,10 +70,6 @@ private:
   // modify, including change memory that it is pointing to,
   // allocate/deallocate, etc... these objects.
   const DBImpl *db_;
-
-  const sstable::TableReaderCache *table_reader_cache_;
-
-  const sstable::BlockReaderCache *block_reader_cache_;
 
   const Config *config_;
 

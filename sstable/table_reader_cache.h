@@ -43,7 +43,7 @@ public:
   TableReaderCache(TableReaderCache &&) = delete;
   TableReaderCache &operator=(TableReaderCache &&) = delete;
 
-  db::GetStatus GetKeyFromTableCache(
+  db::GetStatus GetValue(
       std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
       const sstable::BlockReaderCache *block_reader_cache) const;
 

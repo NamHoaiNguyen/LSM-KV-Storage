@@ -20,14 +20,12 @@ namespace db {
 
 VersionManager::VersionManager(const DBImpl *db,
                                const kvs::ThreadPool *thread_pool)
-    : db_(db), table_reader_cache_(db_->GetTableReaderCache()),
-      block_reader_cache_(db_->GetBlockReaderCache()),
-      config_(db_->GetConfig()), thread_pool_(thread_pool) {
-  assert(db_ && table_reader_cache_ && block_reader_cache_ && config_ &&
+    : db_(db), config_(db_->GetConfig()), thread_pool_(thread_pool) {
+  assert(db_ && config_ &&
          thread_pool_);
 }
 
-void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
+void VersionManager::RemoveObsoleteVersion(uint64_t version_id) const {
   std::scoped_lock lock(mutex_);
   auto it = versions_.find(version_id);
   if (it == versions_.end()) {
@@ -231,13 +229,6 @@ void VersionManager::CreateNewVersion(
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
   latest_version_->IncreaseRefCount();
-}
-
-GetStatus VersionManager::GetKey(std::string_view key, TxnId txn_id,
-                                 SSTId table_id, uint64_t file_size) const {
-  // No need to acquire mutex. Because this method is read-only
-  return table_reader_cache_->GetKeyFromTableCache(
-      key, txn_id, table_id, file_size, block_reader_cache_);
 }
 
 bool VersionManager::NeedSSTCompaction() const {

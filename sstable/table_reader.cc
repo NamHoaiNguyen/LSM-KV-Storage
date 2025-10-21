@@ -167,13 +167,13 @@ TableReader::TableReader(std::unique_ptr<TableReaderData> table_reader_data)
       read_file_object_(std::move(table_reader_data->read_file_object)) {}
 
 db::GetStatus
-TableReader::SearchKey(std::string_view key, TxnId txn_id,
+TableReader::GetValue(std::string_view key, TxnId txn_id,
                        const sstable::BlockReaderCache *block_reader_cache,
                        const TableReader *table_reader) const {
   assert(block_reader_cache);
   auto [block_offset, block_size] = GetBlockOffsetAndSize(key);
 
-  return block_reader_cache->GetKeyFromBlockCache(
+  return block_reader_cache->GetValue(
       key, txn_id, {table_id_, block_offset}, block_size, table_reader);
 }
 

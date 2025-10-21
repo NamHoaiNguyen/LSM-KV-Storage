@@ -155,10 +155,10 @@ void BlockReaderCache::UnrefThread() const {
 }
 
 db::GetStatus
-BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
-                                       std::pair<SSTId, BlockOffset> block_info,
-                                       uint64_t block_size,
-                                       const TableReader *table_reader) const {
+BlockReaderCache::GetKey(std::string_view key, TxnId txn_id,
+                         std::pair<SSTId, BlockOffset> block_info,
+                         uint64_t block_size,
+                         const TableReader *table_reader) const {
   assert(table_reader);
   db::GetStatus status;
 
@@ -166,7 +166,7 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   if (block_reader && block_reader->GetBlockReader()) {
     // if tablereader had already been in cache
     assert(block_reader->ref_count_ >= 2);
-    status = block_reader->GetBlockReader()->SearchKey(key, txn_id);
+    status = block_reader->GetBlockReader()->GetValue(key, txn_id);
     // TODO(namnh) : This can improve performance, but increase CPU usage
     // significantly
     // thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
@@ -189,7 +189,7 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
   auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       block_info, std::move(new_block_reader), this);
 
-  status = new_lru_block_item->GetBlockReader()->SearchKey(key, txn_id);
+  status = new_lru_block_item->GetBlockReader()->GetValue(key, txn_id);
 
   // AddNewBlockReaderThenGet(block_info, new_lru_block_item,
   //                          false /*need_to_get*/);

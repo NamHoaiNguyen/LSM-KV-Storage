@@ -90,7 +90,7 @@ void TableReaderCache::AddVictim(SSTId table_id) const {
   free_list_.push_back(table_id);
 }
 
-db::GetStatus TableReaderCache::GetKeyFromTableCache(
+db::GetStatus TableReaderCache::GetKey(
     std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
     const sstable::BlockReaderCache *block_reader_cache) const {
   db::GetStatus status;
@@ -98,7 +98,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
   std::shared_ptr<LRUTableItem> table_reader = GetLRUTableItem(table_id);
   if (table_reader && table_reader->GetTableReader()) {
     // if table reader had already been in cache
-    status = table_reader->table_reader_->SearchKey(
+    status = table_reader->table_reader_->GetValue(
         key, txn_id, block_reader_cache, table_reader->GetTableReader());
     thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
     return status;
@@ -117,7 +117,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
 
   auto new_lru_table_item = std::make_unique<LRUTableItem>(
       table_id, std::move(new_table_reader), this);
-  status = new_lru_table_item->GetTableReader()->SearchKey(
+  status = new_lru_table_item->GetTableReader()->GetValue(
       key, txn_id, block_reader_cache, new_lru_table_item->GetTableReader());
 
   thread_pool_->Enqueue(

@@ -62,6 +62,8 @@ DBImpl::DBImpl(bool is_testing)
           std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
       block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
           config_->GetTotalBlocksCache(), thread_pool_)),
+      block_reader_cache_v2_(std::make_unique<sstable::BlockReaderCache>(
+          config_->GetTotalBlocksCache(), thread_pool_), 4),
       version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
   thread_pool_->Enqueue(&DBImpl::CleanupTrashFiles, this);
 }
