@@ -116,7 +116,9 @@ private:
 
   const VersionManager *version_manager_;
 
-  const sstable::BlockReaderCache *block_reader_cache_;
+  // const sstable::BlockReaderCache *block_reader_cache_;
+  const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
+      &block_reader_cache_;
 
   const sstable::TableReaderCache *table_reader_cache_;
 };

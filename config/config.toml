@@ -4,6 +4,7 @@
 [lsm]
 # Per-memory table size limit (4MB)
 LSM_PER_MEM_SIZE_LIMIT = 33554432  # 32 * 1024 * 1024
+# LSM_PER_MEM_SIZE_LIMIT = 8388608  # 8 * 1024 * 1024
 
 # Maximum number of immutable memtables in memory
 MAX_IMMUTABLE_MEMTABLES_IN_MEMORY = 3
@@ -21,4 +22,5 @@ LVL0_COMPACTION_TRIGGER = 4
 TOTAL_TABLES_CACHE = 1000 # This should be less than limitation of file descriptors
 
 # Total number of Block cached
-TOTAL_BLOCKS_CACHE = 100000  # 4KB * 100000 = 400 MB
+# TOTAL_BLOCKS_CACHE = 100000  # 4KB * 100000 = 400 MB
+TOTAL_BLOCKS_CACHE = 12500

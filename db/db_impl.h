@@ -83,7 +83,9 @@ public:
 
   const VersionManager *GetVersionManager() const;
 
-  const sstable::BlockReaderCache *GetBlockReaderCache() const;
+  // const sstable::BlockReaderCache *GetBlockReaderCache() const;
+  const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &
+  GetBlockReaderCache() const;
 
   const sstable::TableReaderCache *GetTableReaderCache() const;
 
@@ -153,7 +155,9 @@ private:
 
   std::unique_ptr<sstable::TableReaderCache> table_reader_cache_;
 
-  std::unique_ptr<sstable::BlockReaderCache> block_reader_cache_;
+  // std::unique_ptr<sstable::BlockReaderCache> block_reader_cache_;
+
+  std::vector<std::unique_ptr<sstable::BlockReaderCache>> block_reader_cache_;
 
   std::unique_ptr<VersionManager> version_manager_;
 

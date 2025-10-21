@@ -60,14 +60,25 @@ DBImpl::DBImpl(bool is_testing)
       thread_pool_(new kvs::ThreadPool()),
       table_reader_cache_(
           std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
-      block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
-          config_->GetTotalBlocksCache(), thread_pool_)),
+      // block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
+      //     config_->GetTotalBlocksCache(), thread_pool_)),
+      // block_reader_cache_(2, std::make_unique<sstable::BlockReaderCache>(
+      //                            config_->GetTotalBlocksCache(),
+      //                            thread_pool_)),
       version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
+  for (int i = 0; i < 8; i++) {
+    // TODO(namnh) : block cache bucket
+    block_reader_cache_.emplace_back(
+        std::make_unique<sstable::BlockReaderCache>(
+            config_->GetTotalBlocksCache(), thread_pool_));
+  }
+
   thread_pool_->Enqueue(&DBImpl::CleanupTrashFiles, this);
 }
 
 DBImpl::~DBImpl() {
-  block_reader_cache_.reset();
+  // block_reader_cache_.reset();
+  block_reader_cache_.clear();
   table_reader_cache_.reset();
 
   shutdown_ = true;
@@ -546,9 +557,14 @@ void DBImpl::ExecuteBackgroundCompaction() {
 
   version->IncreaseRefCount();
   auto version_edit = std::make_unique<VersionEdit>(config_->GetSSTNumLvels());
-  auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
-                                           table_reader_cache_.get(), version,
-                                           version_edit.get(), this);
+  // auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
+  //                                          table_reader_cache_.get(),
+  //                                          version, version_edit.get(),
+  //                                          this);
+
+  auto compact =
+      std::make_unique<Compact>(block_reader_cache_, table_reader_cache_.get(),
+                                version, version_edit.get(), this);
   bool compact_success = compact->PickCompact();
   if (!compact_success) {
     version->DecreaseRefCount();
@@ -594,8 +610,13 @@ DBImpl::GetImmutableMemTables() {
   return immutable_memtables_;
 }
 
-const sstable::BlockReaderCache *DBImpl::GetBlockReaderCache() const {
-  return block_reader_cache_.get();
+// const sstable::BlockReaderCache *DBImpl::GetBlockReaderCache() const {
+//   return block_reader_cache_.get();
+// }
+
+const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &
+DBImpl::GetBlockReaderCache() const {
+  return block_reader_cache_;
 }
 
 const sstable::TableReaderCache *DBImpl::GetTableReaderCache() const {

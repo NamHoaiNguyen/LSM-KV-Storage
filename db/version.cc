@@ -10,6 +10,31 @@
 
 #include <algorithm>
 
+namespace {
+
+uint64_t HashKey(std::string_view key, uint64_t table_size) {
+  const uint64_t p = 31;
+  const uint64_t m = 1000000009ULL;
+  uint64_t hash = 0;
+  uint64_t p_pow = 1;
+
+  for (unsigned char c : key) {
+    hash += static_cast<uint64_t>(c) * p_pow;
+    p_pow *= p;
+
+    // Only reduce when approaching overflow (~2^61)
+    if (hash > (1ULL << 61))
+      hash %= m;
+    if (p_pow > (1ULL << 61))
+      p_pow %= m;
+  }
+
+  hash %= m;
+  return hash % table_size;
+}
+
+} // namespace
+
 namespace kvs {
 
 namespace db {
@@ -40,6 +65,9 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
   std::vector<std::shared_ptr<SSTMetadata>> sst_lvl0_candidates_;
 
+  // TODO(namnh) : block cache bucket
+  uint64_t block_reader_bucket = HashKey(key, 8 /*table_size*/);
+
   for (const auto &sst : levels_sst_info_[0]) {
     // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs
     // that maybe contain the key
@@ -58,11 +86,9 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
       [](const auto &a, const auto &b) { return a->table_id > b->table_id; });
 
   for (const auto &candidate : sst_lvl0_candidates_) {
-    // status = version_manager_->GetKey(key, txn_id, candidate->table_id,
-    //                                   candidate->file_size);
-    status = table_reader_cache_->GetValue(key, txn_id, candidate->table_id,
-                                           candidate->file_size,
-                                           block_reader_cache_);
+    status = table_reader_cache_->GetValue(
+        key, txn_id, candidate->table_id, candidate->file_size,
+        block_reader_cache_[block_reader_bucket].get());
 
     if (status.type == db::ValueType::PUT ||
         status.type == db::ValueType::DELETED ||
@@ -82,16 +108,18 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     }
 
     // TODO(namnh) : Implement bloom filter for level >= 1
-    // status = version_manager_->GetKey(key, txn_id, file_candidate->table_id,
-    //                                   file_candidate->file_size);
     status = table_reader_cache_->GetValue(
         key, txn_id, file_candidate->table_id, file_candidate->file_size,
-        block_reader_cache_);
+        block_reader_cache_[block_reader_bucket].get());
     if (status.type == db::ValueType::PUT ||
         status.type == db::ValueType::DELETED ||
         status.type == db::ValueType::kTooManyOpenFiles) {
       return status;
     }
+  }
+
+  if (status.type == db::ValueType::NOT_FOUND) {
+    std::cout << "namnh can't find " << key << std::endl;
   }
 
   return status;

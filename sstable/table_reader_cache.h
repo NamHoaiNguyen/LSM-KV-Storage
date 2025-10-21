@@ -43,9 +43,14 @@ public:
   TableReaderCache(TableReaderCache &&) = delete;
   TableReaderCache &operator=(TableReaderCache &&) = delete;
 
-  db::GetStatus GetValue(
-      std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
-      const sstable::BlockReaderCache *block_reader_cache) const;
+  db::GetStatus
+  GetValue(std::string_view key, TxnId txn_id, SSTId table_id,
+           uint64_t file_size,
+           const sstable::BlockReaderCache *block_reader_cache) const;
+  // db::GetStatus GetValue(std::string_view key, TxnId txn_id, SSTId table_id,
+  //                        uint64_t file_size,
+  //                        const std::unique_ptr<sstable::BlockReaderCache>
+  //                            &block_reader_cache) const;
 
   std::shared_ptr<LRUTableItem>
   AddNewTableReaderThenGet(SSTId table_id,
