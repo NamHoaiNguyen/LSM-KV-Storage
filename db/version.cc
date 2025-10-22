@@ -65,7 +65,9 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   std::vector<std::shared_ptr<SSTMetadata>> sst_lvl0_candidates_;
 
   // TODO(namnh) : block cache bucket
-  uint64_t block_reader_bucket = HashKey(key, 10 /*table_size*/);
+  // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
+  // pushing into thread pool
+  uint64_t block_reader_bucket = HashKey(key, 8 /*table_size*/);
 
   for (const auto &sst : levels_sst_info_[0]) {
     // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs

@@ -20,7 +20,7 @@ BlockReader::BlockReader(std::unique_ptr<BlockReaderData> block_reader_data)
 db::GetStatus BlockReader::GetValue(std::string_view key, TxnId txn_id) const {
   db::GetStatus status;
   // TODO(namnh) : Debug
-  status.type = db::ValueType::kTooManyOpenFiles;
+  // status.type = db::ValueType::kTooManyOpenFiles;
 
   // Binary search key in block based on offset
   int64_t left = 0;

@@ -12,7 +12,7 @@ namespace kvs {
 namespace sstable {
 
 BlockReaderCache::BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool)
-    : capacity_(10000), thread_pool_(thread_pool) {
+    : capacity_(capacity), thread_pool_(thread_pool) {
   thread_pool_->Enqueue(&BlockReaderCache::UnrefThread, this);
   thread_pool_->Enqueue(&BlockReaderCache::AddNewItemThread, this);
 }

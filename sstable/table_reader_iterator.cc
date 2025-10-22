@@ -29,7 +29,7 @@ TableReaderIterator::TableReaderIterator(
       compact_cache_(compact_cache), lru_table_item_(lru_table_item),
       block_reader_cache_(block_reader_cache) {
   table_reader_ = lru_table_item_.lock()->GetTableReader();
-  assert(table_reader_);
+  assert(compact_cache_ && table_reader_);
 }
 
 TableReaderIterator::~TableReaderIterator() {
@@ -174,7 +174,9 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
   // Look up block in cache
 
   // TODO(namnh) : block cache bucket
-  for (int i = 0; i < 10; i++) {
+  // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
+  // pushing into thread pool
+  for (int i = 0; i < 8; i++) {
     std::shared_ptr<LRUBlockItem> block_reader =
         block_reader_cache_[i]->GetLRUBlockItem({table_id, block_info.first});
     if (block_reader) {

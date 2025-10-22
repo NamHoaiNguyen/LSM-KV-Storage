@@ -62,18 +62,20 @@ DBImpl::DBImpl(bool is_testing)
           std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
       // block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
       //     config_->GetTotalBlocksCache(), thread_pool_)),
-      // block_reader_cache_(2, std::make_unique<sstable::BlockReaderCache>(
-      //                            config_->GetTotalBlocksCache(),
-      //                            thread_pool_)),
-      compact_cache_(
-          std::make_unique<sstable::BlockReaderCache>(1000, thread_pool_)),
+      // compact_cache_(
+      //     std::make_unique<sstable::BlockReaderCache>(1000, thread_pool_)),
       version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
-  for (int i = 0; i < 10; i++) {
+  // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
+  // pushing into thread pool
+  for (int i = 0; i < 8; i++) {
     // TODO(namnh) : block cache bucket
     block_reader_cache_.emplace_back(
         std::make_unique<sstable::BlockReaderCache>(
             config_->GetTotalBlocksCache(), thread_pool_));
   }
+
+  compact_cache_ = std::make_unique<sstable::BlockReaderCache>(
+      config_->GetTotalBlocksCache(), thread_pool_);
 
   thread_pool_->Enqueue(&DBImpl::CleanupTrashFiles, this);
 }
@@ -81,6 +83,7 @@ DBImpl::DBImpl(bool is_testing)
 DBImpl::~DBImpl() {
   // block_reader_cache_.reset();
   block_reader_cache_.clear();
+  compact_cache_.reset();
   table_reader_cache_.reset();
 
   shutdown_ = true;
