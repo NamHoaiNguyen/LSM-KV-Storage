@@ -30,7 +30,8 @@ public:
   //         const sstable::TableReaderCache *table_reader_cache,
   //         const Version *version, VersionEdit *version_edit, DBImpl *db);
 
-  Compact(const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
+  Compact(const sstable::BlockReaderCache *compact_cache,
+          const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
               &block_reader_cache,
           const sstable::TableReaderCache *table_reader_cache,
           const Version *version, VersionEdit *version_edit, DBImpl *db);
@@ -81,7 +82,9 @@ private:
 
   // const sstable::BlockReaderCache *block_reader_cache_;
 
-  std::unique_ptr<sstable::BlockReaderCache> compact_cache_;
+  // std::unique_ptr<sstable::BlockReaderCache> compact_cache_;
+
+  const sstable::BlockReaderCache *compact_cache_;
 
   const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
       &block_reader_cache_;

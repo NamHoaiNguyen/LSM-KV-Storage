@@ -65,8 +65,10 @@ DBImpl::DBImpl(bool is_testing)
       // block_reader_cache_(2, std::make_unique<sstable::BlockReaderCache>(
       //                            config_->GetTotalBlocksCache(),
       //                            thread_pool_)),
+      compact_cache_(
+          std::make_unique<sstable::BlockReaderCache>(1000, thread_pool_)),
       version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < 10; i++) {
     // TODO(namnh) : block cache bucket
     block_reader_cache_.emplace_back(
         std::make_unique<sstable::BlockReaderCache>(
@@ -562,9 +564,9 @@ void DBImpl::ExecuteBackgroundCompaction() {
   //                                          version, version_edit.get(),
   //                                          this);
 
-  auto compact =
-      std::make_unique<Compact>(block_reader_cache_, table_reader_cache_.get(),
-                                version, version_edit.get(), this);
+  auto compact = std::make_unique<Compact>(
+      compact_cache_.get(), block_reader_cache_, table_reader_cache_.get(),
+      version, version_edit.get(), this);
   bool compact_success = compact->PickCompact();
   if (!compact_success) {
     version->DecreaseRefCount();

@@ -157,6 +157,8 @@ private:
 
   // std::unique_ptr<sstable::BlockReaderCache> block_reader_cache_;
 
+  std::unique_ptr<sstable::BlockReaderCache> compact_cache_;
+
   std::vector<std::unique_ptr<sstable::BlockReaderCache>> block_reader_cache_;
 
   std::unique_ptr<VersionManager> version_manager_;

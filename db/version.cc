@@ -47,8 +47,7 @@ Version::Version(uint64_t version_id, int num_sst_levels,
       version_manager_(db->GetVersionManager()),
       block_reader_cache_(db->GetBlockReaderCache()),
       table_reader_cache_(db->GetTableReaderCache()) {
-  assert(thread_pool_ && version_manager_ && block_reader_cache_ &&
-         table_reader_cache_);
+  assert(thread_pool_ && version_manager_ && table_reader_cache_);
 }
 
 void Version::IncreaseRefCount() const { ref_count_.fetch_add(1); }
@@ -66,7 +65,7 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   std::vector<std::shared_ptr<SSTMetadata>> sst_lvl0_candidates_;
 
   // TODO(namnh) : block cache bucket
-  uint64_t block_reader_bucket = HashKey(key, 8 /*table_size*/);
+  uint64_t block_reader_bucket = HashKey(key, 10 /*table_size*/);
 
   for (const auto &sst : levels_sst_info_[0]) {
     // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs

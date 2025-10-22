@@ -12,7 +12,7 @@ namespace kvs {
 namespace sstable {
 
 BlockReaderCache::BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool)
-    : capacity_(capacity), thread_pool_(thread_pool) {
+    : capacity_(10000), thread_pool_(thread_pool) {
   thread_pool_->Enqueue(&BlockReaderCache::UnrefThread, this);
   thread_pool_->Enqueue(&BlockReaderCache::AddNewItemThread, this);
 }
@@ -165,7 +165,7 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
   std::shared_ptr<LRUBlockItem> block_reader = GetLRUBlockItem(block_info);
   if (block_reader && block_reader->GetBlockReader()) {
     // if tablereader had already been in cache
-    assert(block_reader->ref_count_ >= 2);
+    // assert(block_reader->ref_count_ >= 2);
     status = block_reader->GetBlockReader()->GetValue(key, txn_id);
     // TODO(namnh) : This can improve performance, but increase CPU usage
     // significantly

@@ -111,6 +111,9 @@ db::GetStatus TableReaderCache::GetValue(
   auto new_table_reader = CreateAndSetupDataForTableReader(std::move(filename),
                                                            table_id, file_size);
   if (!new_table_reader) {
+    std::cout << "namnh can't CreateAndSetupDataForTableReader in "
+                 "TableReaderCache::GetValue"
+              << std::endl;
     status.type = db::ValueType::kTooManyOpenFiles;
     return status;
   }
