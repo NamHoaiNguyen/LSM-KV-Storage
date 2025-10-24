@@ -122,7 +122,59 @@ void GetWithRetryOp(db::DBImpl *db, int nums_elem, int index,
   done.count_down();
 }
 
-TEST(DBTest, ConcurrencyPut) {
+void GetWithRetryOpV2(
+    db::DBImpl *db, int nums_elem, int index,
+    const std::vector<std::pair<std::string, std::string>> &key_value,
+    std::latch &done) {
+  std::string key, value;
+  GetStatus status;
+  std::vector<std::pair<std::string, std::string>> miss_keys;
+
+  for (size_t i = 0; i < nums_elem; i++) {
+    std::string_view key = key_value[nums_elem * index + i].first;
+    std::string_view value = key_value[nums_elem * index + i].second;
+
+    status = db->Get(key, 0 /*txn_id*/);
+
+    EXPECT_TRUE(status.type == ValueType::PUT ||
+                status.type == ValueType::DELETED ||
+                status.type == ValueType::kTooManyOpenFiles);
+
+    if (status.type == ValueType::kTooManyOpenFiles) {
+      int retry = 0;
+      while (retry < 3) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+        status = db->Get(key, 0 /*txn_id*/);
+        if (status.type == ValueType::PUT ||
+            status.type == ValueType::DELETED) {
+          break;
+        }
+
+        retry++;
+      }
+
+      if (status.type == ValueType::kTooManyOpenFiles) {
+        miss_keys.emplace_back(std::make_pair(key, value));
+        continue;
+      }
+    } else if (status.type == ValueType::PUT) {
+      EXPECT_EQ(status.value.value(), value);
+    } else {
+      EXPECT_FALSE(status.value);
+    }
+  }
+
+  for (int i = 0; i < miss_keys.size(); i++) {
+    status = db->Get(key, 0 /*txn_id*/);
+    EXPECT_TRUE(status.type == ValueType::PUT);
+    EXPECT_EQ(status.value.value(), value);
+  }
+
+  done.count_down();
+}
+
+TEST(DBTest, ConcurrencyPutAndGetLargeKeyValue) {
   auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
   db->LoadDB("test");
   const Config *const config = db->GetConfig();
@@ -182,6 +234,19 @@ TEST(DBTest, ConcurrencyPut) {
   threads.clear();
 
   db->ForceFlushMemTable();
+
+  std::latch all_reads_done(num_threads);
+  for (int i = 0; i < num_threads; i++) {
+    threads.emplace_back(GetWithRetryOpV2, db.get(), nums_elem_each_thread, i,
+                         std::cref(key_value), std::ref(all_reads_done));
+  }
+
+  // Wait until all threads finish
+  all_reads_done.wait();
+  for (auto &thread : threads) {
+    thread.join();
+  }
+  threads.clear();
 
   auto end = std::chrono::high_resolution_clock::now();
   // Calculate the duration
