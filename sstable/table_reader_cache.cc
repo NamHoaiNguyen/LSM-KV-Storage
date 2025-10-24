@@ -34,7 +34,6 @@ TableReaderCache::GetLRUTableItem(SSTId table_id) const {
   return iterator->second;
 }
 
-// const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
 std::shared_ptr<LRUTableItem> TableReaderCache::AddNewTableReaderThenGet(
     SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item,
     bool add_then_get) const {

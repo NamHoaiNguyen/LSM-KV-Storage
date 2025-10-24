@@ -64,11 +64,10 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   GetStatus status;
   std::vector<std::shared_ptr<SSTMetadata>> sst_lvl0_candidates_;
 
-  // TODO(namnh) : block cache bucket
-  // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
-  // pushing into thread pool
-  uint64_t block_reader_bucket =
-      HashKey(key, block_reader_cache_.size() /*table_size*/);
+  std::optional<uint64_t> block_reader_bucket;
+  if (!block_reader_cache_.empty()) {
+    block_reader_bucket = block_reader_cache_.size();
+  }
 
   for (const auto &sst : levels_sst_info_[0]) {
     // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs
@@ -90,7 +89,9 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   for (const auto &candidate : sst_lvl0_candidates_) {
     status = table_reader_cache_->GetValue(
         key, txn_id, candidate->table_id, candidate->file_size,
-        block_reader_cache_[block_reader_bucket].get());
+        (block_reader_bucket)
+            ? block_reader_cache_[block_reader_bucket.value()].get()
+            : nullptr);
 
     if (status.type == db::ValueType::PUT ||
         status.type == db::ValueType::DELETED ||
@@ -112,7 +113,10 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     // TODO(namnh) : Implement bloom filter for level >= 1
     status = table_reader_cache_->GetValue(
         key, txn_id, file_candidate->table_id, file_candidate->file_size,
-        block_reader_cache_[block_reader_bucket].get());
+        (block_reader_bucket)
+            ? block_reader_cache_[block_reader_bucket.value()].get()
+            : nullptr);
+
     if (status.type == db::ValueType::PUT ||
         status.type == db::ValueType::DELETED ||
         status.type == db::ValueType::kTooManyOpenFiles) {
