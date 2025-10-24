@@ -149,9 +149,6 @@ private:
 
   std::atomic<bool> background_compaction_scheduled_;
 
-  // Threadppol ISN'T COPYABLE AND MOVEABLE
-  // So, we must allocate/deallocate by ourselves
-  // kvs::ThreadPool *thread_pool_;
   std::unique_ptr<kvs::ThreadPool> thread_pool_;
 
   std::unique_ptr<sstable::TableReaderCache> table_reader_cache_;

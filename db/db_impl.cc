@@ -604,10 +604,6 @@ DBImpl::GetImmutableMemTables() {
   return immutable_memtables_;
 }
 
-// const sstable::BlockReaderCache *DBImpl::GetBlockReaderCache() const {
-//   return block_reader_cache_.get();
-// }
-
 const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &
 DBImpl::GetBlockReaderCache() const {
   return block_reader_cache_;

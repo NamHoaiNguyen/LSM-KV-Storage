@@ -58,12 +58,7 @@ public:
   db::GetStatus GetValue(std::string_view key, TxnId txn_id,
                          std::pair<SSTId, BlockOffset> block_info,
                          uint64_t block_size,
-                         const TableReader *table_reader) const;
-
-  // db::GetStatus
-  // GetValue(std::string_view key, TxnId txn_id,
-  //          std::pair<SSTId, BlockOffset> block_info, uint64_t block_size,
-  //          const std::unique_ptr<TableReader> &table_reader) const;
+                         const TableReader *const table_reader) const;
 
   void AddVictim(std::pair<SSTId, BlockOffset> block_info) const;
 

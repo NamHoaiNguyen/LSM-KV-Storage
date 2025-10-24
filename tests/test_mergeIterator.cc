@@ -125,60 +125,62 @@ TEST(TableTest, MergeIterator) {
   std::vector<std::shared_ptr<sstable::LRUTableItem>> lru_table_items;
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
-  // for (int i = 0; i < sst_metadata[0].size(); i++) {
-  //   std::string filename =
-  //       db->GetDBPath() + std::to_string(sst_metadata[0][i]->table_id) +
-  //       ".sst";
-  //   std::unique_ptr<sstable::TableReader> table_reader =
-  //       sstable::CreateAndSetupDataForTableReader(
-  //           std::move(filename), sst_metadata[0][i]->table_id,
-  //           sst_metadata[0][i]->file_size);
+  const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &block_cache =
+      db->GetBlockReaderCache();
 
-  //   // Mock LRU table item
-  //   auto lru_table_item = std::make_shared<sstable::LRUTableItem>(
-  //       sst_metadata[0][i]->table_id /*table_id*/, std::move(table_reader),
-  //       db->GetTableReaderCache());
+  for (int i = 0; i < sst_metadata[0].size(); i++) {
+    std::string filename =
+        db->GetDBPath() + std::to_string(sst_metadata[0][i]->table_id) + ".sst";
+    std::unique_ptr<sstable::TableReader> table_reader =
+        sstable::CreateAndSetupDataForTableReader(
+            std::move(filename), sst_metadata[0][i]->table_id,
+            sst_metadata[0][i]->file_size);
 
-  //   auto iterator = std::make_unique<sstable::TableReaderIterator>(
-  //       db->GetBlockReaderCache(), lru_table_item);
+    // Mock LRU table item
+    auto lru_table_item = std::make_shared<sstable::LRUTableItem>(
+        sst_metadata[0][i]->table_id /*table_id*/, std::move(table_reader),
+        db->GetTableReaderCache());
 
-  //   lru_table_items.push_back(std::move(lru_table_item));
-  //   table_reader_iterators.push_back(std::move(iterator));
-  // }
+    auto iterator = std::make_unique<sstable::TableReaderIterator>(
+        block_cache, lru_table_item);
 
-  // auto iterator =
-  //     std::make_unique<MergeIterator>(std::move(table_reader_iterators));
+    lru_table_items.push_back(std::move(lru_table_item));
+    table_reader_iterators.push_back(std::move(iterator));
+  }
 
-  // int total_elems = 0;
-  // // Forward traverse
-  // for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-  //   std::string_view key_found = iterator->GetKey();
-  //   std::string_view value_found = iterator->GetValue();
+  auto iterator =
+      std::make_unique<MergeIterator>(std::move(table_reader_iterators));
 
-  //   // Order of key/value in iterator must be sorted
-  //   EXPECT_EQ(key_found, list_key_value[total_elems].first);
-  //   EXPECT_EQ(value_found, list_key_value[total_elems].second);
+  int total_elems = 0;
+  // Forward traverse
+  for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+    std::string_view key_found = iterator->GetKey();
+    std::string_view value_found = iterator->GetValue();
 
-  //   total_elems++;
-  // }
+    // Order of key/value in iterator must be sorted
+    EXPECT_EQ(key_found, list_key_value[total_elems].first);
+    EXPECT_EQ(value_found, list_key_value[total_elems].second);
 
-  // int last_elem_index = total_elems - 1;
-  // // Backward traverse
-  // for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
-  //   std::string_view key_found = iterator->GetKey();
-  //   std::string_view value_found = iterator->GetValue();
+    total_elems++;
+  }
 
-  //   // Order of key/value in iterator must be sorted
-  //   EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
-  //   EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
+  int last_elem_index = total_elems - 1;
+  // Backward traverse
+  for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
+    std::string_view key_found = iterator->GetKey();
+    std::string_view value_found = iterator->GetValue();
 
-  //   last_elem_index--;
-  // }
+    // Order of key/value in iterator must be sorted
+    EXPECT_EQ(key_found, list_key_value[last_elem_index].first);
+    EXPECT_EQ(value_found, list_key_value[last_elem_index].second);
 
-  // // Number of key value pairs should be equal to list_key_value's size.
-  // EXPECT_EQ(list_key_value.size(), total_elems);
+    last_elem_index--;
+  }
 
-  // ClearAllSstFiles(db.get());
+  // Number of key value pairs should be equal to list_key_value's size.
+  EXPECT_EQ(list_key_value.size(), total_elems);
+
+  ClearAllSstFiles(db.get());
 }
 
 } // namespace db

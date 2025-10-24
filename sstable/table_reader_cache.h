@@ -71,7 +71,7 @@ private:
 
   mutable std::shared_mutex mutex_;
 
-  const db::DBImpl *db_;
+  const db::DBImpl *const db_;
 
   const ThreadPool *const thread_pool_;
 };

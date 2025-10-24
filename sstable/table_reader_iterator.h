@@ -20,9 +20,6 @@ class TableReader;
 
 class TableReaderIterator : public kvs::BaseIterator {
 public:
-  // TableReaderIterator(const BlockReaderCache *block_reader_cache,
-  //                     std::shared_ptr<LRUTableItem> lru_table_item);
-
   TableReaderIterator(
       const std::vector<std::unique_ptr<BlockReaderCache>> &block_reader_cache,
       std::shared_ptr<LRUTableItem> lru_table_item);

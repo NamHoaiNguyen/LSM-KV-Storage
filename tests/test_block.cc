@@ -257,48 +257,51 @@ TEST(BlockTest, BlockReaderIterator) {
         table_reader->CreateAndSetupDataForBlockReader(block_offset,
                                                        block_size);
 
-    // auto lru_block_item = std::make_shared<sstable::LRUBlockItem>(
-    //     std::make_pair(block_offset, block_size), std::move(block_reader),
-    //     db->GetBlockReaderCache());
+    const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &block_cache =
+        db->GetBlockReaderCache();
 
-    // auto iterator =
-    //     std::make_unique<sstable::BlockReaderIterator>(lru_block_item);
+    auto lru_block_item = std::make_shared<sstable::LRUBlockItem>(
+        std::make_pair(block_offset, block_size), std::move(block_reader),
+        block_cache[0].get() /*Just choose random blockcache*/);
 
-    // std::string prev_key, prev_value;
+    auto iterator =
+        std::make_unique<sstable::BlockReaderIterator>(lru_block_item);
 
-    // // Loop forward
-    // for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
-    //   std::string_view key_found = iterator->GetKey();
-    //   std::string_view value_found = iterator->GetValue();
-    //   db::ValueType type = iterator->GetType();
-    //   TxnId txn_id = iterator->GetTransactionId();
-    //   prev_key = std::string(key_found);
+    std::string prev_key, prev_value;
 
-    //   EXPECT_EQ(value_found, db->Get(key_found, 0 /*txn_id*/).value.value());
-    //   EXPECT_EQ(type, db::ValueType::PUT);
-    //   // EXPECT_EQ(txn_id, 0);
-    //   EXPECT_TRUE(prev_key <= key_found);
+    // Loop forward
+    for (iterator->SeekToFirst(); iterator->IsValid(); iterator->Next()) {
+      std::string_view key_found = iterator->GetKey();
+      std::string_view value_found = iterator->GetValue();
+      db::ValueType type = iterator->GetType();
+      TxnId txn_id = iterator->GetTransactionId();
+      prev_key = std::string(key_found);
 
-    //   // Test Seek(std::string_view key)
-    //   iterator->Seek(prev_key);
-    //   EXPECT_TRUE(iterator->IsValid());
-    //   EXPECT_TRUE(iterator->GetKey() == prev_key);
-    //   EXPECT_TRUE(iterator->GetValue() == value_found);
-    // }
+      EXPECT_EQ(value_found, db->Get(key_found, 0 /*txn_id*/).value.value());
+      EXPECT_EQ(type, db::ValueType::PUT);
+      // EXPECT_EQ(txn_id, 0);
+      EXPECT_TRUE(prev_key <= key_found);
 
-    // // Loop backward
-    // for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
-    //   std::string_view key_found = iterator->GetKey();
-    //   std::string_view value_found = iterator->GetValue();
-    //   db::ValueType type = iterator->GetType();
-    //   TxnId txn_id = iterator->GetTransactionId();
-    //   prev_key = std::string(key_found);
+      // Test Seek(std::string_view key)
+      iterator->Seek(prev_key);
+      EXPECT_TRUE(iterator->IsValid());
+      EXPECT_TRUE(iterator->GetKey() == prev_key);
+      EXPECT_TRUE(iterator->GetValue() == value_found);
+    }
 
-    //   EXPECT_EQ(value_found, db->Get(key_found, 0 /*txn_id*/).value.value());
-    //   EXPECT_EQ(type, db::ValueType::PUT);
-    //   // EXPECT_EQ(txn_id, 0);
-    //   EXPECT_TRUE(prev_key >= key_found);
-    // }
+    // Loop backward
+    for (iterator->SeekToLast(); iterator->IsValid(); iterator->Prev()) {
+      std::string_view key_found = iterator->GetKey();
+      std::string_view value_found = iterator->GetValue();
+      db::ValueType type = iterator->GetType();
+      TxnId txn_id = iterator->GetTransactionId();
+      prev_key = std::string(key_found);
+
+      EXPECT_EQ(value_found, db->Get(key_found, 0 /*txn_id*/).value.value());
+      EXPECT_EQ(type, db::ValueType::PUT);
+      // EXPECT_EQ(txn_id, 0);
+      EXPECT_TRUE(prev_key >= key_found);
+    }
   }
 
   ClearAllSstFiles(db.get());

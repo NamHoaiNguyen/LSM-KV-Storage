@@ -61,7 +61,6 @@ private:
 
   std::atomic<uint64_t> next_version_id_{0};
 
-  // std::deque<std::unique_ptr<Version>> versions_;
   mutable std::unordered_map<uint64_t, std::unique_ptr<Version>> versions_;
 
   std::unique_ptr<Version> latest_version_;

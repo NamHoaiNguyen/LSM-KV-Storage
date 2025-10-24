@@ -75,12 +75,10 @@ private:
   // not
   bool IsBaseLevelForKey(std::string_view key);
 
-  // const sstable::BlockReaderCache *block_reader_cache_;
-
   const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
       &block_reader_cache_;
 
-  const sstable::TableReaderCache *table_reader_cache_;
+  const sstable::TableReaderCache *const table_reader_cache_;
 
   const Version *version_;
 

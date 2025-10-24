@@ -114,7 +114,7 @@ private:
 
   const kvs::ThreadPool *const thread_pool_;
 
-  const VersionManager *version_manager_;
+  const VersionManager *const version_manager_;
 
   const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
       &block_reader_cache_;

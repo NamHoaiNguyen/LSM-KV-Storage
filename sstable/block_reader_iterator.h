@@ -55,10 +55,9 @@ public:
 private:
   std::optional<uint64_t> GetCurrentDataEntryOffset();
 
-  // std::weak_ptr<LRUBlockItem> lru_block_item_;
   std::shared_ptr<LRUBlockItem> lru_block_item_;
 
-  const BlockReader *block_reader_;
+  const BlockReader *const block_reader_;
 
   // Contain index of block_index_ data member in BlockReader
   uint64_t current_offset_index_;

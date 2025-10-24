@@ -47,8 +47,6 @@ public:
   uint64_t GetBlockSize() const;
 
 private:
-  std::vector<Byte> buffer_;
-
   const std::string smallest_key_;
 
   const std::string largest_key_;

@@ -6,8 +6,6 @@
 #include "sstable/block_reader_cache.h"
 #include "sstable/lru_table_item.h"
 
-#include <iostream>
-
 namespace {
 
 uint64_t GetDataEntryOffset(uint64_t offset_section, int entry_index,
@@ -42,9 +40,6 @@ CreateAndSetupDataForTableReader(std::string &&filename, SSTId table_id,
   table_reader_data->read_file_object =
       std::make_unique<io::LinuxReadOnlyFile>(table_reader_data->filename);
   if (!table_reader_data->read_file_object->Open()) {
-    // std::cout
-    //     << "namnh can't open file anymore CreateAndSetupDataForTableReader"
-    //     << std::endl;
     return nullptr;
   }
 
@@ -173,14 +168,12 @@ TableReader::TableReader(std::unique_ptr<TableReaderData> table_reader_data)
 
 db::GetStatus
 TableReader::GetValue(std::string_view key, TxnId txn_id,
-                      const sstable::BlockReaderCache *block_reader_cache,
-                      const TableReader *table_reader) const {
+                      const sstable::BlockReaderCache *const block_reader_cache,
+                      const TableReader *const table_reader) const {
   auto [block_offset, block_size] = GetBlockOffsetAndSize(key);
 
-  // return block_reader_cache->GetValue(key, txn_id, {table_id_, block_offset},
-  //                                     block_size, table_reader);
-
   if (block_reader_cache) {
+    // BlockCache is enabled
     return block_reader_cache->GetValue(key, txn_id, {table_id_, block_offset},
                                         block_size, table_reader);
   }
