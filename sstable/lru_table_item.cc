@@ -11,7 +11,7 @@ namespace sstable {
 
 LRUTableItem::LRUTableItem(SSTId table_id,
                            std::unique_ptr<TableReader> table_reader,
-                           const TableReaderCache *cache)
+                           const TableReaderCache *const cache)
     : ref_count_(0), table_id_(table_id),
       table_reader_(std::move(table_reader)), cache_(cache) {}
 

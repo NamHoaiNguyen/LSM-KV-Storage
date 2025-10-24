@@ -13,7 +13,7 @@ namespace kvs {
 namespace sstable {
 
 TableReaderCache::TableReaderCache(const db::DBImpl *db,
-                                   kvs::ThreadPool *thread_pool)
+                                   const kvs::ThreadPool *const thread_pool)
     : capacity_(db->GetConfig()->GetTotalTablesCache()), db_(db),
       thread_pool_(thread_pool) {
   assert(db_ && thread_pool_);
@@ -34,7 +34,6 @@ TableReaderCache::GetLRUTableItem(SSTId table_id) const {
   return iterator->second;
 }
 
-// const LRUTableItem *TableReaderCache::AddNewTableReaderThenGet(
 std::shared_ptr<LRUTableItem> TableReaderCache::AddNewTableReaderThenGet(
     SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item,
     bool add_then_get) const {
@@ -90,15 +89,15 @@ void TableReaderCache::AddVictim(SSTId table_id) const {
   free_list_.push_back(table_id);
 }
 
-db::GetStatus TableReaderCache::GetKeyFromTableCache(
+db::GetStatus TableReaderCache::GetValue(
     std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
-    const sstable::BlockReaderCache *block_reader_cache) const {
+    const sstable::BlockReaderCache *const block_reader_cache) const {
   db::GetStatus status;
 
   std::shared_ptr<LRUTableItem> table_reader = GetLRUTableItem(table_id);
   if (table_reader && table_reader->GetTableReader()) {
     // if table reader had already been in cache
-    status = table_reader->table_reader_->SearchKey(
+    status = table_reader->table_reader_->GetValue(
         key, txn_id, block_reader_cache, table_reader->GetTableReader());
     thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
     return status;
@@ -117,7 +116,7 @@ db::GetStatus TableReaderCache::GetKeyFromTableCache(
 
   auto new_lru_table_item = std::make_unique<LRUTableItem>(
       table_id, std::move(new_table_reader), this);
-  status = new_lru_table_item->GetTableReader()->SearchKey(
+  status = new_lru_table_item->GetTableReader()->GetValue(
       key, txn_id, block_reader_cache, new_lru_table_item->GetTableReader());
 
   thread_pool_->Enqueue(

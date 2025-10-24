@@ -6,7 +6,7 @@
 LSM_PER_MEM_SIZE_LIMIT = 33554432  # 32 * 1024 * 1024
 
 # Maximum number of immutable memtables in memory
-MAX_IMMUTABLE_MEMTABLES_IN_MEMORY = 3
+MAX_IMMUTABLE_MEMTABLES_IN_MEMORY = 4
 # Block size (4KB)
 SST_BLOCK_SIZE = 4096  # 4 * 1024
 
@@ -14,10 +14,17 @@ SST_BLOCK_SIZE = 4096  # 4 * 1024
 LSM_SST_NUM_LEVELS = 7
 
 # Maximum number of SST level-0 files before triggering compaction
-LVL0_COMPACTION_TRIGGER = 4
+LVL0_COMPACTION_TRIGGER = 6
+
+[cache]
+# Total background threads
+TOTAL_BG_THREADS = 10
 
 # Total number of Table cached
 TOTAL_TABLES_CACHE = 1000 # This should be less than limitation of file descriptors
 
-# Total number of Block cached
-TOTAL_BLOCKS_CACHE = 100000  # 4KB * 100000 = 400 MB
+# Total number of Blocks in each cache
+TOTAL_BLOCKS_EACH_CACHE = 12000
+
+# Total number of Block cache
+TOTAL_BLOCKS_CACHE = 0

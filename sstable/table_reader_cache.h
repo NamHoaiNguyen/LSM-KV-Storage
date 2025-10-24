@@ -31,7 +31,8 @@ class TableReader;
 
 class TableReaderCache {
 public:
-  TableReaderCache(const db::DBImpl *db, kvs::ThreadPool *thread_pool);
+  TableReaderCache(const db::DBImpl *db,
+                   const kvs::ThreadPool *const thread_pool);
 
   ~TableReaderCache() = default;
 
@@ -43,9 +44,10 @@ public:
   TableReaderCache(TableReaderCache &&) = delete;
   TableReaderCache &operator=(TableReaderCache &&) = delete;
 
-  db::GetStatus GetKeyFromTableCache(
-      std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
-      const sstable::BlockReaderCache *block_reader_cache) const;
+  db::GetStatus
+  GetValue(std::string_view key, TxnId txn_id, SSTId table_id,
+           uint64_t file_size,
+           const sstable::BlockReaderCache *const block_reader_cache) const;
 
   std::shared_ptr<LRUTableItem>
   AddNewTableReaderThenGet(SSTId table_id,
@@ -69,9 +71,9 @@ private:
 
   mutable std::shared_mutex mutex_;
 
-  const db::DBImpl *db_;
+  const db::DBImpl *const db_;
 
-  ThreadPool *thread_pool_;
+  const ThreadPool *const thread_pool_;
 };
 
 } // namespace sstable

@@ -167,14 +167,27 @@ TableReader::TableReader(std::unique_ptr<TableReaderData> table_reader_data)
       read_file_object_(std::move(table_reader_data->read_file_object)) {}
 
 db::GetStatus
-TableReader::SearchKey(std::string_view key, TxnId txn_id,
-                       const sstable::BlockReaderCache *block_reader_cache,
-                       const TableReader *table_reader) const {
-  assert(block_reader_cache);
+TableReader::GetValue(std::string_view key, TxnId txn_id,
+                      const sstable::BlockReaderCache *const block_reader_cache,
+                      const TableReader *const table_reader) const {
   auto [block_offset, block_size] = GetBlockOffsetAndSize(key);
 
-  return block_reader_cache->GetKeyFromBlockCache(
-      key, txn_id, {table_id_, block_offset}, block_size, table_reader);
+  if (block_reader_cache) {
+    // BlockCache is enabled
+    return block_reader_cache->GetValue(key, txn_id, {table_id_, block_offset},
+                                        block_size, table_reader);
+  }
+
+  // Create new tablereader
+  auto new_block_reader =
+      table_reader->CreateAndSetupDataForBlockReader(block_offset, block_size);
+  if (!new_block_reader) {
+    db::GetStatus status;
+    status.type = db::ValueType::kTooManyOpenFiles;
+    return status;
+  }
+
+  return new_block_reader->GetValue(key, txn_id);
 }
 
 std::pair<BlockOffset, BlockSize>

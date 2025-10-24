@@ -17,12 +17,11 @@ BlockReader::BlockReader(std::unique_ptr<BlockReaderData> block_reader_data)
           std::move(block_reader_data->data_entries_offset_info)),
       buffer_(std::move(block_reader_data->buffer)) {}
 
-db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
+db::GetStatus BlockReader::GetValue(std::string_view key, TxnId txn_id) const {
   db::GetStatus status;
 
   // Binary search key in block based on offset
   int64_t left = 0;
-  // TODO(namnh) : recheck constraint
   int64_t right = total_data_entries_ - 1;
 
   while (left <= right) {
@@ -50,12 +49,6 @@ db::GetStatus BlockReader::SearchKey(std::string_view key, TxnId txn_id) const {
     } else if (key_in_block < key) {
       left = mid + 1;
     } else {
-      if (mid == 0) {
-        // Special case, because uint64_t always >= 0. So -1 will be casted
-        // to 2^64 - 1
-        break;
-      }
-
       right = mid - 1;
     }
   }

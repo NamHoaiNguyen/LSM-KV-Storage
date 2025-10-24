@@ -21,7 +21,7 @@ class TableReader;
 class LRUTableItem {
 public:
   LRUTableItem(SSTId table_id, std::unique_ptr<TableReader> table_reader,
-               const TableReaderCache *cache_);
+               const TableReaderCache *const cache_);
 
   ~LRUTableItem() = default;
 
@@ -51,7 +51,7 @@ private:
 
   std::unique_ptr<TableReader> table_reader_;
 
-  const TableReaderCache *cache_;
+  const TableReaderCache *const cache_;
 };
 
 } // namespace sstable

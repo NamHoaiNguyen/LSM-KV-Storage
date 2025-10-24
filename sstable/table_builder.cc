@@ -16,7 +16,8 @@ namespace kvs {
 
 namespace sstable {
 
-TableBuilder::TableBuilder(std::string &&filename, const db::Config *config)
+TableBuilder::TableBuilder(std::string &&filename,
+                           const db::Config *const config)
     : filename_(std::move(filename)),
       write_file_object_(std::make_unique<io::LinuxWriteOnlyFile>(filename_)),
       block_data_(std::make_unique<BlockBuilder>()), current_offset_(0),

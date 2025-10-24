@@ -257,9 +257,12 @@ TEST(BlockTest, BlockReaderIterator) {
         table_reader->CreateAndSetupDataForBlockReader(block_offset,
                                                        block_size);
 
+    const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &block_cache =
+        db->GetBlockReaderCache();
+
     auto lru_block_item = std::make_shared<sstable::LRUBlockItem>(
         std::make_pair(block_offset, block_size), std::move(block_reader),
-        db->GetBlockReaderCache());
+        block_cache[0].get() /*Just choose random blockcache*/);
 
     auto iterator =
         std::make_unique<sstable::BlockReaderIterator>(lru_block_item);

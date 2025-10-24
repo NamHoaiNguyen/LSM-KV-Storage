@@ -12,12 +12,12 @@ namespace kvs {
 namespace sstable {
 
 TableReaderIterator::TableReaderIterator(
-    const BlockReaderCache *block_reader_cache,
+    const std::vector<std::unique_ptr<BlockReaderCache>> &block_reader_cache,
     std::shared_ptr<LRUTableItem> lru_table_item)
     : block_reader_iterator_(nullptr), current_block_offset_index_(0),
       lru_table_item_(lru_table_item), block_reader_cache_(block_reader_cache) {
   table_reader_ = lru_table_item_.lock()->GetTableReader();
-  assert(block_reader_cache_ && lru_table_item_ && table_reader_);
+  assert(table_reader_);
 }
 
 TableReaderIterator::~TableReaderIterator() {
@@ -126,13 +126,15 @@ TableReaderIterator::GetBlockOffsetAndSizeBaseOnIndex() {
 void TableReaderIterator::CreateNewBlockReaderIterator(
     std::pair<BlockOffset, BlockSize> block_info) {
   SSTId table_id = table_reader_->table_id_;
-  // Look up block in cache
-  std::shared_ptr<LRUBlockItem> block_reader =
-      block_reader_cache_->GetLRUBlockItem({table_id, block_info.first});
-  if (block_reader) {
-    // if had already been in cache
-    block_reader_iterator_.reset(new BlockReaderIterator(block_reader));
-    return;
+  for (int i = 0; i < block_reader_cache_.size(); i++) {
+    // Look up block in cache
+    std::shared_ptr<LRUBlockItem> block_reader =
+        block_reader_cache_[i]->GetLRUBlockItem({table_id, block_info.first});
+    if (block_reader) {
+      // if had already been in cache
+      block_reader_iterator_.reset(new BlockReaderIterator(block_reader));
+      return;
+    }
   }
 
   // If not, create new blockreader and load data from disk
@@ -145,14 +147,9 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
 
   auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       std::make_pair(table_id, block_info.first), std::move(new_block_reader),
-      block_reader_cache_);
+      nullptr /*BlockReaderCache*/);
 
-  std::shared_ptr<LRUBlockItem> block_reader_inserted =
-      block_reader_cache_->AddNewBlockReaderThenGet(
-          {table_id, block_info.first}, new_lru_block_item,
-          true /*add_then_get*/);
-
-  block_reader_iterator_.reset(new BlockReaderIterator(block_reader_inserted));
+  block_reader_iterator_.reset(new BlockReaderIterator(new_lru_block_item));
 }
 
 } // namespace sstable

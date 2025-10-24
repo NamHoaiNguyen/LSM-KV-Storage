@@ -38,7 +38,11 @@ public:
 
   std::string GetSavedDataPath() const;
 
+  int GetTotalBackGroundThreads() const;
+
   int GetTotalTablesCache() const;
+
+  int GetTotalBlocksEachCache() const;
 
   int GetTotalBlocksCache() const;
 
@@ -57,9 +61,13 @@ private:
 
   std::string data_path_;
 
+  int total_background_threads_;
+
   int total_tables_in_mem_;
 
-  int total_blocks_in_mem_;
+  int total_blocks_in_each_cache_;
+
+  int total_block_caches_;
 
   // For testing
   bool is_testing_;

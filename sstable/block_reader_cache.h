@@ -13,6 +13,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <shared_mutex>
 #include <string_view>
 #include <thread>
@@ -33,9 +34,10 @@ class TableReader;
 
 class BlockReaderCache {
 public:
-  BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool);
+  BlockReaderCache(int capacity, const kvs::ThreadPool *const thread_pool);
 
-  ~BlockReaderCache() = default;
+  // ~BlockReaderCache() = default;
+  ~BlockReaderCache();
 
   // No copy allowed
   BlockReaderCache(const BlockReaderCache &) = delete;
@@ -53,10 +55,10 @@ public:
                            std::shared_ptr<LRUBlockItem> block_reader,
                            bool add_then_get) const;
 
-  db::GetStatus GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
-                                     std::pair<SSTId, BlockOffset> block_info,
-                                     uint64_t block_size,
-                                     const TableReader *table_reader) const;
+  db::GetStatus GetValue(std::string_view key, TxnId txn_id,
+                         std::pair<SSTId, BlockOffset> block_info,
+                         uint64_t block_size,
+                         const TableReader *const table_reader) const;
 
   void AddVictim(std::pair<SSTId, BlockOffset> block_info) const;
 
@@ -64,7 +66,10 @@ private:
   // NOT THREAD-SAFE
   bool Evict() const;
 
-  bool CanCreateNewBlockReader() const;
+  // Background thread that
+  // add LRUBlockItem into cache
+  // or add LRUBlockItem into victim list
+  void ExecuteBgThread() const;
 
   // Custom hash for pair<int, int>
   struct pair_hash {
@@ -91,9 +96,28 @@ private:
 
   mutable std::list<std::pair<SSTId, BlockOffset>> free_list_;
 
+  struct ItemCache {
+    std::pair<SSTId, BlockOffset> info;
+
+    std::shared_ptr<LRUBlockItem> item;
+
+    bool add_then_get;
+  };
+
   mutable std::shared_mutex mutex_;
 
-  kvs::ThreadPool *thread_pool_;
+  mutable std::queue<std::shared_ptr<LRUBlockItem>> victim_queue_;
+
+  mutable std::queue<ItemCache> item_cache_queue_;
+
+  mutable std::mutex bg_mutex_;
+
+  mutable std::condition_variable bg_cv_;
+
+  std::atomic<bool> shutdown_;
+
+  // kvs::ThreadPool *thread_pool_;
+  const kvs::ThreadPool *const thread_pool_;
 };
 
 } // namespace sstable

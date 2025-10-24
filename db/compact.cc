@@ -7,6 +7,7 @@
 #include "db/merge_iterator.h"
 #include "db/version.h"
 #include "sstable/block_builder.h"
+#include "sstable/block_reader_cache.h"
 #include "sstable/block_reader_iterator.h"
 #include "sstable/lru_table_item.h"
 #include "sstable/table_builder.h"
@@ -21,13 +22,14 @@ namespace kvs {
 
 namespace db {
 
-Compact::Compact(const sstable::BlockReaderCache *block_reader_cache,
-                 const sstable::TableReaderCache *table_reader_cache,
+Compact::Compact(const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
+                     &block_reader_cache,
+                 const sstable::TableReaderCache *const table_reader_cache,
                  const Version *version, VersionEdit *version_edit, DBImpl *db)
     : block_reader_cache_(block_reader_cache),
       table_reader_cache_(table_reader_cache), version_(version),
       version_edit_(version_edit), db_(db) {
-  assert(block_reader_cache_ && table_reader_cache_ && version_ && db_);
+  assert(table_reader_cache_ && version_ && db_);
 }
 
 bool Compact::PickCompact() {

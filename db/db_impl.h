@@ -83,7 +83,9 @@ public:
 
   const VersionManager *GetVersionManager() const;
 
-  const sstable::BlockReaderCache *GetBlockReaderCache() const;
+  // const sstable::BlockReaderCache *GetBlockReaderCache() const;
+  const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &
+  GetBlockReaderCache() const;
 
   const sstable::TableReaderCache *GetTableReaderCache() const;
 
@@ -147,13 +149,13 @@ private:
 
   std::atomic<bool> background_compaction_scheduled_;
 
-  // Threadppol ISN'T COPYABLE AND MOVEABLE
-  // So, we must allocate/deallocate by ourselves
-  kvs::ThreadPool *thread_pool_;
+  std::unique_ptr<kvs::ThreadPool> thread_pool_;
 
   std::unique_ptr<sstable::TableReaderCache> table_reader_cache_;
 
-  std::unique_ptr<sstable::BlockReaderCache> block_reader_cache_;
+  std::unique_ptr<kvs::ThreadPool> block_cache_thread_pool_;
+
+  std::vector<std::unique_ptr<sstable::BlockReaderCache>> block_reader_cache_;
 
   std::unique_ptr<VersionManager> version_manager_;
 

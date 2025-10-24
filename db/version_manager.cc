@@ -19,15 +19,12 @@ namespace kvs {
 namespace db {
 
 VersionManager::VersionManager(const DBImpl *db,
-                               const kvs::ThreadPool *thread_pool)
-    : db_(db), table_reader_cache_(db_->GetTableReaderCache()),
-      block_reader_cache_(db_->GetBlockReaderCache()),
-      config_(db_->GetConfig()), thread_pool_(thread_pool) {
-  assert(db_ && table_reader_cache_ && block_reader_cache_ && config_ &&
-         thread_pool_);
+                               const kvs::ThreadPool *const thread_pool)
+    : db_(db), config_(db_->GetConfig()), thread_pool_(thread_pool) {
+  assert(db_ && config_ && thread_pool_);
 }
 
-void VersionManager::RemoveObsoleteVersion(uint64_t version_id) {
+void VersionManager::RemoveObsoleteVersion(uint64_t version_id) const {
   std::scoped_lock lock(mutex_);
   auto it = versions_.find(version_id);
   if (it == versions_.end()) {
@@ -74,7 +71,7 @@ void VersionManager::InitVersionWhenLoadingDb(
   next_version_id_.fetch_add(1);
   uint64_t new_verions_id = next_version_id_;
   auto new_version = std::make_unique<Version>(
-      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, db_);
 
   std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
       &latest_version_sst_info = new_version->GetSSTMetadata();
@@ -134,7 +131,7 @@ void VersionManager::CreateNewVersion(
   next_version_id_.fetch_add(1);
   uint64_t new_verions_id = next_version_id_.load();
   auto new_version = std::make_unique<Version>(
-      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, this);
+      new_verions_id, config_->GetSSTNumLvels(), thread_pool_, db_);
 
   // Get info of SST from previous version
   const std::vector<std::vector<std::shared_ptr<SSTMetadata>>>
@@ -231,13 +228,6 @@ void VersionManager::CreateNewVersion(
   latest_version_ = std::move(new_version);
   // Each new version created has its refcount = 1
   latest_version_->IncreaseRefCount();
-}
-
-GetStatus VersionManager::GetKey(std::string_view key, TxnId txn_id,
-                                 SSTId table_id, uint64_t file_size) const {
-  // No need to acquire mutex. Because this method is read-only
-  return table_reader_cache_->GetKeyFromTableCache(
-      key, txn_id, table_id, file_size, block_reader_cache_);
 }
 
 bool VersionManager::NeedSSTCompaction() const {

@@ -144,7 +144,7 @@ private:
 
   std::string table_largest_key_;
 
-  const db::Config *config_;
+  const db::Config *const config_;
 
   // Total size of JUST data part(size of all key/value pairs)
   uint64_t data_size_;

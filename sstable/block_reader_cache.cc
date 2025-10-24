@@ -11,8 +11,17 @@ namespace kvs {
 
 namespace sstable {
 
-BlockReaderCache::BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool)
-    : capacity_(capacity), thread_pool_(thread_pool) {}
+BlockReaderCache::BlockReaderCache(int capacity,
+                                   const kvs::ThreadPool *const thread_pool)
+    : capacity_(capacity), thread_pool_(thread_pool), shutdown_(false) {
+  thread_pool_->Enqueue(&BlockReaderCache::ExecuteBgThread, this);
+}
+
+BlockReaderCache::~BlockReaderCache() {
+  shutdown_.store(true);
+
+  bg_cv_.notify_one();
+}
 
 std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
     std::pair<SSTId, BlockOffset> block_info) const {
@@ -28,10 +37,10 @@ std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
   return iterator->second;
 }
 
+// NOT THREAD_SAFE
 std::shared_ptr<LRUBlockItem> BlockReaderCache::AddNewBlockReaderThenGet(
     std::pair<SSTId, BlockOffset> block_info,
     std::shared_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
-
   // Insert new block reader into cache
   std::scoped_lock rwlock(mutex_);
 
@@ -94,27 +103,55 @@ void BlockReaderCache::AddVictim(
   free_list_.push_back(block_info);
 }
 
-bool BlockReaderCache::CanCreateNewBlockReader() const {
-  std::shared_lock rlock(mutex_);
-  return block_reader_cache_.size() >= capacity_;
+void BlockReaderCache::ExecuteBgThread() const {
+  while (!shutdown_) {
+    {
+      std::unique_lock rwlock_bg(bg_mutex_);
+      bg_cv_.wait(rwlock_bg, [this]() {
+        return this->shutdown_ || !this->item_cache_queue_.empty() ||
+               !this->victim_queue_.empty();
+      });
+
+      if (this->shutdown_ && this->item_cache_queue_.empty() &&
+          this->victim_queue_.empty()) {
+        return;
+      }
+
+      while (!victim_queue_.empty()) {
+        std::shared_ptr<LRUBlockItem> item = victim_queue_.front();
+        victim_queue_.pop();
+
+        item->Unref();
+      }
+
+      while (!item_cache_queue_.empty()) {
+        ItemCache item = item_cache_queue_.front();
+        item_cache_queue_.pop();
+
+        AddNewBlockReaderThenGet(item.info, item.item, item.add_then_get);
+      }
+    }
+  }
 }
 
 db::GetStatus
-BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
-                                       std::pair<SSTId, BlockOffset> block_info,
-                                       uint64_t block_size,
-                                       const TableReader *table_reader) const {
+BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
+                           std::pair<SSTId, BlockOffset> block_info,
+                           uint64_t block_size,
+                           const TableReader *const table_reader) const {
   assert(table_reader);
   db::GetStatus status;
 
   std::shared_ptr<LRUBlockItem> block_reader = GetLRUBlockItem(block_info);
   if (block_reader && block_reader->GetBlockReader()) {
-    // if tablereader had already been in cache
-    assert(block_reader->ref_count_ >= 2);
-    status = block_reader->GetBlockReader()->SearchKey(key, txn_id);
-    // TODO(namnh) : This can improve performance, but increase CPU usage
-    // significantly
-    thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
+    // tablereader had already been in cache
+    status = block_reader->GetBlockReader()->GetValue(key, txn_id);
+    {
+      std::scoped_lock rwlock_bg(bg_mutex_);
+      victim_queue_.push(block_reader);
+    }
+    bg_cv_.notify_one();
+
     return status;
   }
 
@@ -128,11 +165,14 @@ BlockReaderCache::GetKeyFromBlockCache(std::string_view key, TxnId txn_id,
 
   auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       block_info, std::move(new_block_reader), this);
+  status = new_lru_block_item->GetBlockReader()->GetValue(key, txn_id);
 
-  status = new_lru_block_item->GetBlockReader()->SearchKey(key, txn_id);
-
-  AddNewBlockReaderThenGet(block_info, new_lru_block_item,
-                           false /*need_to_get*/);
+  {
+    std::scoped_lock rwlock_bg(bg_mutex_);
+    item_cache_queue_.push(
+        {block_info, new_lru_block_item, false /*need_to_get*/});
+  }
+  bg_cv_.notify_one();
 
   return status;
 }

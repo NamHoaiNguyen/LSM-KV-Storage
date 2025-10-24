@@ -125,6 +125,9 @@ TEST(TableTest, MergeIterator) {
   std::vector<std::shared_ptr<sstable::LRUTableItem>> lru_table_items;
   std::vector<std::unique_ptr<sstable::TableReaderIterator>>
       table_reader_iterators;
+  const std::vector<std::unique_ptr<sstable::BlockReaderCache>> &block_cache =
+      db->GetBlockReaderCache();
+
   for (int i = 0; i < sst_metadata[0].size(); i++) {
     std::string filename =
         db->GetDBPath() + std::to_string(sst_metadata[0][i]->table_id) + ".sst";
@@ -139,7 +142,7 @@ TEST(TableTest, MergeIterator) {
         db->GetTableReaderCache());
 
     auto iterator = std::make_unique<sstable::TableReaderIterator>(
-        db->GetBlockReaderCache(), lru_table_item);
+        block_cache, lru_table_item);
 
     lru_table_items.push_back(std::move(lru_table_item));
     table_reader_iterators.push_back(std::move(iterator));
