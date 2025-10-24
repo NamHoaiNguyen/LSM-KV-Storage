@@ -120,10 +120,6 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
     }
   }
 
-  if (status.type == db::ValueType::NOT_FOUND) {
-    std::cout << "namnh can't find " << key << std::endl;
-  }
-
   return status;
 }
 
