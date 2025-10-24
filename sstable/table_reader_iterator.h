@@ -25,7 +25,6 @@ public:
 
   TableReaderIterator(
       const std::vector<std::unique_ptr<BlockReaderCache>> &block_reader_cache,
-      const BlockReaderCache *compact_cache,
       std::shared_ptr<LRUTableItem> lru_table_item);
 
   ~TableReaderIterator();
@@ -71,8 +70,6 @@ private:
 
   // const BlockReaderCache *block_reader_cache_;
   const std::vector<std::unique_ptr<BlockReaderCache>> &block_reader_cache_;
-
-  const BlockReaderCache *compact_cache_;
 
   std::weak_ptr<LRUTableItem> lru_table_item_;
 

@@ -19,7 +19,7 @@ LRUBlockItem::LRUBlockItem(std::pair<SSTId, BlockOffset> block_info,
 void LRUBlockItem::IncRef() const { ref_count_.fetch_add(1); }
 
 void LRUBlockItem::Unref() const {
-  if (ref_count_.fetch_sub(1) == 1) {
+  if (ref_count_.fetch_sub(1) == 1 && cache_) {
     cache_->AddVictim({table_id_, block_offset_});
   }
 }

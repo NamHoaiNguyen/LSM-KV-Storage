@@ -67,7 +67,7 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   // TODO(namnh) : block cache bucket
   // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
   // pushing into thread pool
-  uint64_t block_reader_bucket = HashKey(key, 8 /*table_size*/);
+  uint64_t block_reader_bucket = HashKey(key, block_reader_cache_.size() /*table_size*/);
 
   for (const auto &sst : levels_sst_info_[0]) {
     // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs

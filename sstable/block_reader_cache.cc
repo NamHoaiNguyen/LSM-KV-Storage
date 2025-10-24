@@ -11,18 +11,24 @@ namespace kvs {
 
 namespace sstable {
 
-BlockReaderCache::BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool)
-    : capacity_(capacity), thread_pool_(thread_pool) {
-  thread_pool_->Enqueue(&BlockReaderCache::UnrefThread, this);
-  thread_pool_->Enqueue(&BlockReaderCache::AddNewItemThread, this);
+BlockReaderCache::BlockReaderCache(
+    int capacity,
+    const kvs::ThreadPool * const thread_pool)
+        : capacity_(capacity), thread_pool_(thread_pool) {
+  // thread_pool_->Enqueue(&BlockReaderCache::UnrefThread, this);
+  // thread_pool_->Enqueue(&BlockReaderCache::AddNewItemThread, this);
+
+  thread_pool_->Enqueue(&BlockReaderCache::WakeupBgThread, this)
 }
 
 BlockReaderCache::~BlockReaderCache() {
   shutdown_.store(true);
 
-  unref_cv_.notify_one();
+  // unref_cv_.notify_one();
 
-  item_cv_.notify_one();
+  // item_cv_.notify_one();
+
+  bg_cv_.notify_one();
 }
 
 std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
@@ -39,10 +45,10 @@ std::shared_ptr<LRUBlockItem> BlockReaderCache::GetLRUBlockItem(
   return iterator->second;
 }
 
+// NOT THREAD_SAFE
 std::shared_ptr<LRUBlockItem> BlockReaderCache::AddNewBlockReaderThenGet(
     std::pair<SSTId, BlockOffset> block_info,
     std::shared_ptr<LRUBlockItem> lru_block_item, bool add_then_get) const {
-
   // Insert new block reader into cache
   std::scoped_lock rwlock(mutex_);
 
@@ -105,11 +111,6 @@ void BlockReaderCache::AddVictim(
   free_list_.push_back(block_info);
 }
 
-bool BlockReaderCache::CanCreateNewBlockReader() const {
-  std::shared_lock rlock(mutex_);
-  return block_reader_cache_.size() >= capacity_;
-}
-
 void BlockReaderCache::AddNewItemThread() const {
   while (!shutdown_) {
     {
@@ -149,10 +150,43 @@ void BlockReaderCache::UnrefThread() const {
         unref_queue_.pop();
 
         item->Unref();
+        free_list_.push_back(block_info);
       }
     }
   }
 }
+
+void BlockReaderCache::WakeupBgThread() const {
+  while (!shutdown_) {
+    {
+      std::unique_lock rwlock_bg(bg_mutex_);
+      bg_cv_.wait(rwlock, [this]() {
+        return this->shutdown_ || !this->new_item_queue_.empty() ||
+            !this->unref_queue_.empty();
+      });
+
+      if (this->shutdown_ && this->new_item_queue_.empty() &&
+              this->unref_queue_.empty()) {
+        return;
+      }
+
+      while (!unref_queue_.empty()) {
+        std::shared_ptr<LRUBlockItem> item = unref_queue_.front();
+        unref_queue_.pop();
+
+        item->Unref();
+      }
+
+      while (!new_item_queue_.empty()) {
+        ItemQueue item = new_item_queue_.front();
+        new_item_queue_.pop();
+
+        AddNewBlockReaderThenGet(item.info, item.item, item.add_then_get);
+      }
+    }
+  }
+}
+
 
 db::GetStatus
 BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
@@ -170,11 +204,18 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
     // TODO(namnh) : This can improve performance, but increase CPU usage
     // significantly
     // thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
+    // {
+    //   std::scoped_lock rwlock(unref_q_mutex_);
+    //   unref_queue_.push(block_reader);
+    // }
+    // unref_cv_.notify_one();
+
     {
-      std::scoped_lock rwlock(unref_q_mutex_);
+      std::scoped_lock rwlock_bg(bg_mutex_);
       unref_queue_.push(block_reader);
-      unref_cv_.notify_one();
     }
+    bg_cv_.notify_one();
+
     return status;
   }
 
@@ -193,12 +234,19 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
 
   // AddNewBlockReaderThenGet(block_info, new_lru_block_item,
   //                          false /*need_to_get*/);
+  // {
+  //   std::scoped_lock rwlock(item_mutex_);
+  //   new_item_queue_.push(
+  //       {block_info, new_lru_block_item, false /*need_to_get*/});
+  // }
+  // item_cv_.notify_one();
+
   {
-    std::scoped_lock rwlock(item_mutex_);
+    std::scoped_lock rwlock_bgrwlock(unref_q_mutex_);
     new_item_queue_.push(
         {block_info, new_lru_block_item, false /*need_to_get*/});
-    item_cv_.notify_one();
   }
+  bg_cv_.notify_one();
 
   return status;
 }

@@ -34,7 +34,7 @@ class TableReader;
 
 class BlockReaderCache {
 public:
-  BlockReaderCache(int capacity, kvs::ThreadPool *thread_pool);
+  BlockReaderCache(int capacity, const kvs::ThreadPool * const thread_pool);
 
   // ~BlockReaderCache() = default;
   ~BlockReaderCache();
@@ -71,11 +71,11 @@ private:
   // NOT THREAD-SAFE
   bool Evict() const;
 
-  bool CanCreateNewBlockReader() const;
-
   void AddNewItemThread() const;
 
   void UnrefThread() const;
+
+  void WakeupBgThread() const;
 
   // Custom hash for pair<int, int>
   struct pair_hash {
@@ -123,6 +123,10 @@ private:
   mutable std::mutex unref_q_mutex_;
 
   mutable std::condition_variable unref_cv_;
+
+  mutable std::mutex bg_mutex_;
+
+  mutable std::condition_variable bg_cv_;
 
   std::atomic<bool> shutdown_{false};
 

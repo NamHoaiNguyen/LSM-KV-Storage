@@ -121,28 +121,53 @@ bool Config::LoadConfigFromPath() {
     return false;
   }
 
-  if (!result["lsm"]["TOTAL_TABLES_CACHE"].as_integer()) {
+  if (!result["cache"]["TOTAL_TABLES_CACHE"].as_integer()) {
     std::cout << "TOTAL_TABLES_CACHE is not integer" << std::endl;
     return false;
   }
 
+  total_background_threads_ =
+      static_cast<int>(result["cache"]["TOTAL_BG_THREADS"].as_integer()->get());
+  if (total_background_threads_ <= 0) {
+    std::cout << "TOTAL_BG_THREADS is not valid(>=1)" << std::endl;
+    return false;
+  }
+
+  if (!result["cache"]["TOTAL_BG_THREADS"].as_integer()) {
+    std::cout << "TOTAL_BG_THREADS is not integer" << std::endl;
+    return false;
+  }
+
   total_tables_in_mem_ =
-      static_cast<int>(result["lsm"]["TOTAL_TABLES_CACHE"].as_integer()->get());
+      static_cast<int>(result["cache"]["TOTAL_TABLES_CACHE"].as_integer()->get());
   if (total_tables_in_mem_ < 0 ||
       total_tables_in_mem_ > kDefaultTotalTablesInMem) {
     std::cout << "LVL0_COMPACTION_TRIGGER isn't valid(1-1000)" << std::endl;
     return false;
   }
 
-  if (!result["lsm"]["TOTAL_BLOCKS_CACHE"].as_integer()) {
+  if (!result["cache"]["TOTAL_BLOCKS_CACHE"].as_integer()) {
     std::cout << "TOTAL_BLOCKS_CACHE is not integer" << std::endl;
     return false;
   }
-  total_blocks_in_mem_ =
-      static_cast<int>(result["lsm"]["TOTAL_BLOCKS_CACHE"].as_integer()->get());
-  if (total_blocks_in_mem_ <= 0) {
-    std::cout << "LVL0_COMPACTION_TRIGGER isn't valid(must be larger than 0)"
+
+  total_blocks_in_each_cache_ =
+      static_cast<int>(result["cache"]["TOTAL_BLOCK_EACH_CACHE"].as_integer()->get());
+  if (total_blocks_in_each_cache_ <= 0) {
+    std::cout << "TOTAL_BLOCK_EACH_CACHE isn't valid(must be larger than 0)"
               << std::endl;
+    return false;
+  }
+
+  total_block_caches_ =
+      static_cast<int>(result["cache"]["TOTAL_BLOCKS_CACHE"].as_integer()->get());
+  if (total_block_caches_ < 0) {
+    std::cout << "TOTAL_BLOCKS_CACHE is not valid(>=0)" << std::endl;
+    return false;
+  }
+
+  if (!result["cache"]["TOTAL_BLOCKS_CACHE"].as_integer()) {
+    std::cout << "TOTAL_BLOCKS_CACHE is not integer" << std::endl;
     return false;
   }
 
@@ -167,9 +192,17 @@ int Config::GetLvl0SSTCompactionTrigger() const {
 
 std::string Config::GetSavedDataPath() const { return data_path_; }
 
+int Config::GetTotalBackGroundThreads() const {
+  return total_background_threads_;
+}
+
 int Config::GetTotalTablesCache() const { return total_tables_in_mem_; }
 
-int Config::GetTotalBlocksCache() const { return total_blocks_in_mem_; }
+int Config::GetTotalBlocksEachCache() const {
+  return total_blocks_in_each_cache_;
+}
+
+int Config::GetTotalBlocksCache() const { return total_block_caches_; }
 
 } // namespace db
 

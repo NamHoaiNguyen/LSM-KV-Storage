@@ -18,7 +18,7 @@ namespace kvs {
 
 class ThreadPool {
 public:
-  inline ThreadPool();
+  inline explicit ThreadPool(int num_threads);
 
   inline ~ThreadPool();
 
@@ -47,11 +47,9 @@ private:
   std::vector<std::thread> workers_;
 };
 
-ThreadPool::ThreadPool() : shutdown_(false) {
-  num_threads_ = std::thread::hardware_concurrency();
-  if (num_threads_ == 0) {
-    num_threads_ = kDefaultNumThreadsInThreadPool;
-  }
+ThreadPool::ThreadPool(int num_threads)
+    : num_threads_(num_threads), shutdown_(false) {
+  assert(num_threads_ > 0);
 
   for (int i = 0; i < num_threads_; i++) {
     workers_.emplace_back([this]() {

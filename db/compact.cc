@@ -32,13 +32,12 @@ namespace db {
 //   assert(block_reader_cache_ && table_reader_cache_ && version_ && db_);
 // }
 
-Compact::Compact(const sstable::BlockReaderCache *compact_cache,
-                 const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
+Compact::Compact(const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
                      &block_reader_cache,
                  const sstable::TableReaderCache *table_reader_cache,
                  const Version *version, VersionEdit *version_edit, DBImpl *db)
     // TODO(namnh) : block cache bucket
-    : compact_cache_(compact_cache), block_reader_cache_(block_reader_cache),
+    : block_reader_cache_(block_reader_cache),
       table_reader_cache_(table_reader_cache), version_(version),
       version_edit_(version_edit), db_(db) {
   assert(table_reader_cache_ && version_ && db_);
@@ -243,7 +242,7 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       //         block_reader_cache_, table_reader_inserted));
       table_reader_iterators.emplace_back(
           std::make_unique<sstable::TableReaderIterator>(
-              block_reader_cache_, compact_cache_, table_reader_inserted));
+              block_reader_cache_, table_reader_inserted));
     }
   }
 

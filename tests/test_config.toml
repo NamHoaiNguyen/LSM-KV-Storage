@@ -16,9 +16,16 @@ LSM_SST_NUM_LEVELS = 7
 # Maximum number of SST level-0 files before triggering compaction
 LVL0_COMPACTION_TRIGGER = 4
 
+[cache]
+# Total background threads
+TOTAL_BG_THREADS = 10
+
 # Total number of Table cached
 TOTAL_TABLES_CACHE = 1000 # This should be less than limitation of file descriptors
 
 # Total number of Block cached
 # TOTAL_BLOCKS_CACHE = 100000  # 4KB * 100000 = 400 MB
-TOTAL_BLOCKS_CACHE = 12500
+TOTAL_BLOCKS_EACH_CACHE = 10000
+
+# Total threads for used for block cache
+TOTAL_BLOCKS_CACHE = 10

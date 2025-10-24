@@ -23,13 +23,11 @@ namespace sstable {
 
 TableReaderIterator::TableReaderIterator(
     const std::vector<std::unique_ptr<BlockReaderCache>> &block_reader_cache,
-    const BlockReaderCache *compact_cache,
     std::shared_ptr<LRUTableItem> lru_table_item)
     : block_reader_iterator_(nullptr), current_block_offset_index_(0),
-      compact_cache_(compact_cache), lru_table_item_(lru_table_item),
-      block_reader_cache_(block_reader_cache) {
+      lru_table_item_(lru_table_item), block_reader_cache_(block_reader_cache) {
   table_reader_ = lru_table_item_.lock()->GetTableReader();
-  assert(compact_cache_ && table_reader_);
+  assert(table_reader_);
 }
 
 TableReaderIterator::~TableReaderIterator() {
@@ -176,7 +174,7 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
   // TODO(namnh) : block cache bucket
   // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
   // pushing into thread pool
-  for (int i = 0; i < 8; i++) {
+  for (int i = 0; i < block_reader_cache_.size(); i++) {
     std::shared_ptr<LRUBlockItem> block_reader =
         block_reader_cache_[i]->GetLRUBlockItem({table_id, block_info.first});
     if (block_reader) {
@@ -216,14 +214,9 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
 
   auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       std::make_pair(table_id, block_info.first), std::move(new_block_reader),
-      compact_cache_);
+      nullptr /*BlockReaderCache*/);
 
-  std::shared_ptr<LRUBlockItem> block_reader_inserted =
-      compact_cache_->AddNewBlockReaderThenGet({table_id, block_info.first},
-                                               new_lru_block_item,
-                                               true /*add_then_get*/);
-
-  block_reader_iterator_.reset(new BlockReaderIterator(block_reader_inserted));
+  block_reader_iterator_.reset(new BlockReaderIterator(new_lru_block_item));
 }
 
 } // namespace sstable
