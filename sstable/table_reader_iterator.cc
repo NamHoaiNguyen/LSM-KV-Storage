@@ -133,48 +133,11 @@ TableReaderIterator::GetBlockOffsetAndSizeBaseOnIndex() {
   return {block_offset, block_size};
 }
 
-// void TableReaderIterator::CreateNewBlockReaderIterator(
-//     std::pair<BlockOffset, BlockSize> block_info) {
-//   SSTId table_id = table_reader_->table_id_;
-//   // Look up block in cache
-//   std::shared_ptr<LRUBlockItem> block_reader =
-//       block_reader_cache_->GetLRUBlockItem({table_id, block_info.first});
-//   if (block_reader) {
-//     // if had already been in cache
-//     block_reader_iterator_.reset(new BlockReaderIterator(block_reader));
-//     return;
-//   }
-
-//   // If not, create new blockreader and load data from disk
-//   std::unique_ptr<BlockReader> new_block_reader =
-//       table_reader_->CreateAndSetupDataForBlockReader(block_info.first,
-//                                                       block_info.second);
-//   if (!new_block_reader) {
-//     return;
-//   }
-
-//   auto new_lru_block_item = std::make_shared<LRUBlockItem>(
-//       std::make_pair(table_id, block_info.first),
-//       std::move(new_block_reader), block_reader_cache_);
-
-//   std::shared_ptr<LRUBlockItem> block_reader_inserted =
-//       block_reader_cache_->AddNewBlockReaderThenGet(
-//           {table_id, block_info.first}, new_lru_block_item,
-//           true /*add_then_get*/);
-
-//   block_reader_iterator_.reset(new
-//   BlockReaderIterator(block_reader_inserted));
-// }
-
 void TableReaderIterator::CreateNewBlockReaderIterator(
     std::pair<BlockOffset, BlockSize> block_info) {
   SSTId table_id = table_reader_->table_id_;
-  // Look up block in cache
-
-  // TODO(namnh) : block cache bucket
-  // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
-  // pushing into thread pool
   for (int i = 0; i < block_reader_cache_.size(); i++) {
+    // Look up block in cache
     std::shared_ptr<LRUBlockItem> block_reader =
         block_reader_cache_[i]->GetLRUBlockItem({table_id, block_info.first});
     if (block_reader) {
@@ -182,26 +145,6 @@ void TableReaderIterator::CreateNewBlockReaderIterator(
       block_reader_iterator_.reset(new BlockReaderIterator(block_reader));
       return;
     }
-
-    // // If not, create new blockreader and load data from disk
-    // std::unique_ptr<BlockReader> new_block_reader =
-    //     table_reader_->CreateAndSetupDataForBlockReader(block_info.first,
-    //                                                     block_info.second);
-    // if (!new_block_reader) {
-    //   return;
-    // }
-
-    // auto new_lru_block_item = std::make_shared<LRUBlockItem>(
-    //     std::make_pair(table_id, block_info.first),
-    //     std::move(new_block_reader), block_reader_cache_[i].get());
-
-    // std::shared_ptr<LRUBlockItem> block_reader_inserted =
-    //     block_reader_cache_[i]->AddNewBlockReaderThenGet(
-    //         {table_id, block_info.first}, new_lru_block_item,
-    //         true /*add_then_get*/);
-
-    // block_reader_iterator_.reset(
-    //     new BlockReaderIterator(block_reader_inserted));
   }
 
   // If not, create new blockreader and load data from disk

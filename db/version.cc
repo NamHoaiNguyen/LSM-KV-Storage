@@ -40,7 +40,7 @@ namespace kvs {
 namespace db {
 
 Version::Version(uint64_t version_id, int num_sst_levels,
-                 kvs::ThreadPool *thread_pool, const DBImpl *db)
+                 const kvs::ThreadPool *const thread_pool, const DBImpl *db)
     : version_id_(version_id), levels_sst_info_(num_sst_levels),
       compaction_level_(0), compaction_score_(0), ref_count_(0),
       levels_score_(num_sst_levels, 0), thread_pool_(thread_pool),
@@ -67,7 +67,8 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
   // TODO(namnh) : block cache bucket
   // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
   // pushing into thread pool
-  uint64_t block_reader_bucket = HashKey(key, block_reader_cache_.size() /*table_size*/);
+  uint64_t block_reader_bucket =
+      HashKey(key, block_reader_cache_.size() /*table_size*/);
 
   for (const auto &sst : levels_sst_info_[0]) {
     // With SSTs lvl0, because of overlapping, we need to lookup in all SSTs

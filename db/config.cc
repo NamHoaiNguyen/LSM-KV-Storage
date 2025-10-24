@@ -138,8 +138,8 @@ bool Config::LoadConfigFromPath() {
     return false;
   }
 
-  total_tables_in_mem_ =
-      static_cast<int>(result["cache"]["TOTAL_TABLES_CACHE"].as_integer()->get());
+  total_tables_in_mem_ = static_cast<int>(
+      result["cache"]["TOTAL_TABLES_CACHE"].as_integer()->get());
   if (total_tables_in_mem_ < 0 ||
       total_tables_in_mem_ > kDefaultTotalTablesInMem) {
     std::cout << "LVL0_COMPACTION_TRIGGER isn't valid(1-1000)" << std::endl;
@@ -151,16 +151,16 @@ bool Config::LoadConfigFromPath() {
     return false;
   }
 
-  total_blocks_in_each_cache_ =
-      static_cast<int>(result["cache"]["TOTAL_BLOCK_EACH_CACHE"].as_integer()->get());
+  total_blocks_in_each_cache_ = static_cast<int>(
+      result["cache"]["TOTAL_BLOCKS_EACH_CACHE"].as_integer()->get());
   if (total_blocks_in_each_cache_ <= 0) {
     std::cout << "TOTAL_BLOCK_EACH_CACHE isn't valid(must be larger than 0)"
               << std::endl;
     return false;
   }
 
-  total_block_caches_ =
-      static_cast<int>(result["cache"]["TOTAL_BLOCKS_CACHE"].as_integer()->get());
+  total_block_caches_ = static_cast<int>(
+      result["cache"]["TOTAL_BLOCKS_CACHE"].as_integer()->get());
   if (total_block_caches_ < 0) {
     std::cout << "TOTAL_BLOCKS_CACHE is not valid(>=0)" << std::endl;
     return false;

@@ -57,20 +57,15 @@ DBImpl::DBImpl(bool is_testing)
       txn_manager_(std::make_unique<mvcc::TransactionManager>(this)),
       config_(std::make_unique<Config>(is_testing)),
       background_compaction_scheduled_(false),
-      // thread_pool_(new kvs::ThreadPool(config_->GetTotalBackGroundThreads())),
-      thread_pool_(
-          std::make_unique(config_->GetTotalBackGroundThreads()));
-      table_reader_cache_(
-          std::make_unique<sstable::TableReaderCache>(this, thread_pool_)),
-      // block_reader_cache_(std::make_unique<sstable::BlockReaderCache>(
-      //     config_->GetTotalBlocksCache(), thread_pool_)),
+      thread_pool_(std::make_unique<kvs::ThreadPool>(
+          config_->GetTotalBackGroundThreads())),
+      table_reader_cache_(std::make_unique<sstable::TableReaderCache>(
+          this, thread_pool_.get())),
       block_cache_thread_pool_(
-          std::make_unique<kvs::ThreadPool>(config_->GetTotalBlocksCache()))
-      version_manager_(std::make_unique<VersionManager>(this, thread_pool_)) {
-  // TODO(namnh, IMPORTANCE) : Set value >= 10 cause functor is not invoked when
-  // pushing into thread pool
+          std::make_unique<kvs::ThreadPool>(config_->GetTotalBlocksCache())),
+      version_manager_(
+          std::make_unique<VersionManager>(this, thread_pool_.get())) {
   for (int i = 0; i < config_->GetTotalBlocksCache(); i++) {
-    // TODO(namnh) : block cache bucket
     block_reader_cache_.emplace_back(
         std::make_unique<sstable::BlockReaderCache>(
             config_->GetTotalBlocksCache(), block_cache_thread_pool_.get()));
@@ -80,15 +75,11 @@ DBImpl::DBImpl(bool is_testing)
 }
 
 DBImpl::~DBImpl() {
-  // block_reader_cache_.reset();
   block_reader_cache_.clear();
   table_reader_cache_.reset();
 
   shutdown_ = true;
   trash_files_cv_.notify_one();
-
-  // delete thread_pool_;
-  // thread_pool_ = nullptr;
 }
 
 bool DBImpl::LoadDB(std::string_view dbname) {
@@ -565,9 +556,9 @@ void DBImpl::ExecuteBackgroundCompaction() {
   //                                          version, version_edit.get(),
   //                                          this);
 
-  auto compact = std::make_unique<Compact>(
-      block_reader_cache_, table_reader_cache_.get(),
-      version, version_edit.get(), this);
+  auto compact =
+      std::make_unique<Compact>(block_reader_cache_, table_reader_cache_.get(),
+                                version, version_edit.get(), this);
   bool compact_success = compact->PickCompact();
   if (!compact_success) {
     version->DecreaseRefCount();

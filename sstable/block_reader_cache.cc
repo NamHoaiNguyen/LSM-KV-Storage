@@ -11,22 +11,14 @@ namespace kvs {
 
 namespace sstable {
 
-BlockReaderCache::BlockReaderCache(
-    int capacity,
-    const kvs::ThreadPool * const thread_pool)
-        : capacity_(capacity), thread_pool_(thread_pool) {
-  // thread_pool_->Enqueue(&BlockReaderCache::UnrefThread, this);
-  // thread_pool_->Enqueue(&BlockReaderCache::AddNewItemThread, this);
-
-  thread_pool_->Enqueue(&BlockReaderCache::WakeupBgThread, this)
+BlockReaderCache::BlockReaderCache(int capacity,
+                                   const kvs::ThreadPool *const thread_pool)
+    : capacity_(capacity), thread_pool_(thread_pool), shutdown_(false) {
+  thread_pool_->Enqueue(&BlockReaderCache::ExecuteBgThread, this);
 }
 
 BlockReaderCache::~BlockReaderCache() {
   shutdown_.store(true);
-
-  // unref_cv_.notify_one();
-
-  // item_cv_.notify_one();
 
   bg_cv_.notify_one();
 }
@@ -111,82 +103,36 @@ void BlockReaderCache::AddVictim(
   free_list_.push_back(block_info);
 }
 
-void BlockReaderCache::AddNewItemThread() const {
-  while (!shutdown_) {
-    {
-      std::unique_lock rwlock(item_mutex_);
-      item_cv_.wait(rwlock, [this]() {
-        return this->shutdown_ || !this->new_item_queue_.empty();
-      });
-
-      if (this->shutdown_) {
-        return;
-      }
-
-      while (!new_item_queue_.empty()) {
-        ItemQueue item = new_item_queue_.front();
-        new_item_queue_.pop();
-
-        AddNewBlockReaderThenGet(item.info, item.item, item.add_then_get);
-      }
-    }
-  }
-}
-
-void BlockReaderCache::UnrefThread() const {
-  while (!shutdown_) {
-    {
-      std::unique_lock rwlock(unref_q_mutex_);
-      unref_cv_.wait(rwlock, [this]() {
-        return this->shutdown_ || !this->unref_queue_.empty();
-      });
-
-      if (this->shutdown_) {
-        return;
-      }
-
-      while (!unref_queue_.empty()) {
-        std::shared_ptr<LRUBlockItem> item = unref_queue_.front();
-        unref_queue_.pop();
-
-        item->Unref();
-        free_list_.push_back(block_info);
-      }
-    }
-  }
-}
-
-void BlockReaderCache::WakeupBgThread() const {
+void BlockReaderCache::ExecuteBgThread() const {
   while (!shutdown_) {
     {
       std::unique_lock rwlock_bg(bg_mutex_);
-      bg_cv_.wait(rwlock, [this]() {
-        return this->shutdown_ || !this->new_item_queue_.empty() ||
-            !this->unref_queue_.empty();
+      bg_cv_.wait(rwlock_bg, [this]() {
+        return this->shutdown_ || !this->item_cache_queue_.empty() ||
+               !this->victim_queue_.empty();
       });
 
-      if (this->shutdown_ && this->new_item_queue_.empty() &&
-              this->unref_queue_.empty()) {
+      if (this->shutdown_ && this->item_cache_queue_.empty() &&
+          this->victim_queue_.empty()) {
         return;
       }
 
-      while (!unref_queue_.empty()) {
-        std::shared_ptr<LRUBlockItem> item = unref_queue_.front();
-        unref_queue_.pop();
+      while (!victim_queue_.empty()) {
+        std::shared_ptr<LRUBlockItem> item = victim_queue_.front();
+        victim_queue_.pop();
 
         item->Unref();
       }
 
-      while (!new_item_queue_.empty()) {
-        ItemQueue item = new_item_queue_.front();
-        new_item_queue_.pop();
+      while (!item_cache_queue_.empty()) {
+        ItemCache item = item_cache_queue_.front();
+        item_cache_queue_.pop();
 
         AddNewBlockReaderThenGet(item.info, item.item, item.add_then_get);
       }
     }
   }
 }
-
 
 db::GetStatus
 BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
@@ -198,21 +144,11 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
 
   std::shared_ptr<LRUBlockItem> block_reader = GetLRUBlockItem(block_info);
   if (block_reader && block_reader->GetBlockReader()) {
-    // if tablereader had already been in cache
-    // assert(block_reader->ref_count_ >= 2);
+    // tablereader had already been in cache
     status = block_reader->GetBlockReader()->GetValue(key, txn_id);
-    // TODO(namnh) : This can improve performance, but increase CPU usage
-    // significantly
-    // thread_pool_->Enqueue(&LRUBlockItem::Unref, block_reader);
-    // {
-    //   std::scoped_lock rwlock(unref_q_mutex_);
-    //   unref_queue_.push(block_reader);
-    // }
-    // unref_cv_.notify_one();
-
     {
       std::scoped_lock rwlock_bg(bg_mutex_);
-      unref_queue_.push(block_reader);
+      victim_queue_.push(block_reader);
     }
     bg_cv_.notify_one();
 
@@ -229,21 +165,11 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
 
   auto new_lru_block_item = std::make_shared<LRUBlockItem>(
       block_info, std::move(new_block_reader), this);
-
   status = new_lru_block_item->GetBlockReader()->GetValue(key, txn_id);
 
-  // AddNewBlockReaderThenGet(block_info, new_lru_block_item,
-  //                          false /*need_to_get*/);
-  // {
-  //   std::scoped_lock rwlock(item_mutex_);
-  //   new_item_queue_.push(
-  //       {block_info, new_lru_block_item, false /*need_to_get*/});
-  // }
-  // item_cv_.notify_one();
-
   {
-    std::scoped_lock rwlock_bgrwlock(unref_q_mutex_);
-    new_item_queue_.push(
+    std::scoped_lock rwlock_bg(bg_mutex_);
+    item_cache_queue_.push(
         {block_info, new_lru_block_item, false /*need_to_get*/});
   }
   bg_cv_.notify_one();

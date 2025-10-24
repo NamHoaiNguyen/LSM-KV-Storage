@@ -27,7 +27,7 @@ class Config;
 
 class VersionManager {
 public:
-  VersionManager(const DBImpl *db, kvs::ThreadPool *thread_pool);
+  VersionManager(const DBImpl *db, const kvs::ThreadPool *const thread_pool);
 
   ~VersionManager() = default;
 
@@ -73,7 +73,7 @@ private:
 
   const Config *config_;
 
-  kvs::ThreadPool *thread_pool_;
+  const kvs::ThreadPool *const thread_pool_;
 
   mutable std::mutex mutex_;
 };

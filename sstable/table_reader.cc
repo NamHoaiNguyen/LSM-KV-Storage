@@ -186,10 +186,10 @@ TableReader::GetValue(std::string_view key, TxnId txn_id,
   }
 
   // Create new tablereader
-  auto new_block_reader = table_reader->CreateAndSetupDataForBlockReader(
-      block_offset, block_size);
+  auto new_block_reader =
+      table_reader->CreateAndSetupDataForBlockReader(block_offset, block_size);
   if (!new_block_reader) {
-    GetStatus status;
+    db::GetStatus status;
     status.type = db::ValueType::kTooManyOpenFiles;
     return status;
   }

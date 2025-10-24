@@ -11,7 +11,7 @@ namespace sstable {
 
 LRUBlockItem::LRUBlockItem(std::pair<SSTId, BlockOffset> block_info,
                            std::unique_ptr<BlockReader> block_reader,
-                           const BlockReaderCache *cache)
+                           const BlockReaderCache *const cache)
     : ref_count_(0), table_id_(block_info.first),
       block_offset_(block_info.second), block_reader_(std::move(block_reader)),
       cache_(cache) {}

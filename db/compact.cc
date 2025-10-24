@@ -22,21 +22,10 @@ namespace kvs {
 
 namespace db {
 
-// Compact::Compact(const sstable::BlockReaderCache *block_reader_cache,
-//                  const sstable::TableReaderCache *table_reader_cache,
-//                  const Version *version, VersionEdit *version_edit, DBImpl
-//                  *db)
-//     : block_reader_cache_(block_reader_cache),
-//       table_reader_cache_(table_reader_cache), version_(version),
-//       version_edit_(version_edit), db_(db) {
-//   assert(block_reader_cache_ && table_reader_cache_ && version_ && db_);
-// }
-
 Compact::Compact(const std::vector<std::unique_ptr<sstable::BlockReaderCache>>
                      &block_reader_cache,
-                 const sstable::TableReaderCache *table_reader_cache,
+                 const sstable::TableReaderCache *const table_reader_cache,
                  const Version *version, VersionEdit *version_edit, DBImpl *db)
-    // TODO(namnh) : block cache bucket
     : block_reader_cache_(block_reader_cache),
       table_reader_cache_(table_reader_cache), version_(version),
       version_edit_(version_edit), db_(db) {
@@ -209,12 +198,9 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
           table_reader_cache_->GetLRUTableItem(table_id);
       if (table_reader && table_reader->GetTableReader()) {
         // If table reader had already been in cache, just create table iterator
-        // table_reader_iterators.emplace_back(
-        //     std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
-        //                                                    table_reader));
         table_reader_iterators.emplace_back(
-            std::make_unique<sstable::TableReaderIterator>(
-                block_reader_cache_, compact_cache_, table_reader));
+            std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
+                                                           table_reader));
         continue;
       }
 
@@ -224,9 +210,6 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       auto new_table_reader = sstable::CreateAndSetupDataForTableReader(
           std::move(filename), table_id, file_size);
       if (!new_table_reader) {
-        std::cout << "namnh can't CreateAndSetupDataForTableReader in "
-                     "Compact::CreateMergeIterator"
-                  << std::endl;
         return nullptr;
       }
 
@@ -237,9 +220,6 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
               table_id, std::move(lru_table_item), true /*add_then_get*/);
 
       // create iterator for new table
-      // table_reader_iterators.emplace_back(
-      //     std::make_unique<sstable::TableReaderIterator>(
-      //         block_reader_cache_, table_reader_inserted));
       table_reader_iterators.emplace_back(
           std::make_unique<sstable::TableReaderIterator>(
               block_reader_cache_, table_reader_inserted));

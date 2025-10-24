@@ -49,8 +49,6 @@ private:
 
 ThreadPool::ThreadPool(int num_threads)
     : num_threads_(num_threads), shutdown_(false) {
-  assert(num_threads_ > 0);
-
   for (int i = 0; i < num_threads_; i++) {
     workers_.emplace_back([this]() {
       while (!shutdown_) {

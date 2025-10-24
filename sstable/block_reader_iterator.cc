@@ -16,9 +16,10 @@ BlockReaderIterator::BlockReaderIterator(
 }
 
 BlockReaderIterator::~BlockReaderIterator() {
-  if (auto tmpPtr = lru_block_item_.lock()) {
-    tmpPtr->Unref();
-  }
+  // if (auto tmpPtr = lru_block_item_.lock()) {
+  //   tmpPtr->Unref();
+  // }
+  lru_block_item_->Unref();
 }
 
 std::optional<uint64_t> BlockReaderIterator::GetCurrentDataEntryOffset() {

@@ -34,7 +34,7 @@ class TableReader;
 
 class BlockReaderCache {
 public:
-  BlockReaderCache(int capacity, const kvs::ThreadPool * const thread_pool);
+  BlockReaderCache(int capacity, const kvs::ThreadPool *const thread_pool);
 
   // ~BlockReaderCache() = default;
   ~BlockReaderCache();
@@ -71,11 +71,10 @@ private:
   // NOT THREAD-SAFE
   bool Evict() const;
 
-  void AddNewItemThread() const;
-
-  void UnrefThread() const;
-
-  void WakeupBgThread() const;
+  // Background thread that
+  // add LRUBlockItem into cache
+  // or add LRUBlockItem into victim list
+  void ExecuteBgThread() const;
 
   // Custom hash for pair<int, int>
   struct pair_hash {
@@ -102,7 +101,7 @@ private:
 
   mutable std::list<std::pair<SSTId, BlockOffset>> free_list_;
 
-  struct ItemQueue {
+  struct ItemCache {
     std::pair<SSTId, BlockOffset> info;
 
     std::shared_ptr<LRUBlockItem> item;
@@ -110,27 +109,20 @@ private:
     bool add_then_get;
   };
 
-  mutable std::queue<ItemQueue> new_item_queue_;
-
   mutable std::shared_mutex mutex_;
 
-  mutable std::mutex item_mutex_;
+  mutable std::queue<std::shared_ptr<LRUBlockItem>> victim_queue_;
 
-  mutable std::condition_variable item_cv_;
-
-  mutable std::queue<std::shared_ptr<LRUBlockItem>> unref_queue_;
-
-  mutable std::mutex unref_q_mutex_;
-
-  mutable std::condition_variable unref_cv_;
+  mutable std::queue<ItemCache> item_cache_queue_;
 
   mutable std::mutex bg_mutex_;
 
   mutable std::condition_variable bg_cv_;
 
-  std::atomic<bool> shutdown_{false};
+  std::atomic<bool> shutdown_;
 
-  kvs::ThreadPool *thread_pool_;
+  // kvs::ThreadPool *thread_pool_;
+  const kvs::ThreadPool *const thread_pool_;
 };
 
 } // namespace sstable

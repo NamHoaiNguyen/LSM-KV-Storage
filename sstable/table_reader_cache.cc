@@ -13,7 +13,7 @@ namespace kvs {
 namespace sstable {
 
 TableReaderCache::TableReaderCache(const db::DBImpl *db,
-                                   kvs::ThreadPool *thread_pool)
+                                   const kvs::ThreadPool *const thread_pool)
     : capacity_(db->GetConfig()->GetTotalTablesCache()), db_(db),
       thread_pool_(thread_pool) {
   assert(db_ && thread_pool_);
@@ -92,7 +92,7 @@ void TableReaderCache::AddVictim(SSTId table_id) const {
 
 db::GetStatus TableReaderCache::GetValue(
     std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
-    const sstable::BlockReaderCache *block_reader_cache) const {
+    const sstable::BlockReaderCache *const block_reader_cache) const {
   db::GetStatus status;
 
   std::shared_ptr<LRUTableItem> table_reader = GetLRUTableItem(table_id);

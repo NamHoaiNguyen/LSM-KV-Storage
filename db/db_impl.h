@@ -156,8 +156,6 @@ private:
 
   std::unique_ptr<sstable::TableReaderCache> table_reader_cache_;
 
-  // std::unique_ptr<sstable::BlockReaderCache> block_reader_cache_;
-
   std::unique_ptr<kvs::ThreadPool> block_cache_thread_pool_;
 
   std::vector<std::unique_ptr<sstable::BlockReaderCache>> block_reader_cache_;

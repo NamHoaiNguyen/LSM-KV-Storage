@@ -18,7 +18,8 @@ namespace kvs {
 
 namespace db {
 
-VersionManager::VersionManager(const DBImpl *db, kvs::ThreadPool *thread_pool)
+VersionManager::VersionManager(const DBImpl *db,
+                               const kvs::ThreadPool *const thread_pool)
     : db_(db), config_(db_->GetConfig()), thread_pool_(thread_pool) {
   assert(db_ && config_ && thread_pool_);
 }

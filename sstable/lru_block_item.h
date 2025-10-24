@@ -22,7 +22,7 @@ class LRUBlockItem {
 public:
   LRUBlockItem(std::pair<SSTId, BlockOffset> block_info,
                std::unique_ptr<BlockReader> block_reader,
-               const BlockReaderCache *cache_);
+               const BlockReaderCache *const cache_);
 
   ~LRUBlockItem() = default;
 
