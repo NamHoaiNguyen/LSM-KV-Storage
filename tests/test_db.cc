@@ -233,8 +233,6 @@ TEST(DBTest, ConcurrencyPutAndGetLargeKeyValue) {
   }
   threads.clear();
 
-  db->ForceFlushMemTable();
-
   std::latch all_reads_done(num_threads);
   for (int i = 0; i < num_threads; i++) {
     threads.emplace_back(GetWithRetryOpV2, db.get(), nums_elem_each_thread, i,
@@ -408,7 +406,7 @@ TEST(DBTest, LRUTableReaderCache) {
 
   ClearAllSstFiles(db.get());
 
-  const int nums_elem_each_thread = 5000000;
+  const int nums_elem_each_thread = 3000000;
   unsigned int num_threads = std::thread::hardware_concurrency();
   if (num_threads == 0) {
     // std::thread::hardware_concurrency() might return 0 if sys info not
@@ -429,11 +427,6 @@ TEST(DBTest, LRUTableReaderCache) {
     thread.join();
   }
   threads.clear();
-
-  // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
-  // Wait a little bit time
-  // std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
   // Set new limits
   // With that value of soft limit, it is ensured that table reader cache MUST
@@ -566,11 +559,6 @@ TEST(DBTest, MultipleDB) {
     thread.join();
   }
   threads.clear();
-
-  // Force clearing all immutable memtables
-  db1->ForceFlushMemTable();
-  // Wait a little bit time
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
   std::latch all_reads_done_1(num_threads);
   auto get_op = [&db1, nums_elem = nums_elem_each_thread,

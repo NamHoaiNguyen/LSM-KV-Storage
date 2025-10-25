@@ -10,6 +10,7 @@
 #include <list>
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <shared_mutex>
 #include <string_view>
 #include <thread>
@@ -34,7 +35,7 @@ public:
   TableReaderCache(const db::DBImpl *db,
                    const kvs::ThreadPool *const thread_pool);
 
-  ~TableReaderCache() = default;
+  ~TableReaderCache();
 
   // No copy allowed
   TableReaderCache(const TableReaderCache &) = delete;
@@ -51,7 +52,7 @@ public:
 
   std::shared_ptr<LRUTableItem>
   AddNewTableReaderThenGet(SSTId table_id,
-                           std::unique_ptr<LRUTableItem> lru_table_item,
+                           std::shared_ptr<LRUTableItem> lru_table_item,
                            bool add_then_get) const;
 
   std::shared_ptr<LRUTableItem> GetLRUTableItem(SSTId table_id) const;
@@ -62,6 +63,8 @@ private:
   // NOT THREAD-SAFE
   void Evict() const;
 
+  void ExecuteBgThread() const;
+
   const int capacity_;
 
   mutable std::unordered_map<SSTId, std::shared_ptr<LRUTableItem>>
@@ -70,6 +73,24 @@ private:
   mutable std::list<SSTId> free_list_;
 
   mutable std::shared_mutex mutex_;
+
+  mutable std::mutex bg_mutex_;
+
+  mutable std::condition_variable bg_cv_;
+
+  struct ItemCache {
+    SSTId table_id;
+
+    std::shared_ptr<LRUTableItem> item;
+
+    bool add_then_get;
+  };
+
+  mutable std::queue<std::shared_ptr<LRUTableItem>> victim_queue_;
+
+  mutable std::queue<ItemCache> item_cache_queue_;
+
+  std::atomic<bool> shutdown_;
 
   const db::DBImpl *const db_;
 

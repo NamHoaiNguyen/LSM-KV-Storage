@@ -72,11 +72,7 @@ std::shared_ptr<LRUBlockItem> BlockReaderCache::AddNewBlockReaderThenGet(
 
 // NOT THREAD-SAFE
 bool BlockReaderCache::Evict() const {
-  if (free_list_.empty()) {
-    return false;
-  }
-
-  if (block_reader_cache_.empty()) {
+  if (free_list_.empty() || block_reader_cache_.empty()) {
     return false;
   }
 
@@ -142,22 +138,23 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
   assert(table_reader);
   db::GetStatus status;
 
-  std::shared_ptr<LRUBlockItem> block_reader = GetLRUBlockItem(block_info);
-  if (block_reader && block_reader->GetBlockReader()) {
+  std::shared_ptr<LRUBlockItem> lru_block_item = GetLRUBlockItem(block_info);
+  if (lru_block_item && lru_block_item->GetBlockReader()) {
     // tablereader had already been in cache
-    status = block_reader->GetBlockReader()->GetValue(key, txn_id);
+    status = lru_block_item->GetBlockReader()->GetValue(key, txn_id);
     {
       std::scoped_lock rwlock_bg(bg_mutex_);
-      victim_queue_.push(block_reader);
+      victim_queue_.push(lru_block_item);
+      bg_cv_.notify_one();
     }
-    bg_cv_.notify_one();
 
     return status;
   }
 
   // Create new tablereader
-  auto new_block_reader = table_reader->CreateAndSetupDataForBlockReader(
-      block_info.second, block_size);
+  std::unique_ptr<BlockReader> new_block_reader =
+      table_reader->CreateAndSetupDataForBlockReader(block_info.second,
+                                                     block_size);
   if (!new_block_reader) {
     status.type = db::ValueType::kTooManyOpenFiles;
     return status;
@@ -171,8 +168,8 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
     std::scoped_lock rwlock_bg(bg_mutex_);
     item_cache_queue_.push(
         {block_info, new_lru_block_item, false /*need_to_get*/});
+    bg_cv_.notify_one();
   }
-  bg_cv_.notify_one();
 
   return status;
 }

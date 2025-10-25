@@ -14,9 +14,16 @@ namespace sstable {
 
 TableReaderCache::TableReaderCache(const db::DBImpl *db,
                                    const kvs::ThreadPool *const thread_pool)
-    : capacity_(db->GetConfig()->GetTotalTablesCache()), db_(db),
-      thread_pool_(thread_pool) {
+    : shutdown_(false), capacity_(db->GetConfig()->GetTotalTablesCache()),
+      db_(db), thread_pool_(thread_pool) {
   assert(db_ && thread_pool_);
+  thread_pool_->Enqueue(&TableReaderCache::ExecuteBgThread, this);
+}
+
+TableReaderCache::~TableReaderCache() {
+  shutdown_.store(true);
+
+  bg_cv_.notify_one();
 }
 
 // const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
@@ -35,7 +42,7 @@ TableReaderCache::GetLRUTableItem(SSTId table_id) const {
 }
 
 std::shared_ptr<LRUTableItem> TableReaderCache::AddNewTableReaderThenGet(
-    SSTId table_id, std::unique_ptr<LRUTableItem> lru_table_item,
+    SSTId table_id, std::shared_ptr<LRUTableItem> lru_table_item,
     bool add_then_get) const {
   std::scoped_lock rwlock(mutex_);
   if (table_readers_cache_.size() >= capacity_) {
@@ -63,11 +70,7 @@ std::shared_ptr<LRUTableItem> TableReaderCache::AddNewTableReaderThenGet(
 
 // NOT THREAD-SAFE
 void TableReaderCache::Evict() const {
-  if (free_list_.empty()) {
-    return;
-  }
-
-  if (table_readers_cache_.empty()) {
+  if (free_list_.empty() || table_readers_cache_.empty()) {
     return;
   }
 
@@ -89,17 +92,53 @@ void TableReaderCache::AddVictim(SSTId table_id) const {
   free_list_.push_back(table_id);
 }
 
+void TableReaderCache::ExecuteBgThread() const {
+  while (!shutdown_) {
+    {
+      std::unique_lock rwlock_bg(bg_mutex_);
+      bg_cv_.wait(rwlock_bg, [this]() {
+        return this->shutdown_ || !this->item_cache_queue_.empty() ||
+               !this->victim_queue_.empty();
+      });
+
+      if (this->shutdown_ && this->item_cache_queue_.empty() &&
+          this->victim_queue_.empty()) {
+        return;
+      }
+
+      while (!victim_queue_.empty()) {
+        std::shared_ptr<LRUTableItem> item = victim_queue_.front();
+        victim_queue_.pop();
+
+        item->Unref();
+      }
+
+      while (!item_cache_queue_.empty()) {
+        ItemCache item = item_cache_queue_.front();
+        item_cache_queue_.pop();
+
+        AddNewTableReaderThenGet(item.table_id, item.item, item.add_then_get);
+      }
+    }
+  }
+}
+
 db::GetStatus TableReaderCache::GetValue(
     std::string_view key, TxnId txn_id, SSTId table_id, uint64_t file_size,
     const sstable::BlockReaderCache *const block_reader_cache) const {
   db::GetStatus status;
 
-  std::shared_ptr<LRUTableItem> table_reader = GetLRUTableItem(table_id);
-  if (table_reader && table_reader->GetTableReader()) {
+  std::shared_ptr<LRUTableItem> lru_table_item = GetLRUTableItem(table_id);
+  if (lru_table_item && lru_table_item->GetTableReader()) {
     // if table reader had already been in cache
-    status = table_reader->table_reader_->GetValue(
-        key, txn_id, block_reader_cache, table_reader->GetTableReader());
-    thread_pool_->Enqueue(&LRUTableItem::Unref, table_reader);
+    status = lru_table_item->table_reader_->GetValue(
+        key, txn_id, block_reader_cache, lru_table_item->GetTableReader());
+    {
+      std::scoped_lock rwlock_bg(bg_mutex_);
+      victim_queue_.push(lru_table_item);
+      bg_cv_.notify_one();
+    }
+
     return status;
   }
 
@@ -114,17 +153,17 @@ db::GetStatus TableReaderCache::GetValue(
     return status;
   }
 
-  auto new_lru_table_item = std::make_unique<LRUTableItem>(
+  auto new_lru_table_item = std::make_shared<LRUTableItem>(
       table_id, std::move(new_table_reader), this);
   status = new_lru_table_item->GetTableReader()->GetValue(
       key, txn_id, block_reader_cache, new_lru_table_item->GetTableReader());
 
-  thread_pool_->Enqueue(
-      [this, table_id,
-       new_lru_table_item = std::move(new_lru_table_item)]() mutable {
-        AddNewTableReaderThenGet(table_id, std::move(new_lru_table_item),
-                                 false /*add_then_get*/);
-      });
+  {
+    std::scoped_lock rwlock_bg(bg_mutex_);
+    item_cache_queue_.push(
+        {table_id, new_lru_table_item, false /*need_to_get*/});
+    bg_cv_.notify_one();
+  }
 
   return status;
 }

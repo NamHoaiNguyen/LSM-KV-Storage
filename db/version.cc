@@ -66,7 +66,7 @@ GetStatus Version::Get(std::string_view key, TxnId txn_id) const {
 
   std::optional<uint64_t> block_reader_bucket;
   if (!block_reader_cache_.empty()) {
-    block_reader_bucket = block_reader_cache_.size();
+    block_reader_bucket = HashKey(key, block_reader_cache_.size());
   }
 
   for (const auto &sst : levels_sst_info_[0]) {

@@ -24,7 +24,7 @@ TOTAL_BG_THREADS = 10
 TOTAL_TABLES_CACHE = 1000 # This should be less than limitation of file descriptors
 
 # Total number of Blocks in each cache
-TOTAL_BLOCKS_EACH_CACHE = 12000
+TOTAL_BLOCKS_EACH_CACHE = 20000
 
 # Total number of Block cache
-TOTAL_BLOCKS_CACHE = 8
+TOTAL_BLOCKS_CACHE = 5
