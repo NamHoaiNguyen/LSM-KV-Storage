@@ -145,8 +145,8 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
     {
       std::scoped_lock rwlock_bg(bg_mutex_);
       victim_queue_.push(lru_block_item);
+      bg_cv_.notify_one();
     }
-    bg_cv_.notify_one();
 
     return status;
   }
@@ -168,8 +168,8 @@ BlockReaderCache::GetValue(std::string_view key, TxnId txn_id,
     std::scoped_lock rwlock_bg(bg_mutex_);
     item_cache_queue_.push(
         {block_info, new_lru_block_item, false /*need_to_get*/});
+    bg_cv_.notify_one();
   }
-  bg_cv_.notify_one();
 
   return status;
 }

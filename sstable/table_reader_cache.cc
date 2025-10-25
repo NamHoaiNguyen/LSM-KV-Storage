@@ -136,8 +136,8 @@ db::GetStatus TableReaderCache::GetValue(
     {
       std::scoped_lock rwlock_bg(bg_mutex_);
       victim_queue_.push(lru_table_item);
+      bg_cv_.notify_one();
     }
-    bg_cv_.notify_one();
 
     return status;
   }
@@ -162,8 +162,8 @@ db::GetStatus TableReaderCache::GetValue(
     std::scoped_lock rwlock_bg(bg_mutex_);
     item_cache_queue_.push(
         {table_id, new_lru_table_item, false /*need_to_get*/});
+    bg_cv_.notify_one();
   }
-  bg_cv_.notify_one();
 
   return status;
 }
