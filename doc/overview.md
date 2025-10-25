@@ -10,7 +10,7 @@ LSM_KV_Storage is a storage engine RocksDB is a storage engine library of key-va
 
 The three core components of the DB are memtables, SST files and logfile. The memtable is an in-memory data structure. When the memtable fills up, it is flushed to a SST file. The data in an SST file is roted based on key
 
-![Design Overview](doc/design.png)
+[Design Overview](LSM-KV-Storage/doc/design.png)
 
 ## Features
 
