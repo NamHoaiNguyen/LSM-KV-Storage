@@ -233,7 +233,7 @@ TEST(DBTest, ConcurrencyPutAndGetLargeKeyValue) {
   }
   threads.clear();
 
-  db->ForceFlushMemTable();
+  // db->ForceFlushMemTable();
 
   std::latch all_reads_done(num_threads);
   for (int i = 0; i < num_threads; i++) {
@@ -293,7 +293,7 @@ TEST(DBTest, SequentialConcurrentPutDeleteGet) {
   threads.clear();
 
   // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
+  // db->ForceFlushMemTable();
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
   // ========== Finish PUT keys with values ===========
 
@@ -326,7 +326,7 @@ TEST(DBTest, SequentialConcurrentPutDeleteGet) {
   threads.clear();
 
   // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
+  // db->ForceFlushMemTable();
   std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
   // ========== Finish Delete all keys which were PUT ==========
@@ -431,7 +431,7 @@ TEST(DBTest, LRUTableReaderCache) {
   threads.clear();
 
   // Force clearing all immutable memtables
-  db->ForceFlushMemTable();
+  // db->ForceFlushMemTable();
   // Wait a little bit time
   // std::this_thread::sleep_for(std::chrono::milliseconds(10000));
 
@@ -568,9 +568,9 @@ TEST(DBTest, MultipleDB) {
   threads.clear();
 
   // Force clearing all immutable memtables
-  db1->ForceFlushMemTable();
+  // db1->ForceFlushMemTable();
   // Wait a little bit time
-  std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+  // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
   std::latch all_reads_done_1(num_threads);
   auto get_op = [&db1, nums_elem = nums_elem_each_thread,

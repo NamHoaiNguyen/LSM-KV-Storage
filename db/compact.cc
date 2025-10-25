@@ -194,13 +194,13 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
       // filename = files_need_compaction_[level][i]->filename;
       table_id = files_need_compaction_[level][i]->table_id;
       // Find table in cache
-      std::shared_ptr<sstable::LRUTableItem> table_reader =
+      std::shared_ptr<sstable::LRUTableItem> lru_table_item =
           table_reader_cache_->GetLRUTableItem(table_id);
-      if (table_reader && table_reader->GetTableReader()) {
+      if (lru_table_item && lru_table_item->GetTableReader()) {
         // If table reader had already been in cache, just create table iterator
         table_reader_iterators.emplace_back(
             std::make_unique<sstable::TableReaderIterator>(block_reader_cache_,
-                                                           table_reader));
+                                                           lru_table_item));
         continue;
       }
 
@@ -213,11 +213,11 @@ std::unique_ptr<MergeIterator> Compact::CreateMergeIterator() {
         return nullptr;
       }
 
-      auto lru_table_item = std::make_unique<sstable::LRUTableItem>(
+      auto new_lru_table_item = std::make_shared<sstable::LRUTableItem>(
           table_id, std::move(new_table_reader), table_reader_cache_);
       std::shared_ptr<sstable::LRUTableItem> table_reader_inserted =
           table_reader_cache_->AddNewTableReaderThenGet(
-              table_id, std::move(lru_table_item), true /*add_then_get*/);
+              table_id, new_lru_table_item, true /*add_then_get*/);
 
       // create iterator for new table
       table_reader_iterators.emplace_back(

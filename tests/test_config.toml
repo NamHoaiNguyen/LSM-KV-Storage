@@ -27,4 +27,4 @@ TOTAL_TABLES_CACHE = 1000 # This should be less than limitation of file descript
 TOTAL_BLOCKS_EACH_CACHE = 12000
 
 # Total number of Block cache
-TOTAL_BLOCKS_CACHE = 0
+TOTAL_BLOCKS_CACHE = 8

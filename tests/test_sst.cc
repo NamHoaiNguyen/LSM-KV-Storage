@@ -114,12 +114,13 @@ std::vector<Byte> block_index_buffer_encoded = {
 };
 
 TEST(TableTest, BasicEncode) {
-  auto config = std::make_unique<db::Config>(true /*is_testing*/);
-  config->LoadConfig();
+  auto db = std::make_unique<db::DBImpl>(true /*is_testing*/);
+  db->LoadDB("test");
 
-  std::string filename = "/home/hoainam/self/biggg/lsm-kv-storage/data/1.sst";
+  SSTId table_id = 1;
+  std::string filename = db->GetDBPath() + std::to_string(table_id) + ".sst";
   auto table = std::make_unique<sstable::TableBuilder>(std::move(filename),
-                                                       config.get());
+                                                       db->GetConfig());
   table->GetWriteOnlyFileObject()->Open();
 
   std::string key1 = "apple";

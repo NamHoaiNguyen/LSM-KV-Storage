@@ -90,6 +90,9 @@ TEST(VersionTest, CreateOnlyOneVersion) {
   EXPECT_TRUE(db->GetVersionManager()->GetVersions().size() == 0);
   EXPECT_TRUE(CompareVersionFilesWithDirectoryFiles(db.get()));
 
+  // Wait until compaction finishes its job
+  std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
   ClearAllSstFiles(db.get());
 }
 
