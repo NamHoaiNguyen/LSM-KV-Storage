@@ -15,7 +15,7 @@ The three core components of the DB are memtables, SST files and logfile. The me
 ## Features
 
 ### Memtable
-A MemTable is an in-memory, sorted data structure used to store recent writes before they’re flushed to disk. When implemented with a SkipList, it keeps key-value pairs in sorted order, enabling fast inserts, lookups, and iteration. Each write is first logged to a Write-Ahead Log (WAL) for durability, then inserted into the SkipList. Once the MemTable grows beyond a threshold, it’s frozen and flushed to disk as an immutable SSTable. SkipLists are chosen for their simplicity, predictable O(log n) performance, and efficient ordered traversal, making them ideal for managing high-throughput, write-optimized storage engines.
+A MemTable is an in-memory, sorted data structure used to store recent writes before they’re flushed to disk. It keeps key-value pairs in sorted order, enabling fast inserts, lookups, and iteration. Once the MemTable grows beyond a threshold, it’s frozen and flushed to disk as an immutable SSTable.
 
 ### SST
 An SST (Sorted String Table) is an immutable, on-disk file used to store sorted key-value data. Each SST is created by flushing a MemTable and is organized into blocks containing data, indexes for fast lookups. Because SSTs are sorted and immutable, they enable efficient range scans, quick merges during compaction, and consistent crash recovery. SSTs form the foundational storage layer of the LSM tree, providing durable, structured, and query-efficient persistence for large-scale data.
