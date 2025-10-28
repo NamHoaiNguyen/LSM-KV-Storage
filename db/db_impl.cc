@@ -376,7 +376,11 @@ void DBImpl::FlushMemTableJob(uint64_t version, int num_flush_memtables) {
   version_edit->SetSequenceNumber(sequence_number_);
 
   // Apply versionEdit to manifest and fsync to persist data
-  AddChangesToManifest(version_edit.get());
+  if (!AddChangesToManifest(version_edit.get())) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    thread_pool_->Enqueue(&DBImpl::FlushMemTableJob, this, version,
+                          num_flush_memtables);
+  }
 
   // Not until this point that latest version is visible
   version_manager_->ApplyNewChanges(std::move(version_edit));
@@ -435,7 +439,7 @@ void DBImpl::CreateNewSST(
   work_done.count_down();
 }
 
-void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
+bool DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
   rapidjson::Document doc;
   doc.SetObject();
 
@@ -523,7 +527,11 @@ void DBImpl::AddChangesToManifest(const VersionEdit *version_edit) {
       reinterpret_cast<const uint8_t *>(buffer.GetString()), buffer.GetSize());
 
   // TODO(namnh, IMPORTANT) : What if append fail ?
-  manifest_write_object_->Append(bytes);
+  if (manifest_write_object_->Append(bytes) == -1) {
+    return false;
+  }
+
+  return manifest_write_object_->Flush();
 }
 
 void DBImpl::MaybeScheduleCompaction() {
@@ -551,11 +559,6 @@ void DBImpl::ExecuteBackgroundCompaction() {
 
   version->IncreaseRefCount();
   auto version_edit = std::make_unique<VersionEdit>(config_->GetSSTNumLvels());
-  // auto compact = std::make_unique<Compact>(block_reader_cache_.get(),
-  //                                          table_reader_cache_.get(),
-  //                                          version, version_edit.get(),
-  //                                          this);
-
   auto compact =
       std::make_unique<Compact>(block_reader_cache_, table_reader_cache_.get(),
                                 version, version_edit.get(), this);
@@ -576,7 +579,15 @@ void DBImpl::ExecuteBackgroundCompaction() {
   version_edit->SetSequenceNumber(sequence_number_);
 
   // Apply versionEdit to manifest and fsync to persist data
-  AddChangesToManifest(version_edit.get());
+  if (!AddChangesToManifest(version_edit.get())) {
+    version->DecreaseRefCount();
+
+    background_compaction_scheduled_.store(false);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    MaybeScheduleCompaction();
+
+    return;
+  }
 
   // Apply compact version edit(changes) to create new version
   version_manager_->ApplyNewChanges(std::move(version_edit));

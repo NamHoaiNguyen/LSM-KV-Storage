@@ -77,7 +77,7 @@ public:
 
   void ForceFlushMemTable();
 
-  void AddChangesToManifest(const VersionEdit *version_edit);
+  bool AddChangesToManifest(const VersionEdit *version_edit);
 
   const Config *GetConfig() const;
 
