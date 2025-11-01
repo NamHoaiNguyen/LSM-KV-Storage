@@ -17,10 +17,12 @@ LRUTableItem::LRUTableItem(SSTId table_id,
 
 uint64_t LRUTableItem::GetRefCount() const { return ref_count_.load(); }
 
-void LRUTableItem::IncRef() const { ref_count_.fetch_add(1); }
+void LRUTableItem::IncRef() const {
+  ref_count_.fetch_add(1, std::memory_order_relaxed);
+}
 
 void LRUTableItem::Unref() const {
-  if (ref_count_.fetch_sub(1) == 1) {
+  if (ref_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
     cache_->AddVictim(table_id_);
   }
 }

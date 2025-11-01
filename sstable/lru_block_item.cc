@@ -16,10 +16,12 @@ LRUBlockItem::LRUBlockItem(std::pair<SSTId, BlockOffset> block_info,
       block_offset_(block_info.second), block_reader_(std::move(block_reader)),
       cache_(cache) {}
 
-void LRUBlockItem::IncRef() const { ref_count_.fetch_add(1); }
+void LRUBlockItem::IncRef() const {
+  ref_count_.fetch_add(1, std::memory_order_relaxed);
+}
 
 void LRUBlockItem::Unref() const {
-  if (ref_count_.fetch_sub(1) == 1 && cache_) {
+  if (ref_count_.fetch_sub(1, std::memory_order_acq_rel) == 1 && cache_) {
     cache_->AddVictim({table_id_, block_offset_});
   }
 }
