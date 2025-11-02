@@ -54,7 +54,7 @@ void Version::IncreaseRefCount() const { ref_count_.fetch_add(1); }
 
 void Version::DecreaseRefCount() const {
   assert(ref_count_ >= 1);
-  if (ref_count_.fetch_sub(1) == 1) {
+  if (ref_count_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
     thread_pool_->Enqueue(&VersionManager::RemoveObsoleteVersion,
                           version_manager_, version_id_);
   }
