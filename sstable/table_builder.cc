@@ -142,13 +142,10 @@ void TableBuilder::AddIndexBlockEntry(std::string_view first_key,
   // Insert length of block data
   block_index_buffer_.insert(block_index_buffer_.end(), block_length_buff,
                              block_length_buff + sizeof(uint64_t));
-
-  // file_size_ += sizeof(uint32_t) + first_key.size() + sizeof(uint32_t) +
-  //               last_key.size() + 2 * sizeof(uint64_t);
 }
 
 void TableBuilder::Finish() {
-  // Flush remaining data to
+  // Flush remaining data to disk
   FlushBlock();
 
   // Write block_index_buffer_ to page cache

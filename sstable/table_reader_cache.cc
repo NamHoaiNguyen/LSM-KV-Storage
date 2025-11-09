@@ -26,7 +26,6 @@ TableReaderCache::~TableReaderCache() {
   bg_cv_.notify_one();
 }
 
-// const LRUTableItem *TableReaderCache::GetLRUTableItem(SSTId table_id) const {
 std::shared_ptr<LRUTableItem>
 TableReaderCache::GetLRUTableItem(SSTId table_id) const {
   std::shared_lock rlock(mutex_);

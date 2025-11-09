@@ -46,9 +46,7 @@ CreateAndSetupDataForTableReader(std::string &&filename, SSTId table_id,
   // Decode block index
   DecodeExtraInfo(table_reader_data.get());
 
-  auto new_table_reader =
-      std::make_unique<TableReader>(std::move(table_reader_data));
-  return new_table_reader;
+  return std::make_unique<TableReader>(std::move(table_reader_data));
 }
 
 void DecodeExtraInfo(TableReaderData *table_reader_data) {
@@ -239,10 +237,7 @@ TableReader::CreateAndSetupDataForBlockReader(BlockOffset offset,
   }
 
   // Create new blockreader
-  auto new_block_reader =
-      std::make_unique<BlockReader>(std::move(block_reader_data));
-
-  return new_block_reader;
+  return std::make_unique<BlockReader>(std::move(block_reader_data));
 }
 
 uint64_t TableReader::GetFileSize() const { return file_size_; }
