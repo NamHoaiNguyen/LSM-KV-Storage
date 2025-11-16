@@ -29,4 +29,9 @@ add_library(db
 
 target_include_directories(db PUBLIC ${CMAKE_SOURCE_DIR})
 target_link_libraries(db PUBLIC io mvcc sstable)
+
+target_include_directories(db PRIVATE third_party/rapidjson/include)
 target_link_libraries(db PRIVATE RapidJSON)
+
+target_compile_definitions(db PRIVATE PROJECT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+

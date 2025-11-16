@@ -1,0 +1,58 @@
+name: CI/CD with Build and Tests
+
+on:
+  push:
+    branches:
+      - main
+      - "**"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch: # Manual trigger
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Step 2: Install dependencies
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libgtest-dev rapidjson-dev
+          cd /usr/src/gtest
+          sudo cmake .
+          sudo make
+          sudo cp lib/*.a /usr/lib
+
+      # Step 3: Build project
+      - name: Build project
+        run: |
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j$(nproc)
+
+      # Step 4: Check build success
+      - name: Verify example build
+        run: |
+          if [ ! -f build/example/example ]; then
+            echo "Build failed! Exiting..."
+            exit 1
+          else
+            echo "Build succeeded."
+          fi
+
+      # Step 5: Run all Google Tests
+      - name: Run Tests
+        run: |
+          cd build/tests
+          # Assuming your test executables are prefixed with "test_"
+          for test_exec in test_*; do
+            echo "Running $test_exec"
+            ./$test_exec
+          done
