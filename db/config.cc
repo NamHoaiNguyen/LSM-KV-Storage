@@ -36,7 +36,7 @@ bool Config::LoadConfig() { return LoadConfigFromPath(); }
 
 bool Config::LoadConfigFromPath() {
   fs::path exe_dir = fs::current_path();
-  fs::path project_dir = exe_dir.parent_path();
+  fs::path project_dir = fs::path(PROJECT_SOURCE_DIR);
   std::string config_path;
   if (is_testing_) {
     if (invalid_config_) {
